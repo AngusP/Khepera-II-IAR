@@ -52,6 +52,11 @@ class Comms:
         if self.port.is_open:
             self.port.close()
 
+    def _parse_sensor(self, string):
+        data = string.strip('\n\r').split(",")
+        data_ints = [int(d) for d in data[1:]]
+        return data_ints
+
     def clear_port(self):
         self.port.reset_input_buffer()
 
@@ -59,17 +64,18 @@ class Comms:
     def drive(self, lspeed, rspeed):
         cmd = "D," + str(int(lspeed)) + "," + str(int(rspeed)) + "\n"
         print(cmd, end="")
-        self.port.write(cmd);
+        self.port.write(cmd)
         print(self.port.readline(), end="")
 
+    # self-explanatory
     def stop(self):
         self.drive(0,0)
 
     # Return odometry (wheel rotation) data
     def get_odo(self):
         self.port.write("H\n")
-        print("Odometry:")
-        print(self.port.readline(), end="")
+        odo = self._parse_sensor(self.port.readline()) 
+        return odo
 
     # Reset the robot's wheel counts to 0
     def reset_odo(self):
@@ -78,15 +84,21 @@ class Comms:
     # Return IR Distance measurements
     def get_ir(self, sensor_no=None):
         self.port.write("N\n")
-        print("IR Distances:")
-        print(self.port.readline(), end="")
+        dist = self._parse_sensor(self.port.readline())
+
+        if sensor_no is None:
+            return dist
+        else:
+            return dist[sensor_no]
+
 
     # Return IR Ambient Light Measurements
     def get_ambient(self, sensor_no=None):
         self.port.write("O\n")
-        print("IR Ambient Light:")
-        print(self.port.readline(), end="")
+        amb = self._parse_sensor(self.port.readline()) 
+        return amb
 
+    # control status LEDs on the robot
     def set_led(self, state=1, lednum=None):
         if state not in [0,1]:
             state = 0
@@ -95,6 +107,4 @@ class Comms:
             self.port.write("L,0," + str(state) + "\n")
         else:
             self.port.write("L,1," + str(state) + "\n")
-            
-
 

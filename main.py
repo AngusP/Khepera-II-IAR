@@ -76,19 +76,15 @@ else:
     # invoke the class with defaults
     comms = Comms()
 
-time.sleep(2)
 comms.clear_port()
 comms.drive(5,-5)
-time.sleep(1)
+time.sleep(2)
 comms.drive(-5,5)
-time.sleep(1)
+time.sleep(2)
 comms.stop()
-time.sleep(1)
 
 comms.clear_port()
 
-
-time.sleep(1)
-
-comms.get_odo()
-comms.get_ir()
+print(comms.get_odo())
+print(comms.get_ir())
+#comms.reset_odo()
