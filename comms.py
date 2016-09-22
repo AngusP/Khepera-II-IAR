@@ -16,7 +16,7 @@ class Comms:
 
     # Initialise the class, trying to open the Serial Port
     # with multiple levels of graceful failure.
-    def __init__(self, port="/dev/ttyUSB0", baud=9600, timeout=0):
+    def __init__(self, port="/dev/ttyUSB0", baud=9600, timeout=1):
         
         self.port.baud = baud
         self.port.timeout = timeout
@@ -45,28 +45,56 @@ class Comms:
                 print("")
 
             raise(e1)
+        self.clear_port()
                 
 
     def __del__(self):
         if self.port.is_open:
             self.port.close()
 
+    def clear_port(self):
+        self.port.reset_input_buffer()
+
     # directly control motor speeds
     def drive(self, lspeed, rspeed):
-        pass
+        cmd = "D," + str(int(lspeed)) + "," + str(int(rspeed)) + "\n"
+        print(cmd, end="")
+        self.port.write(cmd);
+        print(self.port.readline(), end="")
 
     def stop(self):
         self.drive(0,0)
 
     # Return odometry (wheel rotation) data
     def get_odo(self):
-        pass
-
-    def get_dist(self, sensor_no=None):
-        pass
+        self.port.write("H\n")
+        print("Odometry:")
+        print(self.port.readline(), end="")
 
     # Reset the robot's wheel counts to 0
     def reset_odo(self):
-        pass
+        self.port.write("G,0,0\n")
+
+    # Return IR Distance measurements
+    def get_ir(self, sensor_no=None):
+        self.port.write("N\n")
+        print("IR Distances:")
+        print(self.port.readline(), end="")
+
+    # Return IR Ambient Light Measurements
+    def get_ambient(self, sensor_no=None):
+        self.port.write("O\n")
+        print("IR Ambient Light:")
+        print(self.port.readline(), end="")
+
+    def set_led(self, state=1, lednum=None):
+        if state not in [0,1]:
+            state = 0
+
+        if led_num is None or lednum == 0:
+            self.port.write("L,0," + str(state) + "\n")
+        else:
+            self.port.write("L,1," + str(state) + "\n")
+            
 
 
