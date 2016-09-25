@@ -32,24 +32,16 @@ def main():
             #print("Dists: " + str(dists))
             err = pid.pid_distance(dists)
             #print("Error: " + str(err))
-	    force = pid.pid_force_vector(err)
-
-            length = math.sqrt(force[0] ** 2 + force[1] ** 2)	    
-	
-	    speed_r = 5
-	    speed_l = 5	
-	    if length > 0:
-	    	if force [0] > 0:
-			speed_r = 5 * force[0] / length * 10
-	    	else:
-			speed_l = 5 * force[0] / length * 10
-
-	 
-
-	    
-	    comms.drive(speed_l, speed_r)
+            if (err[1] + err[2])/2.0 > 0 or (err[3] + err[4])/2 > 0:
+                print("Wall!")
+                if (err[1] + err[2]) > (err[3] + err[4]):
+                    comms.drive(5,-5)
+                else:
+                    comms.drive(-5,5)
+            else:
+                comms.drive(15,15)
             
-            time.sleep(0.05)
+            time.sleep(0.01)
     except Exception as e:
         comms.drive(0,0)
         raise(e)
