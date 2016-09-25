@@ -1,5 +1,3 @@
-\documentclass[11pt,a4wide]{article}
-
 
 %     %%%%%%%%%%%%%%%
 %
@@ -7,15 +5,36 @@
 %
 %     %%%%%%%%%%%%%%%
 
-\usepackage{geometry}
-\geometry{
-  a4paper,
-  total={210mm,297mm},
-  left=20mm,
-  right=20mm,
-  top=20mm,
-  bottom=20mm,
-}
+\documentclass[11pt, a4paper]{article}
+\usepackage{fontspec} 
+
+% DOCUMENT LAYOUT
+\usepackage{geometry} 
+\geometry{a4paper, textwidth=5.5in, textheight=8.5in, marginparsep=6pt, marginparwidth=.6in}
+\setlength\parindent{0in}
+
+% FONTS
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{xunicode}
+\usepackage{xltxtra}
+\defaultfontfeatures{Mapping=tex-text}
+%\setromanfont [Ligatures={Common}, Numbers={OldStyle}, Variant=01]{Linux Libertine O}
+%\setmonofont[Scale=0.8]{Monaco}
+%%% modified by Karol Kozioł for ShareLaTeX use
+\setmainfont[
+  Ligatures={Common}, Numbers={OldStyle}, Variant=01,
+  BoldFont=LinLibertine_RB.otf,
+  ItalicFont=LinLibertine_RI.otf,
+  BoldItalicFont=LinLibertine_RBI.otf
+]{LinLibertine_R.otf}
+\setmonofont[Scale=0.8]{DejaVuSansMono.ttf}
+
+% HEADINGS
+\usepackage{sectsty} 
+\usepackage[normalem]{ulem} 
+\sectionfont{\mdseries\upshape\Large}
+\subsectionfont{\mdseries\scshape\normalsize} 
+\subsubsectionfont{\mdseries\upshape\large} 
 
 
 %     %%%%%%%%%%%%%%%
@@ -88,6 +107,8 @@ allows it to follow a wall for a long distance.
 
 The robot is still getting stuck in corners and struggles with indecision wrt. which way to turn
 
+Problems presented tuning PID
+
 Namedrop Bug2
 
 \subsection{Force-Vector Control}
@@ -119,10 +140,17 @@ discard Force-Vector control in favour of PID derived control.
 
 \section{Developing Wall-Following Behaviour}
 
-The existing obstacle-avoidance does develop some wall-following like behaviour, 
+The existing obstacle-avoidance does develop some wall-following-like behaviour, 
 yet fails to follow \emph{at a constant distance} due to the fact it will turn until 
 the wall is no longer in front of it, but has no problem with overcorrecting by 
 some acute angle nor does it's concept of error make it seek out a wall to hug.
+
+We can observe that our PID controller gives us a per-sensor, independent `error' - 
+A negative value, we are too far from the wall and symmetrically a positive is 
+indicative that we're too close to an object. For the purposes of \emph{avoiding} 
+a collision we only act on these errors when they pass from nagative to positive; 
+but to follow a wall we are trying to ensure the error for a specific sensor is 
+as close to 0 as possible, and any deviation be corrected.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
