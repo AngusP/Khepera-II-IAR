@@ -37,8 +37,9 @@
 \section{Introduction}
 
 The first assignment entails utilising the Infra-red distance sensors on the Kephera 
-robot, remotely controlled over serial. We have elected to use Python as the 
-implementation language for this practical.
+robot to move around in an autonomous fashion, whilst avoiding obstacles and tending 
+to follow walls. The Robot is controlled remotely controlled over serial. We have 
+elected to use Python as the implementation language for this practical.
 
 The task requires that the robot be able to autonomously move around it's environment,
 ``without hitting obstacles or getting stuck in corners or dead-ends. Second, it should 
@@ -49,6 +50,8 @@ these behaviours - With PID, maintaining a constant distance from a wall arises 
 a behaviour naturally, given the controller will always be attempting to zero the 
 error, which is a distance to the wall. Built ontop of PID are control methods to
 allow the robot to navigate away from an obstacle.
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Exploring Different Methods of Control}
 
@@ -62,19 +65,25 @@ fixed distance from the robot, we stop moving forwards and instead turn \emph{aw
 from the side that is close to the wall until the error has reduced to below the 
 threshold.
 
+We use only the two forward-facing sensors to determine if an obstacle is too close, 
+and use the two angled sensors adjacent to them to inform the direction in which to 
+turn.
+
 This approach had some promising behaviours: The robot was able to prevent itself 
 from hitting a small object directly in it's path; Similarly it was able to follow 
-a straight wall to some degree. However, wall following would eiher oscillate 
-towards the wall, bumping into it or depart after following for a short distance. 
+a straight wall to some degree. However, wall following would either oscillate 
+towards the wall, bumping against it or depart after following for a short distance. 
 
 % Commit f1258e7
 
 We then augmented this method with the distance and PID error data from the other
 forward-facing sensors, having the effect of widening the Robot's field of view.
 This prevented the robot from colliding with the wall as the side-facing sensors 
-are now involved in the navigation. Furthermore, the robot will turn in a curve 
+are now involved in the navigation. Furthermore, the robot will turn in a curved path
 when the wall is approaching but not very close, and will turn on the spot if the 
-robot is stuck in a corner or is very close to an obstacle.
+robot is stuck in a corner or is very close to an obstacle. Additionally, the Robot 
+corrects minimally to ensure it's distance to the wall is below the threshold; This 
+allows it to follow a wall for a long distance.
 
 \subsection{Force-Vector Control}
 
@@ -90,10 +99,22 @@ exhibit wall-following behaviour as the error vectors push in direct opposition 
 the wall, resulting in an incident-reflection equivalence in the angle the robot
 takes to the wall.
 
-The method is, however, somewhat more elegant insofar as the complexity of behaviour 
-that emerges from a simple ruleset.
+Attempts to improve this method of control included thresholding the forces, to 
+prevent minor peturbations and noise from causing an overreaction; The forces are 
+also scaled in relation to the magnitude of the error/`closeness to obstacle' we're 
+experiencing : This too prevents some wobble but the combination of these changes 
+reduce the reactivity of this force-vector method, giving the robot poor performance 
+in any environment with acute angles and unsmooth edges.
+
+The method is, however, somewhat more elegant than PID \& rule based control insofar 
+as the complexity of behaviour that emerges from a simple rule set.
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Physical Limitations and Possible Improvements}
 
+The Khepera's distance sensors are spaced to prioritise forward motion, which is handy 
+for exploring a space though does make reversing out of a dead-end much harder than 
+turning on the spot then driving out forwards.
 
 \end{document}
