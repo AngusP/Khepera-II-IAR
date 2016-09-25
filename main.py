@@ -27,20 +27,28 @@ def main():
     try:
         comms.blinkyblink()
         comms.drive(5,5)
+        going = Comms.FORWARD
         while True:
             dists = comms.get_ir()
             #print("Dists: " + str(dists))
             err = pid.pid_distance(dists)
             #print("Error: " + str(err))
-            if (err[1] + err[2])/2.0 > 0 or (err[3] + err[4])/2 > 0:
+            if (err[1] + err[2]) > 0 or (err[3] + err[4]) > 0:
                 print("Wall!")
+                
+                if going is not Comms.FORWARD:
+                    continue
+                    
                 if (err[1] + err[2]) > (err[3] + err[4]):
-                    comms.drive(5,-5)
+                    going = Comms.RIGHT
+                    comms.drive(10,-10)
                 else:
-                    comms.drive(-5,5)
+                    going = Comms.LEFT
+                    comms.drive(-10,10)
             else:
+                going = Comms.FORWARD
                 comms.drive(15,15)
-            
+                
             time.sleep(0.01)
     except Exception as e:
         comms.drive(0,0)

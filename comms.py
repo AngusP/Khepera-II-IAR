@@ -13,6 +13,11 @@ import time
 
 class Comms:
 
+    FORWARD = 0
+    BACKWARD = 1
+    LEFT = 2
+    RIGHT = 3
+
     port = serial.Serial()
 
     # Initialise the class, trying to open the Serial Port

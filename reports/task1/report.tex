@@ -52,7 +52,7 @@ allow the robot to navigate away from an obstacle.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\section{Exploring Different Methods of Control}
+\section{Exploring Different Methods of Obstacle Avoidance}
 
 \subsection{PID Ease-Off Error Mitigation}
 
@@ -84,6 +84,12 @@ robot is stuck in a corner or is very close to an obstacle. Additionally, the Ro
 corrects minimally to ensure it's distance to the wall is below the threshold; This 
 allows it to follow a wall for a long distance.
 
+% Commit cc5b195
+
+The robot is still getting stuck in corners and struggles with indecision wrt. which way to turn
+
+Namedrop Bug2
+
 \subsection{Force-Vector Control}
 
 As an alternative method we consider treating the Error vector produced by the
@@ -106,7 +112,17 @@ reduce the reactivity of this force-vector method, giving the robot poor perform
 in any environment with acute angles and unsmooth edges.
 
 The method is, however, somewhat more elegant than PID \& rule based control insofar 
-as the complexity of behaviour that emerges from a simple rule set.
+as the complexity of behaviour that emerges from a simple rule set. Nonetheless, we 
+discard Force-Vector control in favour of PID derived control.
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+\section{Developing Wall-Following Behaviour}
+
+The existing obstacle-avoidance does develop some wall-following like behaviour, 
+yet fails to follow \emph{at a constant distance} due to the fact it will turn until 
+the wall is no longer in front of it, but has no problem with overcorrecting by 
+some acute angle nor does it's concept of error make it seek out a wall to hug.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -115,5 +131,9 @@ as the complexity of behaviour that emerges from a simple rule set.
 The Khepera's distance sensors are spaced to prioritise forward motion, which is handy 
 for exploring a space though does make reversing out of a dead-end much harder than 
 turning on the spot then driving out forwards.
+
+Evenly spaced sensors
+
+RF Serial on top
 
 \end{document}
