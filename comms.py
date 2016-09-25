@@ -9,6 +9,7 @@ from __future__ import print_function
 import serial # Documentation: http://pyserial.readthedocs.io/en/latest/index.html
 import sys
 from serial.tools import list_ports as list_ports
+import time
 
 class Comms:
 
@@ -99,12 +100,36 @@ class Comms:
         return amb
 
     # control status LEDs on the robot
-    def set_led(self, state=1, lednum=None):
+    def led(self, led_num=None, state=1):
         if state not in [0,1]:
             state = 0
 
-        if led_num is None or lednum == 0:
+        if led_num is None or led_num == 0:
             self.port.write("L,0," + str(state) + "\n")
         else:
             self.port.write("L,1," + str(state) + "\n")
 
+
+    def blinkyblink(self):
+        self.led(0,1)
+        self.led(1,0)
+        time.sleep(0.1)
+        self.led(0,0)
+        self.led(1,1)
+        time.sleep(0.1)
+        self.led(0,1)
+        self.led(1,0)
+        time.sleep(0.1)
+        self.led(0,0)
+        self.led(1,1)
+        time.sleep(0.1)
+        self.led(0,1)
+        self.led(1,0)
+        time.sleep(0.1)
+        self.led(0,0)
+        self.led(1,1)
+        time.sleep(0.1)
+        self.led(0,0)
+        self.led(1,0)
+        time.sleep(0.1)
+        self.clear_port()

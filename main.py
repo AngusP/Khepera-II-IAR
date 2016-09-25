@@ -9,15 +9,38 @@
 
 from __future__ import print_function
 from comms import Comms
+from pid_control import PID_control
 import sys
 import getopt      # CLI Option Parsing
 import whiptail    # Simplest kinda-GUI thing
 import time
+import matplotlib.pyplot as plt
 
 namebadge = " -- IAR C&C -- "
 helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 
 wt = whiptail.Whiptail(title=namebadge)
+pid = PID_control()
+
+def main():
+    try:
+        comms.blinkyblink()
+        comms.drive(5,5)
+        while True:
+            dists = comms.get_ir()
+            print("Dists: " + str(dists))
+            err = pid.pid_distance(dists)
+            print("Error: " + str(err))
+            if err[2] > 0 or err[3] > 0:
+                comms.drive(0,0)
+                print("Fuck.")
+            
+            #plt.plot(dists)
+            #plt.show()
+            time.sleep(0.02)
+    except Exception as e:
+        comms.drive(0,0)
+        raise(e)
 
 # #####################
 # Init & CLI gubbins...
@@ -70,21 +93,11 @@ if __name__ == "__main__":
         raise(e)
 
     print(namebadge)
+    main()
 
 else:
     # if *not* running as __main__
     # invoke the class with defaults
     comms = Comms()
 
-comms.clear_port()
-comms.drive(5,-5)
-time.sleep(2)
-comms.drive(-5,5)
-time.sleep(2)
-comms.stop()
 
-comms.clear_port()
-
-print(comms.get_odo())
-print(comms.get_ir())
-#comms.reset_odo()
