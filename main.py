@@ -23,25 +23,58 @@ helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 wt = whiptail.Whiptail(title=namebadge)
 pid = PID_control()
 
+SPEED_CONST = 10
+
 def main():
     try:
         comms.blinkyblink()
         comms.drive(5,5)
-        while True:
-            dists = comms.get_ir()
-            #print("Dists: " + str(dists))
-            err = pid.pid_distance(dists)
-            #print("Error: " + str(err))
-            if (err[1] + err[2])/2.0 > 0 or (err[3] + err[4])/2 > 0:
-                print("Wall!")
-                if (err[1] + err[2]) > (err[3] + err[4]):
-                    comms.drive(5,-5)
-                else:
-                    comms.drive(-5,5)
-            else:
-                comms.drive(15,15)
-            
-            time.sleep(0.01)
+	
+
+	speed = [0,0]
+	
+	turn_stuck = "none"
+	
+	wall_reached = False
+
+        while True:	
+	    
+	    #get sensor readings
+	    dists = comms.get_ir()
+	    err = pid.pid_distance(dists)
+
+
+	    if turn_stuck == "none":
+		    speed = [10,10]
+		    if err[0] > 0 or err[1] > 0:
+			speed[1] = speed[1] * 0.5
+			wall_reached = True
+
+		    elif err[0] < 0 and wall_reached:
+			speed[1] = speed[1] * 1.2
+			wall_reached = False
+		    
+
+		    #if needs to turn to get unstuck
+		    if err[2] > 0 or err[3] > 0:
+		        print("Wall!")
+		        if (err[0] > err[5] or err[1] > err[4]):
+			    turn_stuck = "right"
+			    speed = [5,-5]
+		        else:
+			    turn_stuck = "left"
+			    speed = [-5, 5]			
+		
+		   
+	    else:
+		if err[2] <= 0 and err[3] <= 0:
+			turn_stuck = "none"
+	    
+	    #normalize the speed vector and drive
+  	    speed_vector_length = math.sqrt( speed[0] ** 2 + speed[1] ** 2)
+	    speed = [speed[0] * SPEED_CONST / speed_vector_length, speed[1]* SPEED_CONST / speed_vector_length]
+	    comms.drive(speed[0], speed[1])
+            time.sleep(0.02)
     except Exception as e:
         comms.drive(0,0)
         raise(e)

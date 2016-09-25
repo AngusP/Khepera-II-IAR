@@ -4,9 +4,16 @@ class PID_control:
 
 
 
-    distance_threshold = [100]*8
+    distance_threshold = [150]*8
     distance_error = [0]*8
     distance_error_sum = [0]*8
+    
+
+    #distance_threshold[0] = math.cos(2*math.pi/360 * 70) * 
+    #distance_threshold[5] = distance_threshold[0]
+
+    #distance_threshold[1] = math.cos(2*math.pi/360 * 45)
+    #distance_threshold[4] = distance_threshold[1]
 
     Kp = [1.0]*8
     Ki = [0.0]*8
