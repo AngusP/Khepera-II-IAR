@@ -14,6 +14,7 @@ import sys
 import getopt      # CLI Option Parsing
 import whiptail    # Simplest kinda-GUI thing
 import time
+import math
 import matplotlib.pyplot as plt
 
 namebadge = " -- IAR C&C -- "
@@ -32,18 +33,23 @@ def main():
             err = pid.pid_distance(dists)
             #print("Error: " + str(err))
 	    force = pid.pid_force_vector(err)
-	    
+
+            length = math.sqrt(force[0] ** 2 + force[1] ** 2)	    
+	
 	    speed_r = 5
-	    speed_l = 5
-	    if force[0] > 0:
-		speed_l = 0
-	    if force[0] < 0:
-		speed_r = 0
+	    speed_l = 5	
+	    if length > 0:
+	    	if force [0] > 0:
+			speed_r = 5 * force[0] / length * 10
+	    	else:
+			speed_l = 5 * force[0] / length * 10
+
+	 
 
 	    
 	    comms.drive(speed_l, speed_r)
             
-            time.sleep(0.1)
+            time.sleep(0.05)
     except Exception as e:
         comms.drive(0,0)
         raise(e)
