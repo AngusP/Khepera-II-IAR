@@ -7,8 +7,8 @@ class PID_control:
     distance_error_sum = [0]*8
 
     Kp = [0.9]*8
-    Ki = [0.2]*8
-    Kd = [0.8]*8
+    Ki = [0.0]*8
+    Kd = [0.0]*8
 
 ########################################################################
     def find_collisions(self, sensors):
