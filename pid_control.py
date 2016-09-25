@@ -1,8 +1,10 @@
+import math
+
 class PID_control:
 
 
 
-    distance_threshold = [100]*8
+    distance_threshold = [150]*8
     distance_error = [0]*8
     distance_error_sum = [0]*8
 
@@ -11,14 +13,9 @@ class PID_control:
     Kd = [0.0]*8
 
 ########################################################################
-    def find_collisions(self, sensors):
-        for sensor_index in xrange(7):
-            if sensors[sensor_index] > self.distance_threshold[sensor_index]:
-                yield True
 
-########################################################################
     def pid_distance(self, sensors):
-        estimated_distances = [0]*8 # 0 standing for infinite distance
+        control_variable = [0]*8 # 0 standing for infinite distance
         for sensor_index, sensor_val in enumerate(sensors):
             threshold = self.distance_threshold[sensor_index]
             value = sensor_val
@@ -33,14 +30,56 @@ class PID_control:
             self.distance_error_sum[sensor_index] = error_sum
 
             #return the PID-estimated measurements
-            estimated_distances[sensor_index] = self.Kp[sensor_index]*error + self.Ki[sensor_index]*error_sum + self.Kd[sensor_index]*error_difference
+            control_variable[sensor_index] = self.Kp[sensor_index]*error + self.Ki[sensor_index]*error_sum + self.Kd[sensor_index]*error_difference
 
-        return  estimated_distances
+        return  control_variable
 
 #########################################################################
-    def front_stop(self, distance):
-        if distance > self.distance_threshold[2]:
-            drive(0,0)
+    def pid_force_vector(self, control_variable):
+	
+	result = [0.0,0.0]
+	distance_vectors = [[0.0,0.0]]*8 # (x,y) format, x horzontal, y vertical wrt. robot
+
+	if(distance_error[0] > distance_threshold[0]): 
+		distance_vectors[0] = [-control_variable[0], 0]
+
+	if(distance_error[0] > distance_threshold[0]): 
+		distance_vectors[1] = [-control_variable[1]*math.cos(math.pi/4), control_variable[1]*math.sin(math.pi/4)]
+
+	if(distance_error[0] > distance_threshold[0]): 
+		distance_vectors[2] = [0, control_variable[2]]
+
+	if(distance_error[0] > distance_threshold[0]): 
+		distance_vectors[3] = [0, control_variable[3]]
+
+	if(distance_error[0] > distance_threshold[0]): 
+		distance_vectors[4] = [control_variable[4]*math.cos(math.pi/4), control_variable[4]*math.sin(math.pi/4)]
+
+	if(distance_error[0] > distance_threshold[0]): 
+		distance_vectors[5] = [control_variable[5], 0]
+
+	if(distance_error[0] > distance_threshold[0]): 
+		distance_vectors[6] = [0, -control_variable[6]]
+
+	if(distance_error[0] > distance_threshold[0]): 
+		distance_vectors[7] = [0, -control_variable[7]]
+	
+	for vector in distance_vectors:
+		result[0] = vector[0] + result[0]
+		result[1] = vector[1] + result[1]
+		
+	
+	print result
+
+	return result
+
+
+
+	
+	
+
+#########################################################################
+
         
         
 

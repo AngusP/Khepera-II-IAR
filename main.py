@@ -28,21 +28,22 @@ def main():
         comms.drive(5,5)
         while True:
             dists = comms.get_ir()
-            print("Dists: " + str(dists))
+            #print("Dists: " + str(dists))
             err = pid.pid_distance(dists)
-            print("Error: " + str(err))
-            if err[2] > 0 or err[3] > 0:
-                print("Wall!")
-                if (err[1] + err[2]) > (err[3] + err[4]):
-                    comms.drive(5,-3)
-                else:
-                    comms.drive(-3,5)
-            else:
-                comms.drive(5,5)
+            #print("Error: " + str(err))
+	    force = pid.pid_force_vector(err)
+	    
+	    speed_r = 5
+	    speed_l = 5
+	    if force[0] > 0:
+		speed_l = 0
+	    if force[0] < 0:
+		speed_r = 0
+
+	    
+	    comms.drive(speed_l, speed_r)
             
-            #plt.plot(dists)
-            #plt.show()
-            time.sleep(0.02)
+            time.sleep(0.1)
     except Exception as e:
         comms.drive(0,0)
         raise(e)
