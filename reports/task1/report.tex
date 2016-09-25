@@ -1,4 +1,5 @@
-\documentclass[11pt]{article}
+\documentclass[11pt,a4wide]{article}
+
 
 %     %%%%%%%%%%%%%%%
 %
@@ -26,11 +27,73 @@
 
 \begin{document}
 
-\title{IAR Assignment 1 Report}
+\title{IAR Task 1 Report}
 \author{s1311631, s1346981}
 \date{\today}
 \maketitle
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+\section{Introduction}
+
+The first assignment entails utilising the Infra-red distance sensors on the Kephera 
+robot, remotely controlled over serial. We have elected to use Python as the 
+implementation language for this practical.
+
+The task requires that the robot be able to autonomously move around it's environment,
+``without hitting obstacles or getting stuck in corners or dead-ends. Second, it should 
+tend to follow long walls, keeping a consistent distance away from the wall.''
+
+Our approach was to investigate the efficacy of PID controlers to acheive 
+these behaviours - With PID, maintaining a constant distance from a wall arises as
+a behaviour naturally, given the controller will always be attempting to zero the 
+error, which is a distance to the wall. Built ontop of PID are control methods to
+allow the robot to navigate away from an obstacle.
+
+\section{Exploring Different Methods of Control}
+
+\subsection{PID Ease-Off Error Mitigation}
+
+% Commit 5837a4b
+
+The first iteration used the distance-derived errors from the forward-facing 
+sensors only. When the error passes a set threshold, where the wall is within a 
+fixed distance from the robot, we stop moving forwards and instead turn \emph{away} 
+from the side that is close to the wall until the error has reduced to below the 
+threshold.
+
+This approach had some promising behaviours: The robot was able to prevent itself 
+from hitting a small object directly in it's path; Similarly it was able to follow 
+a straight wall to some degree. However, wall following would eiher oscillate 
+towards the wall, bumping into it or depart after following for a short distance. 
+
+% Commit f1258e7
+
+We then augmented this method with the distance and PID error data from the other
+forward-facing sensors, having the effect of widening the Robot's field of view.
+This prevented the robot from colliding with the wall as the side-facing sensors 
+are now involved in the navigation. Furthermore, the robot will turn in a curve 
+when the wall is approaching but not very close, and will turn on the spot if the 
+robot is stuck in a corner or is very close to an obstacle.
+
+\subsection{Force-Vector Control}
+
+As an alternative method we consider treating the Error vector produced by the
+PID Controller for each distance sensor and treating them as the magnitudes of a 
+force pushing the robot along the axis of said sensor. Summing these force vectors
+gives us an `Intended Direction' vector, which is used to correct the current 
+trajectory away from the obstacle.
+
+Experimentation indicates this method does not perform as well as the PID ease-off 
+method above, as it is prone to `wobbling' from noisy sensor data, and does not
+exhibit wall-following behaviour as the error vectors push in direct opposition to 
+the wall, resulting in an incident-reflection equivalence in the angle the robot
+takes to the wall.
+
+The method is, however, somewhat more elegant insofar as the complexity of behaviour 
+that emerges from a simple ruleset.
+
+\section{Physical Limitations and Possible Improvements}
+
 
 \end{document}
