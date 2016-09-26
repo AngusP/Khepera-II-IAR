@@ -24,7 +24,7 @@ wt = whiptail.Whiptail(title=namebadge)
 CONST_SPEED = 8
 CONST_WALL_DIST = 200
 CONST_WALL_OFFSET = 40
-CONST_WALL_BORED_MAX = 2000
+CONST_WALL_BORED_MAX = 200
 
 def main():
     try:
@@ -33,13 +33,14 @@ def main():
         going = Comms.FORWARD
 	wall_is_followed_left = False
 	wall_is_followed_right = False
-	wall_is_followed_in_same_direction = 0 # TODO 
+	wall_boredom_counter = 0 
 
         while True:
             dist = comms.get_ir()
 	    ######################################################################################################################################
 	    # IF it is stuck
-            if (dist[1] + dist[2]) > CONST_WALL_DIST*1.5 or (dist[3] + dist[4]) > CONST_WALL_DIST*1.5:
+           
+ 	    if (dist[3] + dist[2]) > CONST_WALL_DIST or (dist[1] + dist[4] > CONST_WALL_DIST*1.5):
                 print("Wall!")
 		# discontinue following the wall
 		# print("STOPPING FOLLOWING")
@@ -50,10 +51,9 @@ def main():
  
 		
 		wall_was_followed = wall_is_followed_left or wall_is_followed_right
-		more_space_on_right = (dist[1] + dist[2]) > (dist[3] + dist[4])
-		have_space_on_left = dist[5] > CONST_WALL_DIST
+		more_space_on_right = (dist[1] + dist[2] + dist[0]) > (dist[3] + dist[4] + dist[5])
 		
-                if (more_space_on_right and not wall_was_followed) or not (wall_is_followed_left and have_space_on_left):
+                if more_space_on_right : #and wall_is_followed_left) or not (wall_is_followed_left and have_space_on_left):
 			
                     going = Comms.RIGHT
                     comms.drive(CONST_SPEED,-CONST_SPEED)
@@ -65,15 +65,16 @@ def main():
 
 		wall_is_followed_left = False
 		wall_is_followed_right = False
-		#wall_is_followed_in_same_direction = 0
+		#wall_boredom_counter = 0
 		
 
 	    ######################################################################################################################################
 	    #IF too close to a wall (or found one)
+	   
 	    elif not ((going == Comms.RIGHT) or (going == Comms.LEFT)) and  (dist[0] > CONST_WALL_DIST or dist[5] > CONST_WALL_DIST):
 		
 		#if wall is not being followed on the right
-		if not wall_is_followed_right:
+		if not wall_is_followed_right or (dist[0]  > dist[5]) :
 
 			print("FOLLOWING / APPROACHING WALL LEFT")
 	
@@ -89,7 +90,7 @@ def main():
 			wall_is_followed_left = False
 			wall_is_followed_right = True
 			comms.drive(CONST_SPEED * 0.5, CONST_SPEED)
-			going = comms.LEFT_FOLLOW
+			going = comms.RIGHT_FOLLOW
 			
 	    #######################################################################################################################################
 	    #IF too far from a wall
@@ -97,14 +98,14 @@ def main():
 		
 
 		#if wall is not being followed on the right
-		if not wall_is_followed_right:
+		if not wall_is_followed_right and dist[0] + dist[1] + dist[2] > dist[3] + dist[4] + dist[5] :
 
 			print("FOLLOWING / LEAVING WALL LEFT")
 	
 			wall_is_followed_left = True
 			wall_is_followed_right = False
 			comms.drive(CONST_SPEED * 0.5, CONST_SPEED)
-			going = comms.RIGHT_FOLLOW
+			going = comms.LEFT_FOLLOW
 
 		else:
 
@@ -116,14 +117,26 @@ def main():
 			going = comms.RIGHT_FOLLOW
 			
 
-		print(dist[0])
-		comms.drive(CONST_SPEED*0.5, CONST_SPEED)
-		going = comms.RIGHT_FOLLOW
-
 	    ########################################################################################################################################
 	    #IF can drive straight
             else:
-                if going is not Comms.FORWARD:
+                if going is not Comms.FORWARD or wall_boredom_counter >= CONST_WALL_BORED_MAX:
+			
+  
+		   
+		    
+		    #stuff was on the right, so should stay to right wall
+		    if(going is comms.LEFT):
+			wall_is_followed_right = True    	
+		    #otherwise follow stuff on the left
+		    elif(going is comms.RIGHT):
+			wall_is_followed_left = True
+
+                    if wall_boredom_counter >= CONST_WALL_BORED_MAX:
+			wall_boredom_counter = 0
+			wall_is_followed_left = False
+			wall_is_followed_right = False
+		 
 
                     going = Comms.FORWARD
                     comms.drive(CONST_SPEED,CONST_SPEED)
