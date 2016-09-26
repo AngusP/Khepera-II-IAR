@@ -17,6 +17,8 @@ class Comms:
     BACKWARD = 1
     LEFT = 2
     RIGHT = 3
+    LEFT_FOLLOW = 4
+    RIGHT_FOLLOW = 5
 
     port = serial.Serial()
 
@@ -69,9 +71,10 @@ class Comms:
     # directly control motor speeds
     def drive(self, lspeed, rspeed):
         cmd = "D," + str(int(lspeed)) + "," + str(int(rspeed)) + "\n"
-        print(cmd, end="")
+        #print(cmd, end="")
         self.port.write(cmd)
-        print(self.port.readline(), end="")
+        #print(self.port.readline(), end="")
+        self.port.readline()
 
     # self-explanatory
     def stop(self):

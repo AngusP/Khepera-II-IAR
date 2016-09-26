@@ -21,34 +21,61 @@ helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 
 wt = whiptail.Whiptail(title=namebadge)
 
-SPEED_CONST = 10
+CONST_SPEED = 8
+CONST_WALL_DIST = 200
+CONST_WALL_OFFSET = 100
+CONST_WALL_45 = CONST_WALL_DIST *math.cos(math.pi / 4)
+CONST_WALL_75 = CONST_WALL_DIST *math.cos(1.2)
 
 def main():
     try:
         comms.blinkyblink()
-        comms.drive(10,10)
+        comms.drive(CONST_SPEED, CONST_SPEED)
         going = Comms.FORWARD
+	wall_found = False
+
         while True:
-            err = comms.get_ir()
-            #print("Dists: " + str(dists))
-            if (err[1] + err[2]) > 200 or (err[3] + err[4]) > 200:
+            dist = comms.get_ir()
+	    # IF it is stuck
+            if (dist[1] + dist[2]) > CONST_WALL_DIST*2:
                 print("Wall!")
-                
-                if going is not Comms.FORWARD:
-                    continue
-                    
-                if (err[1] + err[2]) > (err[3] + err[4]):
+		# discontinue following the wall
+		wall_found = False
+                if (dist[1] + dist[2]) > (dist[3] + dist[4]):
+
                     going = Comms.RIGHT
-                    comms.drive(10,-10)
+                    comms.drive(CONST_SPEED,-CONST_SPEED)
+
                 else:
+
                     going = Comms.LEFT
-                    comms.drive(-10,10)
+                    comms.drive(-CONST_SPEED,CONST_SPEED)
+
+	    #IF too close to a wall (or found one)
+	    elif dist[0] > CONST_WALL_DIST and not (going == Comms.RIGHT) and not (going == Comms.LEFT):
+		print("WALL FOUND, FOLLOWING")
+		print(dist[0])
+		wall_found = True
+		comms.drive(CONST_SPEED, CONST_SPEED*0.5)
+		going = comms.LEFT_FOLLOW
+
+	    #IF too far from a wall
+            elif dist[0] < CONST_WALL_DIST - 20 and wall_found: # minus (-) because sensor value, not distance
+		
+		print(dist[0])
+		comms.drive(CONST_SPEED*0.5, CONST_SPEED)
+		going = comms.RIGHT_FOLLOW
+
+	    #IF can drive straight
             else:
                 if going is not Comms.FORWARD:
+		    print(dist)
+		    print("WALL LOST")
+		    #wall_found = False
                     going = Comms.FORWARD
-                    comms.drive(10,10)
+                    comms.drive(CONST_SPEED,CONST_SPEED)
                 
-            time.sleep(0.01)
+            time.sleep(0.02)
     except Exception as e:
         comms.drive(0,0)
         raise(e)
