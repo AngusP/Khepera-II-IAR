@@ -9,7 +9,6 @@
 
 from __future__ import print_function
 from comms import Comms
-from pid_control import PID_control
 import sys
 import getopt      # CLI Option Parsing
 import whiptail    # Simplest kinda-GUI thing
@@ -21,19 +20,18 @@ namebadge = " -- IAR C&C -- "
 helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 
 wt = whiptail.Whiptail(title=namebadge)
-pid = PID_control()
+
+SPEED_CONST = 10
 
 def main():
     try:
         comms.blinkyblink()
-        comms.drive(5,5)
+        comms.drive(10,10)
         going = Comms.FORWARD
         while True:
-            dists = comms.get_ir()
+            err = comms.get_ir()
             #print("Dists: " + str(dists))
-            err = pid.pid_distance(dists)
-            #print("Error: " + str(err))
-            if (err[1] + err[2]) > 0 or (err[3] + err[4]) > 0:
+            if (err[1] + err[2]) > 200 or (err[3] + err[4]) > 200:
                 print("Wall!")
                 
                 if going is not Comms.FORWARD:
@@ -46,8 +44,9 @@ def main():
                     going = Comms.LEFT
                     comms.drive(-10,10)
             else:
-                going = Comms.FORWARD
-                comms.drive(15,15)
+                if going is not Comms.FORWARD:
+                    going = Comms.FORWARD
+                    comms.drive(10,10)
                 
             time.sleep(0.01)
     except Exception as e:
