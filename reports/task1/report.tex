@@ -6,12 +6,15 @@
 %     %%%%%%%%%%%%%%%
 
 \documentclass[11pt, a4paper]{article}
-\usepackage{fontspec} 
+\usepackage{fontspec}
+\usepackage{caption}
 
 % DOCUMENT LAYOUT
 \usepackage{geometry} 
-\geometry{a4paper, textwidth=5.5in, textheight=8.5in, marginparsep=6pt, marginparwidth=.6in}
-\setlength\parindent{0in}
+\geometry{a4paper, textwidth=42em, textheight=66em, marginparsep=0.5em, marginparwidth=3.5em}
+\setlength\parindent{0em}
+\setlength\parskip{0.75em}
+\captionsetup{width=0.8\textwidth}
 
 % FONTS
 \usepackage[usenames,dvipsnames]{xcolor}
@@ -30,11 +33,11 @@
 \setmonofont[Scale=0.8]{DejaVuSansMono.ttf}
 
 % HEADINGS
-\usepackage{sectsty} 
-\usepackage[normalem]{ulem} 
+\usepackage{sectsty}
+\usepackage[normalem]{ulem}
 \sectionfont{\mdseries\upshape\Large}
-\subsectionfont{\mdseries\scshape\normalsize} 
-\subsubsectionfont{\mdseries\upshape\large} 
+\subsectionfont{\mdseries\scshape\normalsize}
+\subsubsectionfont{\mdseries\upshape\large}
 
 
 %     %%%%%%%%%%%%%%%
@@ -42,6 +45,7 @@
 %     D O C U M E N T
 %
 %     %%%%%%%%%%%%%%%
+
 
 \begin{document}
 
@@ -54,73 +58,71 @@
 
 \section{Introduction}
 
-The first assignment entails utilising the infra-red distance sensors on the Kephera 
-robot to move around in an autonomous fashion, whilst avoiding obstacles and tending 
-to follow walls. The Robot is controlled remotely controlled over serial. We have 
+The first assignment entails utilising the infra-red distance sensors on the Khepera 
+robot to move around in an autonomous fashion, being able to autonomously move around 
+it's environment, ``without hitting obstacles or getting stuck in corners or dead-ends. 
+Second, it should tend to follow long walls, keeping a consistent distance away from 
+the wall.'' The Robot is controlled remotely controlled over serial. We have 
 elected to use Python as the implementation language for this practical.
 
-The task requires that the robot be able to autonomously move around it's environment,
-``without hitting obstacles or getting stuck in corners or dead-ends. Second, it should 
-tend to follow long walls, keeping a consistent distance away from the wall.''
-
-Our approach was to investigate the efficacy of PID controlers to acheive 
-these behaviours - With PID, maintaining a constant distance from a wall arises as
-a behaviour naturally, given the controller will always be attempting to zero the 
-error, which is a distance to the wall. Built ontop of PID are control methods to
-allow the robot to navigate away from an obstacle.
+As in the Task description, we split the development into two goals, one being obstacle 
+avoidance and the other being a wall-following behaviour.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\section{Exploring Different Methods of Obstacle Avoidance}
+\section{Exploring Methods of Not Hitting Things}
 
-\subsection{PID Ease-Off Error Mitigation}
+\subsection{Experimenting with PID}
 
 % Commit 5837a4b
-
-The first iteration used the distance-derived errors from the forward-facing 
-sensors only. When the error passes a set threshold, where the wall is within a 
-fixed distance from the robot, we stop moving forwards and instead turn \emph{away} 
-from the side that is close to the wall until the error has reduced to below the 
-threshold.
-
-We use only the two forward-facing sensors to determine if an obstacle is too close, 
-and use the two angled sensors adjacent to them to inform the direction in which to 
-turn.
-
-This approach had some promising behaviours: The robot was able to prevent itself 
-from hitting a small object directly in it's path; Similarly it was able to follow 
-a straight wall to some degree. However, wall following would either oscillate 
-towards the wall, bumping against it or depart after following for a short distance. 
-
 % Commit f1258e7
-
-We then augmented this method with the distance and PID error data from the other
-forward-facing sensors, having the effect of widening the Robot's field of view.
-This prevented the robot from colliding with the wall as the side-facing sensors 
-are now involved in the navigation. Furthermore, the robot will turn in a curved path
-when the wall is approaching but not very close, and will turn on the spot if the 
-robot is stuck in a corner or is very close to an obstacle. Additionally, the Robot 
-corrects minimally to ensure it's distance to the wall is below the threshold; This 
-allows it to follow a wall for a long distance.
-
 % Commit cc5b195
 
-The robot is still getting stuck in corners and struggles with indecision wrt. which way to turn
+Initially a 8-variable independent PID controller was implemented over the sensor data, 
+yielding an error with respect to the distance from an obstacle -- Too far, the error would 
+motivate a movement back towards the object; Too close and the error motivates a move away.
 
-Problems presented tuning PID
+We use only the two forward-facing sensors to determine if an obstacle is too close, 
+and use the two angled sensors on the front adjacent to them to inform the direction in 
+which to turn.
 
-Namedrop Bug2
+This approach had some promising behaviours: The robot was able to prevent itself 
+from hitting an object directly in its path; Similarly it was able to follow 
+a straight wall to some degree. However, wall following would either oscillate 
+towards the wall, bumping against it or depart after following for a short distance.
+This is due in part to the narrow field of view afforded by solely using the forward-facing
+sensor pair.
+
+In addition, the controller was very sensitive to the tuned gains ${K_p}$, ${K_i}$,
+${K_d}$ and tended to perform best when ${K_p}$ was much larger than the other gains.
+This indicated that PID was either ill-suited to the problem or overly complex.
+
+The control is not continuous either, as we used discrete thresholds to reactively 
+change behaviour based on the error vector PID produced. This discrete behaviour 
+change introduced oscillations and resonances to the system, leading us to discard 
+PID in favour of a simpler reactive solution.
+
 
 \subsection{Force-Vector Control}
 
-As an alternative method we consider treating the Error vector produced by the
-PID Controller for each distance sensor and treating them as the magnitudes of a 
-force pushing the robot along the axis of said sensor. Summing these force vectors
-gives us an `Intended Direction' vector, which is used to correct the current 
-trajectory away from the obstacle.
+As an alternative method we consider treating the distance sensor readings as the 
+magnitudes of a force pushing the robot along the axis of said sensor. Summing these 
+force vectors gives us an `Intended Direction' resultant vector, which is used to 
+correct the initial direction vector away from the obstacle. Distances that are 
+further than a threshold are ignored, to stop the robot from moving erratically in 
+open space.
 
-Experimentation indicates this method does not perform as well as the PID ease-off 
-method above, as it is prone to `wobbling' from noisy sensor data, and does not
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=20em]{../assets/force-vector.png}
+    \caption{Showing the derivation of Force Vector from distance readings to the
+      obstacle; A shorter distance to the obstacle yields a stronger push in the 
+      opposite direction.}
+  \end{center}
+\end{figure}
+
+Experimentation with this method showed that while it had promise, the lack of 
+calibration between sensors and it's direct mapping made it prone to `wobbling', and does not
 exhibit wall-following behaviour as the error vectors push in direct opposition to 
 the wall, resulting in an incident-reflection equivalence in the angle the robot
 takes to the wall.
@@ -134,7 +136,8 @@ in any environment with acute angles and unsmooth edges.
 
 The method is, however, somewhat more elegant than PID \& rule based control insofar 
 as the complexity of behaviour that emerges from a simple rule set. Nonetheless, we 
-discard Force-Vector control in favour of PID derived control.
+discard Force-Vector control in favour of Reaction-Based control, using some methods 
+from the PID Experiment.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -142,13 +145,13 @@ discard Force-Vector control in favour of PID derived control.
 
 The existing obstacle-avoidance does develop some wall-following-like behaviour, 
 yet fails to follow \emph{at a constant distance} due to the fact it will turn until 
-the wall is no longer in front of it, but has no problem with overcorrecting by 
+the wall is no longer in front of it, but has no problem with over-correcting by 
 some acute angle nor does it's concept of error make it seek out a wall to hug.
 
 We can observe that our PID controller gives us a per-sensor, independent `error' - 
 A negative value, we are too far from the wall and symmetrically a positive is 
 indicative that we're too close to an object. For the purposes of \emph{avoiding} 
-a collision we only act on these errors when they pass from nagative to positive; 
+a collision we only act on these errors when they pass from negative to positive; 
 but to follow a wall we are trying to ensure the error for a specific sensor is 
 as close to 0 as possible, and any deviation be corrected.
 
