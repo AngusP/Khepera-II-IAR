@@ -11,7 +11,7 @@
 
 % DOCUMENT LAYOUT
 \usepackage{geometry} 
-\geometry{a4paper, textwidth=42em, textheight=66em, marginparsep=0.5em, marginparwidth=3.5em}
+\geometry{a4paper, textwidth=42em, textheight=70em, marginparsep=0.5em, marginparwidth=3.5em}
 \setlength\parindent{0em}
 \setlength\parskip{0.75em}
 \captionsetup{width=0.8\textwidth}
@@ -39,6 +39,16 @@
 \subsectionfont{\mdseries\scshape\normalsize}
 \subsubsectionfont{\mdseries\upshape\large}
 
+\renewenvironment{abstract}{%
+{\mdseries\scshape\Large\abstractname}
+\vspace{1em}\\
+}{\par\noindent}
+
+% LISTINGS
+\usepackage{listings}
+\usepackage{color}
+\usepackage{appendix}
+
 
 %     %%%%%%%%%%%%%%%
 %
@@ -48,11 +58,16 @@
 
 
 \begin{document}
-
 \title{IAR Task 1 Report}
 \author{s1311631, s1346981}
 \date{\today}
 \maketitle
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+\begin{abstract}
+  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur in consequat dolor, id consequat justo. Sed laoreet augue libero, vitae eleifend risus finibus nec. Etiam at tincidunt dui, a consequat leo. Phasellus leo ipsum, mattis quis lorem sit amet, pretium luctus tellus. Sed gravida, est in fermentum pulvinar, quam nulla tincidunt eros, nec auctor augue metus eget augue. Phasellus sagittis laoreet eros ac porttitor. Mauris in libero sit amet est consectetur malesuada vitae sit amet turpis. Maecenas laoreet nunc eu erat accumsan, at gravida libero viverra. Morbi posuere orci interdum, tincidunt urna a, consectetur lacus. Integer maximus facilisis dolor, vitae.
+\end{abstract}
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -66,7 +81,9 @@ the wall.'' The Robot is controlled remotely controlled over serial. We have
 elected to use Python as the implementation language for this practical.
 
 As in the Task description, we split the development into two goals, one being obstacle 
-avoidance and the other being a wall-following behaviour.
+avoidance and the other being a wall-following behaviour. Our approach is influenced 
+by the demonstrable abilities of reaction-based control in robotics and the BUG 
+algorithms \cite{principlesrobot}.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -130,7 +147,7 @@ takes to the wall.
 Attempts to improve this method of control included thresholding the forces, to 
 prevent minor perturbations and noise from causing an overreaction; The forces are 
 also scaled in relation to the magnitude of the error/`closeness to obstacle' we're 
-experiencing : This too prevents some wobble but the combination of these changes 
+experiencing: This too prevents some wobble but the combination of these changes 
 reduce the reactivity of this force-vector method, giving the robot poor performance 
 in any environment with acute angles and unsmooth edges.
 
@@ -143,17 +160,24 @@ from the PID Experiment.
 
 \section{Developing Wall-Following Behaviour}
 
-The existing obstacle-avoidance does develop some wall-following-like behaviour, 
-yet fails to follow \emph{at a constant distance} due to the fact it will turn until 
-the wall is no longer in front of it, but has no problem with over-correcting by 
-some acute angle nor does it's concept of error make it seek out a wall to hug.
+We observe that the existing obstacle-avoidance does develop some wall-following-like 
+behaviour, yet fails to follow \emph{at a constant distance} due to the fact it will 
+turn until the wall is no longer in front of it, but has no problem with over-correcting 
+by some acute angle nor does it's concept of error make it seek out a wall to hug.
 
-We can observe that our PID controller gives us a per-sensor, independent `error' - 
-A negative value, we are too far from the wall and symmetrically a positive is 
-indicative that we're too close to an object. For the purposes of \emph{avoiding} 
-a collision we only act on these errors when they pass from negative to positive; 
-but to follow a wall we are trying to ensure the error for a specific sensor is 
-as close to 0 as possible, and any deviation be corrected.
+Our final obstacle-avoidance method reactionally adjusts our trajectory away from a 
+collision using a composition of multiple distance sensors, using different groups to 
+decide first whether an obstacle is too close, then deciding which way to turn using 
+the sensors to choose a direction that presents a larger open-space to move into.
+Secondly, when we have made a decision to rotate left or right we stick to it until 
+the forward direction is clear; this prevents an indecisive oscillation and the robot 
+being stuck.
+
+Complete algorithm in pseudocode/algo style
+
+Boredom and it's advantageous behaviour i.e. unstucking, better exploration
+
+Source Code is included in the Appendix.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -167,4 +191,23 @@ Evenly spaced sensors
 
 RF Serial on top
 
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+\begin{appendices}
+\section*{Appendix}
+\subsection{Code Listings}
+TODO
+%\lstinputlisting[language=python]{../../main.py}
+\end{appendices}
+
+
+\begin{thebibliography}{1}
+
+\bibitem{principlesrobot}
+Principles of Robot Motion: Theory, Algorithms, and Implementation\\
+\textit{Howie Choset}
+
+\end{thebibliography}
 \end{document}
