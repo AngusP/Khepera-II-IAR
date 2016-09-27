@@ -26,15 +26,15 @@ wt = whiptail.Whiptail(title=namebadge)
 
 
 
-def is_away_right(dist, wall_is_followed_right):
+def is_away_from_right(dist):
 
 	wall_in_range = dist[5] < constants.CONST_WALL_DIST - constants.CONST_WALL_OFFSET
-	return wall_in_range and wall_is_followed_right 
+	return wall_in_range  
 
-def is_away_left(dist, wall_is_followed_left):
+def is_away_from_left(dist):
 
 	wall_in_range = dist[0] < constants.CONST_WALL_DIST - constants.CONST_WALL_OFFSET
-	return wall_in_range and wall_is_followed_left 
+	return wall_in_range
 
 def is_stuck(dist):
 
@@ -69,6 +69,10 @@ def is_more_space_on_right(dist):
 def is_being_unstuck(system_state):
 	return (system_state is constants.STATE_STUCK_LEFT) or (system_state is constants.STATE_STUCK_RIGHT)
 
+def should_unstuck_right(dist, wall_is_followed_left):
+	no_preference_decision = not wall_is_followed_left and is_more_space_on_right(dist)
+	return wall_is_followed_left or no_preference_decision
+
 
 
 def main():
@@ -82,15 +86,11 @@ def main():
 	wall_is_followed_right = False
 	
 	wall_boredom_counter = 0
-	wall_follow_previous_dir = -1
+	wall_follow_previous_dir = constants.DIR_LEFT
 	boredom_turn_on_spot_counter = 0
 
         while True:
             dist = comms.get_ir()
-
-	    #if away from any wall
-	    away_from_right = is_away_right(dist, wall_is_followed_right)
-	    away_from_left = is_away_left(dist, wall_is_followed_left)
 
 	    ########################
 	    #HANDLE BOREDOM COUNTER 
@@ -115,7 +115,7 @@ def main():
 		boredom_turn_on_spot_counter = 0
 		wall_is_followed_left = False
 		wall_is_followed_right = False
-		wall_follow_previous_dir = -1
+		wall_follow_previous_dir = constants.DIR_LEFT
 	   		
 		#turn for a number of cycles before moving away from the wall
 		system_state = constants.STATE_BOREDOM_ROTATE
@@ -137,16 +137,9 @@ def main():
 		
 		if is_being_unstuck(system_state):
 			continue
- 
-
-		
-		wall_was_followed = wall_is_followed_left or wall_is_followed_right
-		more_space_on_right = is_more_space_on_right(dist)
-		
-		#TODO check with the distance on right		
 
 		#if wall is not being followed on the right
-		if wall_is_followed_left or (dist[0]  > dist[5] and not is_more_space_on_right(dist)):
+		if should_unstuck_right(dist, wall_is_followed_left):
 
                     system_state = constants.STATE_STUCK_RIGHT
                     comms.drive(constants.CONST_SPEED,-constants.CONST_SPEED)
@@ -184,7 +177,7 @@ def main():
 		if too_close_to_left(dist):
 			comms.drive(constants.CONST_SPEED, constants.CONST_SPEED*0.5)
 
-                elif away_from_left(dist):
+                elif is_away_from_left(dist):
 			comms.drive(constants.CONST_SPEED * constants.CONST_TURN_PROPORTION, constants.CONST_SPEED)
 		else:
 		     	comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
@@ -201,7 +194,7 @@ def main():
 		if too_close_to_right(dist):
 		    comms.drive(constants.CONST_SPEED*constants.CONST_TURN_PROPORTION, constants.CONST_SPEED)
 
-                elif away_from_right(dist):
+                elif is_away_from_right(dist):
 		    comms.drive(constants.CONST_SPEED, constants.CONST_SPEED*constants.CONST_TURN_PROPORTION)
 		else:
 		    comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
