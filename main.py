@@ -22,13 +22,17 @@ helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 wt = whiptail.Whiptail(title=namebadge)
 
 CONST_SPEED = 8
-CONST_WALL_DIST = 200
-CONST_WALL_OFFSET = 20
-CONST_WALL_BORED_MAX = 100
-CONST_BORED_TURN_MAX = 20
-CONST_INF_DIST = 100
+CONST_WALL_DIST = 120
+CONST_INF_DIST = 80 
 
-CONST_TURN_PROPORTION = 0.4
+CONST_WALL_OFFSET = 0
+
+
+CONST_WALL_BORED_MAX = 1000
+CONST_BORED_TURN_MAX = 20
+
+
+CONST_TURN_PROPORTION = 0.3
 
 DIR_LEFT = 0
 DIR_RIGHT = 1
@@ -80,7 +84,7 @@ def main():
 	    ############################
 	    # IF STUCK
             #######################
- 	    if (dist[3] + dist[2]) > CONST_WALL_DIST or (dist[1] + dist[4] > CONST_WALL_DIST*1.5):
+ 	    if (dist[3] + dist[2]) > CONST_WALL_DIST*1.5 or (dist[1] + dist[4] > CONST_WALL_DIST*1.5) or (dist[3] + dist[2] > CONST_WALL_DIST*1.5):
                 print("Wall!")
 		# discontinue following the wall
 		# print("STOPPING FOLLOWING") 
@@ -158,11 +162,6 @@ def main():
 			comms.drive(CONST_SPEED * CONST_TURN_PROPORTION, CONST_SPEED)
 			going = comms.LEFT_FOLLOW
 			
-			if(dist[0] < 50):
-			    wall_is_followed_left = False
-			    comms.drive(CONST_SPEED, CONST_SPEED) 
-			    #left the wall
-			    boredom_counter = 0	
 
 		else:
 
@@ -173,11 +172,7 @@ def main():
 			comms.drive(CONST_SPEED, CONST_SPEED * CONST_TURN_PROPORTION)
 			going = comms.RIGHT_FOLLOW
 	
-			if(dist[5] < 50):
-			    wall_is_followed_right = False
-			    comms.drive(CONST_SPEED, CONST_SPEED) 
-			    #left the wall
-			    boredom_counter = 0			
+	
 
 	    ######################
 	    # IF NONE OF THE ABOVE
@@ -223,16 +218,9 @@ def main():
 
 		    #otherwise just drive straight
 		    else:
-
-
-			#if wall_is_followed_left:
-			#    wall_follow_previous_dir = DIR_LEFT
-			#elif wall_is_followed_right:
-			#    wall_follow_previous_dir = DIR_RIGHT
-							
-			#wall_is_followed_left = False
-			#wall_is_followed_right = False
-
+		        if lost_wall:
+				wall_is_followed_left = False
+				wall_is_followed_right = False
                     	going = Comms.FORWARD
                     	comms.drive(CONST_SPEED,CONST_SPEED)
                 
