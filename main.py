@@ -9,6 +9,9 @@
 
 from __future__ import print_function
 from comms import Comms
+
+
+import constants
 import sys
 import getopt      # CLI Option Parsing
 import whiptail    # Simplest kinda-GUI thing
@@ -21,208 +24,198 @@ helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 
 wt = whiptail.Whiptail(title=namebadge)
 
-CONST_SPEED = 8
-CONST_WALL_DIST = 120
-CONST_INF_DIST = 80 
-
-CONST_WALL_OFFSET = 0
 
 
-CONST_WALL_BORED_MAX = 1000
-CONST_BORED_TURN_MAX = 20
+def is_away_right(dist, wall_is_followed_right):
+
+	wall_in_range = dist[5] < constants.CONST_WALL_DIST - constants.CONST_WALL_OFFSET
+	return wall_in_range and wall_is_followed_right 
+
+def is_away_left(dist, wall_is_followed_left):
+
+	wall_in_range = dist[0] < constants.CONST_WALL_DIST - constants.CONST_WALL_OFFSET
+	return wall_in_range and wall_is_followed_left 
+
+def is_stuck(dist):
+
+	stuck_cone_left  = dist[3] + dist[2] > constants.CONST_WALL_DIST*1.5 
+	stuck_cone_right = dist[1] + dist[4] > constants.CONST_WALL_DIST*1.5
+	stuck_cone_front = dist[3] + dist[2] > constants.CONST_WALL_DIST*1.5
+	return stuck_cone_left or stuck_cone_front or stuck_cone_right
+
+def should_follow_left_wall(dist):
+	return dist[0] > constants.CONST_WALL_DIST and dist[0] > dist[5]
+
+def should_follow_right_wall(dist):
+	return dist[5] > constants.CONST_WALL_DIST and dist[5] > dist[0]
+
+def too_close_to_left(dist):
+	return dist[0] > constants.CONST_WALL_DIST
+
+def too_close_to_right(dist):
+	return dist[5] > constants.CONST_WALL_DIST
+
+def is_right_wall_lost(dist): 
+	return dist[5] < constants.CONST_INF_DIST
+
+def is_left_wall_lost(dist): 
+	return dist[0] < constants.CONST_INF_DIST
+
+def is_more_space_on_right(dist):
+	values_on_right = dist[3] + dist[4] + dist[5]
+	values_on_left = dist[1] + dist[2] + dist[0]
+	return values_on_left > values_on_right
+
+def is_being_unstuck(system_state):
+	return (system_state is constants.STATE_STUCK_LEFT) or (system_state is constants.STATE_STUCK_RIGHT)
 
 
-CONST_TURN_PROPORTION = 0.3
-
-DIR_LEFT = 0
-DIR_RIGHT = 1
 
 def main():
+
+    system_state = constants.STATE_FORWARD
     try:
         comms.blinkyblink()
-        comms.drive(CONST_SPEED, CONST_SPEED)
-        going = Comms.FORWARD
+        comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
+
 	wall_is_followed_left = False
 	wall_is_followed_right = False
 	
 	wall_boredom_counter = 0
-	wall_follow_previous_dir = DIR_LEFT
-
+	wall_follow_previous_dir = -1
 	boredom_turn_on_spot_counter = 0
 
         while True:
             dist = comms.get_ir()
-	    print ("GOING")
-            #print (wall_boredom_counter)
-	    print(going)
-
 
 	    #if away from any wall
-	    away_from_right = dist[5] < CONST_WALL_DIST - CONST_WALL_OFFSET and wall_is_followed_right 
-	    away_from_left = dist[0] < CONST_WALL_DIST - CONST_WALL_OFFSET and wall_is_followed_left
-	    lost_wall = (dist[0] < CONST_INF_DIST and wall_is_followed_left) or (dist[5] < CONST_INF_DIST and wall_is_followed_right) 
-	    print(lost_wall)
+	    away_from_right = is_away_right(dist, wall_is_followed_right)
+	    away_from_left = is_away_left(dist, wall_is_followed_left)
 
+	    ########################
+	    #HANDLE BOREDOM COUNTER 
+	    ########################
 	    #record that we are still moving along the same wall (as we record cycles in the "mode")
 	    if wall_is_followed_left or wall_is_followed_right:
 	    	wall_boredom_counter +=1
 
-	    ############################
-	    # IF RANDOM TURN ON SPOT
-	    ###########################
 	    
-	    #TODO check if that is waht they wanted
-	    if going == comms.BOREDOM_TURN_ON_SPOT and boredom_turn_on_spot_counter >= CONST_BORED_TURN_MAX:
-	     	going = comms.BOREDOM_RUN_AWAY
-		#RESET SYSTEM TO INITIAL STATE
-		comms.drive(CONST_SPEED, CONST_SPEED)
-	    elif going == comms.BOREDOM_TURN_ON_SPOT:
+            #check if the boredom counter was exceeded
+            if wall_boredom_counter >= constants.CONST_WALL_BORED_MAX:
+			
+
+		#turn away from the wall
+		if wall_is_followed_left:
+			comms.drive(constants.CONST_SPEED, -constants.CONST_SPEED)
+		elif wall_is_followed_right:
+			comms.drive(-constants.CONST_SPEED, constants.CONST_SPEED)
+		
+		#reset state
+		wall_boredom_counter = 0
+		boredom_turn_on_spot_counter = 0
+		wall_is_followed_left = False
+		wall_is_followed_right = False
+		wall_follow_previous_dir = -1
+	   		
+		#turn for a number of cycles before moving away from the wall
+		system_state = constants.STATE_BOREDOM_ROTATE
+			              
+	    if system_state == constants.STATE_BOREDOM_ROTATE and boredom_turn_on_spot_counter >= constants.CONST_BORED_TURN_MAX:
+		#different from normal forward driving as we try to get very far from the wall
+	     	system_state = constants.STATE_BOREDOM_DRIVE
+		comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
+
+	    elif system_state == constants.STATE_BOREDOM_ROTATE:
 		boredom_turn_on_spot_counter += 1
 		#TURN UNTIL LIMIT EXHAUSTED
 		continue
 
 	    ############################
 	    # IF STUCK
-            #######################
- 	    if (dist[3] + dist[2]) > CONST_WALL_DIST*1.5 or (dist[1] + dist[4] > CONST_WALL_DIST*1.5) or (dist[3] + dist[2] > CONST_WALL_DIST*1.5):
-                print("Wall!")
-		# discontinue following the wall
-		# print("STOPPING FOLLOWING") 
+            ############################
+ 	    if is_stuck(dist):
 		
-		if going is not comms.FORWARD and not (going == Comms.RIGHT_FOLLOW) and not (going == Comms.LEFT_FOLLOW) and not (going == comms.BOREDOM_TURN_ON_SPOT) and not (going == comms.BOREDOM_RUN_AWAY):
+		if is_being_unstuck(system_state):
 			continue
  
+
 		
 		wall_was_followed = wall_is_followed_left or wall_is_followed_right
-		more_space_on_right = (dist[1] + dist[2] + dist[0]) > (dist[3] + dist[4] + dist[5])
+		more_space_on_right = is_more_space_on_right(dist)
 		
-                if more_space_on_right : #and wall_is_followed_left) or not (wall_is_followed_left and have_space_on_left):
-			
-                    going = Comms.RIGHT
-                    comms.drive(CONST_SPEED,-CONST_SPEED)
+		#TODO check with the distance on right		
+
+		#if wall is not being followed on the right
+		if wall_is_followed_left or (dist[0]  > dist[5] and not is_more_space_on_right(dist)):
+
+                    system_state = constants.STATE_STUCK_RIGHT
+                    comms.drive(constants.CONST_SPEED,-constants.CONST_SPEED)
 
                 else:
 
-                    going = Comms.LEFT
-                    comms.drive(-CONST_SPEED, CONST_SPEED)
+                    system_state = constants.STATE_STUCK_LEFT
+                    comms.drive(-constants.CONST_SPEED, constants.CONST_SPEED)
 		
 
 		# record the direction switch arising from the switch 
 		if wall_is_followed_left:
-			wall_follow_previous_dir = DIR_LEFT
+			wall_follow_previous_dir = constants.DIR_LEFT
 		elif wall_is_followed_right:
-			wall_follow_previous_dir = DIR_RIGHT
+			wall_follow_previous_dir = constants.DIR_RIGHT
 
+		#stop following the wall
 		wall_is_followed_left = False
 		wall_is_followed_right = False
 
+
 	    #only do something if can no longer go forward, else continue "running away"
-	    elif going == comms.BOREDOM_RUN_AWAY:
+	    elif system_state == constants.STATE_BOREDOM_DRIVE:
 		continue
-	    ###########################
-	    # IF (TOO) CLOSE TO WALL
-	    ###########################
-	    elif dist[0] > CONST_WALL_DIST or dist[5] > CONST_WALL_DIST:
-		
-		#if wall is not being followed on the right
-		if wall_is_followed_left or (dist[0]  > dist[5]) :
 
-			print("FOLLOWING / APPROACHING WALL LEFT")
-	
-			wall_is_followed_left = True
-			wall_is_followed_right = False
-			comms.drive(CONST_SPEED, CONST_SPEED*0.5)
-			going = comms.LEFT_FOLLOW
-
-
-
-		else:
-
-			print("FOLLOWING / APPROACHING WALL RIGHT")
-
-			wall_is_followed_left = False
-			wall_is_followed_right = True
-			comms.drive(CONST_SPEED * 0.5, CONST_SPEED)
-			going = comms.RIGHT_FOLLOW
-
-			
 	    #####################
-	    # IF TOO FAR FROM WALL
+	    ##WALL FOLLOWING LEFT
 	    #####################
+            elif (wall_is_followed_left or should_follow_left_wall(dist)) and not (is_left_wall_lost(dist)):
 
-            elif ((away_from_right) or (away_from_left)) and (not lost_wall): 
-	
-		#if wall is not being followed on the right #the OR used to be and AND
-		if wall_is_followed_left: #and (dist[0] + dist[1] + dist[2] > dist[3] + dist[4] + dist[5]):
+	    	wall_is_followed_left = True
+		wall_is_followed_right = False
+		system_state = constants.STATE_LEFT_FOLLOW
 
-			print("FOLLOWING / LEAVING WALL LEFT")
-	
-			wall_is_followed_left = True
-			wall_is_followed_right = False
-			comms.drive(CONST_SPEED * CONST_TURN_PROPORTION, CONST_SPEED)
-			going = comms.LEFT_FOLLOW
-			
+		if too_close_to_left(dist):
+			comms.drive(constants.CONST_SPEED, constants.CONST_SPEED*0.5)
 
+                elif away_from_left(dist):
+			comms.drive(constants.CONST_SPEED * constants.CONST_TURN_PROPORTION, constants.CONST_SPEED)
 		else:
+		     	comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
 
-			print("FOLLOWING / LEAVING WALL RIGHT")
+	    #####################
+	    ##WALL FOLLOWING RIGHT
+	    #####################			
+            elif (wall_is_followed_right or should_follow_right_wall(dist)) and not (is_right_wall_lost(dist)):
 
-			wall_is_followed_left = False
-			wall_is_followed_right = True
-			comms.drive(CONST_SPEED, CONST_SPEED * CONST_TURN_PROPORTION)
-			going = comms.RIGHT_FOLLOW
-	
-	
+	    	wall_is_followed_left = False
+		wall_is_followed_right = True
+		system_state = constants.STATE_RIGHT_FOLLOW
+
+		if too_close_to_right(dist):
+		    comms.drive(constants.CONST_SPEED*constants.CONST_TURN_PROPORTION, constants.CONST_SPEED)
+
+                elif away_from_right(dist):
+		    comms.drive(constants.CONST_SPEED, constants.CONST_SPEED*constants.CONST_TURN_PROPORTION)
+		else:
+		    comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
+
 
 	    ######################
 	    # IF NONE OF THE ABOVE
 	    #####################
             else:
-                if going is not Comms.FORWARD or wall_boredom_counter >= CONST_WALL_BORED_MAX:
-			
-  
-		   
-		    
-		    #stuff was on the right, so should stay to right wall
-		    if(going is comms.LEFT):
-			wall_is_followed_right = True
-			if wall_follow_previous_dir == DIR_LEFT:
-				wall_boredom_counter = 0
-				
-		    #otherwise follow stuff on the left
-		    elif(going is comms.RIGHT):
-			#check if actually have something to follow
-			#if 
-			wall_is_followed_left = True
-			if wall_follow_previous_dir == DIR_RIGHT:
-				wall_boredom_counter = 0
-			
-		    #check if the boredom counter was exceeded
-                    if wall_boredom_counter >= CONST_WALL_BORED_MAX:
-			
-			wall_boredom_counter = 0
-			boredom_turn_on_spot_counter = 0
-
-			#turn away from the wall
-			if wall_is_followed_left:
-				comms.drive(CONST_SPEED, -CONST_SPEED)
-			elif wall_is_followed_right:
-				comms.drive(-CONST_SPEED, CONST_SPEED)
-
-			wall_is_followed_left = False
-			wall_is_followed_right = False
-	   		
-			#turn for a number of cycles before moving away from the wall
-			going = comms.BOREDOM_TURN_ON_SPOT
-			
-
-		    #otherwise just drive straight
-		    else:
-		        if lost_wall:
-				wall_is_followed_left = False
-				wall_is_followed_right = False
-                    	going = Comms.FORWARD
-                    	comms.drive(CONST_SPEED,CONST_SPEED)
+                if system_state is not constants.STATE_FORWARD: 
+		    wall_is_followed_left = False
+		    wall_is_followed_right = False
+                    system_state = constants.STATE_FORWARD
+                    comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
                 
             time.sleep(0.02)
     except Exception as e:
