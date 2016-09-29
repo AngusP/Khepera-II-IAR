@@ -25,59 +25,118 @@ helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 wt = whiptail.Whiptail(title=namebadge)
 
 
+#TODO move them to a different file
+def list_derivative(init_list, final_list):
+
+	dist_diff = [0]*8
+	for index in xrange(8):
+	    diff[index] = final_list[index] - init_list[index]
+	return diff
+
+#./main.py -p /dev/ttyS0 to use serial port 
+
 
 def is_away_from_right(dist):
 
 	wall_in_range = dist[5] < constants.CONST_WALL_DIST - constants.CONST_WALL_OFFSET
 	return wall_in_range  
 
+
+
 def is_away_from_left(dist):
 
 	wall_in_range = dist[0] < constants.CONST_WALL_DIST - constants.CONST_WALL_OFFSET
 	return wall_in_range
 
-def is_stuck(dist):
 
-	stuck_cone_left  = dist[3] + dist[2] > constants.CONST_WALL_DIST*1.5 
-	stuck_cone_right = dist[1] + dist[4] > constants.CONST_WALL_DIST*1.5
-	stuck_cone_front = dist[3] + dist[2] > constants.CONST_WALL_DIST*1.5
+
+def is_stuck(dist, system_dist):
+
+	dist_diff = list_derivative(system_dist , dist)
+
+	large_derivative_left  = dist_diff[1] + dist_diff[2] > constants.CONST_WALL_DIFF*1.5
+	large_derivative_right = dist_diff[3] + dist_diff[4] > constants.CONST_WALL_DIFF*1.5
+	large_derivative_front = dist_diff[2] + dist_diff[3] > constants.CONST_WALL_DIFF*1.5	
+	
+	stuck_cone_left  = dist[1] + dist[2] > constants.CONST_WALL_DIST*1.5 or large_derivative_left
+	stuck_cone_right = dist[3] + dist[4] > constants.CONST_WALL_DIST*1.5 or large_derivative_right
+	stuck_cone_front = dist[2] + dist[3] > constants.CONST_WALL_DIST*1.5 or large_derivative_front
+
 	return stuck_cone_left or stuck_cone_front or stuck_cone_right
 
+
+
 def should_follow_left_wall(dist):
+
 	return dist[0] > constants.CONST_WALL_DIST and dist[0] > dist[5]
 
+
+
 def should_follow_right_wall(dist):
+
 	return dist[5] > constants.CONST_WALL_DIST and dist[5] > dist[0]
 
-def too_close_to_left(dist):
-	return dist[0] > constants.CONST_WALL_DIST
 
-def too_close_to_right(dist):
-	return dist[5] > constants.CONST_WALL_DIST
+
+def too_close_to_left(dist, system_dist):
+
+	distance_close   = dist[0] > constants.CONST_WALL_DIST
+	derivative_close = dist[0] - system_dist[0] > constants.CONST_WALL_DIFF
+	return distance_close or derivative_close
+
+
+
+def too_close_to_right(dist, system_dist):
+
+	distance_close   = dist[5] > constants.CONST_WALL_DIST
+	derivative_close = dist[5] - system_dist[5] > constants.CONST_WALL_DIFF
+	return distance_close or derivative_close
+
+
 
 def is_right_wall_lost(dist): 
+
 	return dist[5] < constants.CONST_INF_DIST
 
+
+
 def is_left_wall_lost(dist): 
+
 	return dist[0] < constants.CONST_INF_DIST
 
-def is_more_space_on_right(dist):
+
+
+def is_more_space_on_right(dist,system_dist):
+
+
+	dist_diff = list_derivative(system_dist , dist)
+
 	values_on_right = dist[3] + dist[4] + dist[5]
-	values_on_left = dist[1] + dist[2] + dist[0]
-	return values_on_left > values_on_right
+	values_on_left  = dist[1] + dist[2] + dist[0]
+
+	#derivatives_on_right = dist_diff[3] + dist_diff[4] + dist_diff[5]
+	#derivatives_on_left  = dist_diff[0] + dist_diff[1] + dist_diff[2]
+
+	return (values_on_left > values_on_right) #or (derivatives_on_left > derivatives_on_right)
+
+
 
 def is_being_unstuck(system_state):
+
 	return (system_state is constants.STATE_STUCK_LEFT) or (system_state is constants.STATE_STUCK_RIGHT)
 
-def should_unstuck_right(dist, wall_is_followed_left):
-	no_preference_decision = not wall_is_followed_left and is_more_space_on_right(dist)
+
+
+def should_unstuck_right(dist, wall_is_followed_left, system_dist):
+
+	no_preference_decision = (not wall_is_followed_left) and is_more_space_on_right(dist, system_dist)
 	return wall_is_followed_left or no_preference_decision
 
 
 
 def main():
 
-    system_state = constants.STATE_FORWARD
+
     try:
         comms.blinkyblink()
         comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
@@ -89,7 +148,11 @@ def main():
 	wall_follow_previous_dir = constants.DIR_LEFT
 	boredom_turn_on_spot_counter = 0
 
+	system_state = constants.STATE_FORWARD
+        system_dist = [0]*8
         while True:
+
+	    #dist_diff = [0]*8
             dist = comms.get_ir()
 
 	    ########################
@@ -139,7 +202,7 @@ def main():
 			continue
 
 		#if wall is not being followed on the right
-		if should_unstuck_right(dist, wall_is_followed_left):
+		if should_unstuck_right(dist, wall_is_followed_left, system_dist):
 
                     system_state = constants.STATE_STUCK_RIGHT
                     comms.drive(constants.CONST_SPEED,-constants.CONST_SPEED)
@@ -174,7 +237,7 @@ def main():
 		wall_is_followed_right = False
 		system_state = constants.STATE_LEFT_FOLLOW
 
-		if too_close_to_left(dist):
+		if too_close_to_left(dist, system_dist):
 			comms.drive(constants.CONST_SPEED, constants.CONST_SPEED*0.5)
 
                 elif is_away_from_left(dist):
@@ -191,7 +254,7 @@ def main():
 		wall_is_followed_right = True
 		system_state = constants.STATE_RIGHT_FOLLOW
 
-		if too_close_to_right(dist):
+		if too_close_to_right(dist, system_dist):
 		    comms.drive(constants.CONST_SPEED*constants.CONST_TURN_PROPORTION, constants.CONST_SPEED)
 
                 elif is_away_from_right(dist):
@@ -209,8 +272,12 @@ def main():
 		    wall_is_followed_right = False
                     system_state = constants.STATE_FORWARD
                     comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
-                
+
+ 	    #update system distance and sample again
+            system_dist = dist    
             time.sleep(0.02)
+
+
     except Exception as e:
         comms.drive(0,0)
         raise(e)
