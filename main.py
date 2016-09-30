@@ -41,12 +41,13 @@ def is_away_from_left(dist):
 
 
 
-def is_stuck(dist, system_dist):
+def is_stuck(dist):
 	
 	
-	stuck_cone_left  = dist[1] + dist[2] > constants.CONST_WALL_DIST*1.5
-	stuck_cone_right = dist[3] + dist[4] > constants.CONST_WALL_DIST*1.5 
-	stuck_cone_front = dist[2]  > constants.CONST_WALL_DIST*0.6 or dist[3]  > constants.CONST_WALL_DIST*0.6
+	stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST
+	stuck_cone_right = dist[4] > constants.CONST_WALL_DIST 
+	#are we stuck in the front anywhere
+	stuck_cone_front = dist[2] > constants.CONST_WALL_DIST*0.7 or dist[3]  > constants.CONST_WALL_DIST*0.7
 
 	return stuck_cone_left or stuck_cone_right or stuck_cone_front 
 
@@ -64,14 +65,14 @@ def should_follow_right_wall(dist):
 
 
 
-def too_close_to_left(dist, system_dist):
+def too_close_to_left(dist):
 
 	distance_close   = dist[0] > constants.CONST_WALL_DIST
 	return distance_close 
 
 
 
-def too_close_to_right(dist, system_dist):
+def too_close_to_right(dist):
 
 	distance_close   = dist[5] > constants.CONST_WALL_DIST
 	return distance_close 
@@ -90,7 +91,7 @@ def is_left_wall_lost(dist):
 
 
 
-def is_more_space_on_right(dist,system_dist):
+def is_more_space_on_right(dist):
 
 	values_on_right = dist[3] + dist[4] + dist[5]
 	values_on_left  = dist[1] + dist[2] + dist[0]
@@ -105,9 +106,9 @@ def is_being_unstuck(system_state):
 
 
 
-def should_unstuck_right(dist, wall_is_followed_left, system_dist):
+def should_unstuck_right(dist, wall_is_followed_left):
 
-	no_preference_decision = (not wall_is_followed_left) and is_more_space_on_right(dist, system_dist)
+	no_preference_decision = (not wall_is_followed_left) and is_more_space_on_right(dist)
 	return wall_is_followed_left or no_preference_decision
 
 
@@ -127,7 +128,6 @@ def main():
 	boredom_turn_on_spot_counter = 0
 
 	system_state = constants.STATE_FORWARD
-        system_dist = [0]*8
         while True:
 
 	    #dist_diff = [0]*8
@@ -174,13 +174,13 @@ def main():
 	    ############################
 	    # IF STUCK
             ############################
- 	    if is_stuck(dist, system_dist):
+ 	    if is_stuck(dist):
 		
 		if is_being_unstuck(system_state):
 			continue
 
 		#if wall is not being followed on the right
-		if should_unstuck_right(dist, wall_is_followed_left, system_dist):
+		if should_unstuck_right(dist, wall_is_followed_left):
 
                     system_state = constants.STATE_STUCK_RIGHT
                     comms.drive(constants.CONST_SPEED,-constants.CONST_SPEED)
@@ -215,7 +215,7 @@ def main():
 		wall_is_followed_right = False
 		system_state = constants.STATE_LEFT_FOLLOW
 
-		if too_close_to_left(dist, system_dist):
+		if too_close_to_left(dist):
 			comms.drive(constants.CONST_SPEED, constants.CONST_SPEED*0.5)
 
                 elif is_away_from_left(dist):
@@ -232,7 +232,7 @@ def main():
 		wall_is_followed_right = True
 		system_state = constants.STATE_RIGHT_FOLLOW
 
-		if too_close_to_right(dist, system_dist):
+		if too_close_to_right(dist):
 		    comms.drive(constants.CONST_SPEED*constants.CONST_TURN_PROPORTION, constants.CONST_SPEED)
 
                 elif is_away_from_right(dist):
@@ -251,8 +251,6 @@ def main():
                     system_state = constants.STATE_FORWARD
                     comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
 
- 	    #update system distance and sample again
-            system_dist = dist    
             time.sleep(0.02)
 
 
