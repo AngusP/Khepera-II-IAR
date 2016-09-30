@@ -24,15 +24,6 @@ helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 
 wt = whiptail.Whiptail(title=namebadge)
 
-
-#TODO move them to a different file
-def list_derivative(init_list, final_list):
-
-	dist_diff = [0]*8
-	for index in xrange(8):
-	    diff[index] = final_list[index] - init_list[index]
-	return diff
-
 #./main.py -p /dev/ttyS0 to use serial port 
 
 
@@ -51,18 +42,13 @@ def is_away_from_left(dist):
 
 
 def is_stuck(dist, system_dist):
-
-	dist_diff = list_derivative(system_dist , dist)
-
-	large_derivative_left  = dist_diff[1] + dist_diff[2] > constants.CONST_WALL_DIFF*1.5
-	large_derivative_right = dist_diff[3] + dist_diff[4] > constants.CONST_WALL_DIFF*1.5
-	large_derivative_front = dist_diff[2] + dist_diff[3] > constants.CONST_WALL_DIFF*1.5	
 	
-	stuck_cone_left  = dist[1] + dist[2] > constants.CONST_WALL_DIST*1.5 or large_derivative_left
-	stuck_cone_right = dist[3] + dist[4] > constants.CONST_WALL_DIST*1.5 or large_derivative_right
-	stuck_cone_front = dist[2] + dist[3] > constants.CONST_WALL_DIST*1.5 or large_derivative_front
+	
+	stuck_cone_left  = dist[1] + dist[2] > constants.CONST_WALL_DIST*1.5
+	stuck_cone_right = dist[3] + dist[4] > constants.CONST_WALL_DIST*1.5 
+	stuck_cone_front = dist[2]  > constants.CONST_WALL_DIST*0.6 or dist[3]  > constants.CONST_WALL_DIST*0.6
 
-	return stuck_cone_left or stuck_cone_front or stuck_cone_right
+	return stuck_cone_left or stuck_cone_right or stuck_cone_front 
 
 
 
@@ -81,16 +67,14 @@ def should_follow_right_wall(dist):
 def too_close_to_left(dist, system_dist):
 
 	distance_close   = dist[0] > constants.CONST_WALL_DIST
-	derivative_close = dist[0] - system_dist[0] > constants.CONST_WALL_DIFF
-	return distance_close or derivative_close
+	return distance_close 
 
 
 
 def too_close_to_right(dist, system_dist):
 
 	distance_close   = dist[5] > constants.CONST_WALL_DIST
-	derivative_close = dist[5] - system_dist[5] > constants.CONST_WALL_DIFF
-	return distance_close or derivative_close
+	return distance_close 
 
 
 
@@ -108,16 +92,10 @@ def is_left_wall_lost(dist):
 
 def is_more_space_on_right(dist,system_dist):
 
-
-	dist_diff = list_derivative(system_dist , dist)
-
 	values_on_right = dist[3] + dist[4] + dist[5]
 	values_on_left  = dist[1] + dist[2] + dist[0]
 
-	#derivatives_on_right = dist_diff[3] + dist_diff[4] + dist_diff[5]
-	#derivatives_on_left  = dist_diff[0] + dist_diff[1] + dist_diff[2]
-
-	return (values_on_left > values_on_right) #or (derivatives_on_left > derivatives_on_right)
+	return (values_on_left > values_on_right) 
 
 
 
@@ -196,7 +174,7 @@ def main():
 	    ############################
 	    # IF STUCK
             ############################
- 	    if is_stuck(dist):
+ 	    if is_stuck(dist, system_dist):
 		
 		if is_being_unstuck(system_state):
 			continue
