@@ -156,7 +156,6 @@ def main():
 		boredom_turn_on_spot_counter = 0
 		wall_is_followed_left = False
 		wall_is_followed_right = False
-		wall_follow_previous_dir = constants.DIR_LEFT
 	   		
 		#turn for a number of cycles before moving away from the wall
 		system_state = constants.STATE_BOREDOM_ROTATE
@@ -189,13 +188,6 @@ def main():
 
                     system_state = constants.STATE_STUCK_LEFT
                     comms.drive(-constants.CONST_SPEED, constants.CONST_SPEED)
-		
-
-		# record the direction switch arising from the switch 
-		if wall_is_followed_left:
-			wall_follow_previous_dir = constants.DIR_LEFT
-		elif wall_is_followed_right:
-			wall_follow_previous_dir = constants.DIR_RIGHT
 
 		#stop following the wall
 		wall_is_followed_left = False
