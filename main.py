@@ -192,6 +192,7 @@ def main():
 		#stop following the wall
 		wall_is_followed_left = False
 		wall_is_followed_right = False
+		boredom_counter = 0
 
 
 	    #only do something if can no longer go forward, else continue "running away"
@@ -238,9 +239,10 @@ def main():
 	    #####################
             else:
                 if system_state is not constants.STATE_FORWARD: 
-		    wall_is_followed_left = False
-		    wall_is_followed_right = False
+		    		wall_is_followed_left = False
+		    		wall_is_followed_right = False
                     system_state = constants.STATE_FORWARD
+					boredom_counter = 0
                     comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
 
             time.sleep(0.02)
