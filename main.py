@@ -273,7 +273,7 @@ def main():
 		    speed_r = constants.CONST_SPEED
 		    comms.drive(speed_l, speed_r)
 
-                elif is_away_from_right(dist) and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
+                elif is_away_from_right(dist) and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
 
 		    speed_l = constants.CONST_SPEED
 		    speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
