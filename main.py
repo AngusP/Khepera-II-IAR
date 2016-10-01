@@ -112,6 +112,10 @@ def should_unstuck_right(dist, wall_is_followed_left):
 	return wall_is_followed_left or no_preference_decision
 
 
+def bored(boredom_counter):
+	return wall_boredom_counter >= constants.CONST_WALL_BORED_MAX
+
+
 
 def main():
 
@@ -124,7 +128,6 @@ def main():
 	wall_is_followed_right = False
 	
 	wall_boredom_counter = 0
-	wall_follow_previous_dir = constants.DIR_LEFT
 	boredom_turn_on_spot_counter = 0
 
 	system_state = constants.STATE_FORWARD
@@ -142,7 +145,7 @@ def main():
 
 	    
             #check if the boredom counter was exceeded
-            if wall_boredom_counter >= constants.CONST_WALL_BORED_MAX:
+            if bored(bored_counter) and not system_state == constants.STATE_BOREDOM_ROTATE:
 			
 
 		#turn away from the wall
@@ -151,24 +154,24 @@ def main():
 		elif wall_is_followed_right:
 			comms.drive(-constants.CONST_SPEED, constants.CONST_SPEED)
 		
-		#reset state
-		wall_boredom_counter = 0
+		#start turning on the spot, reset state
 		boredom_turn_on_spot_counter = 0
+		wall_boredom_counter = 0
 		wall_is_followed_left = False
 		wall_is_followed_right = False
 	   		
 		#turn for a number of cycles before moving away from the wall
 		system_state = constants.STATE_BOREDOM_ROTATE
+		
 			              
-	    if system_state == constants.STATE_BOREDOM_ROTATE and boredom_turn_on_spot_counter >= constants.CONST_BORED_TURN_MAX:
-		#different from normal forward driving as we try to get very far from the wall
-	     	system_state = constants.STATE_BOREDOM_DRIVE
-		comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
-
-	    elif system_state == constants.STATE_BOREDOM_ROTATE:
-		boredom_turn_on_spot_counter += 1
-		#TURN UNTIL LIMIT EXHAUSTED
-		continue
+	    if system_state == constants.STATE_BOREDOM_ROTATE 
+		if boredom_turn_on_spot_counter >= constants.CONST_BORED_TURN_MAX:
+			#different from normal forward driving as we try to get very far from the wall
+	     		system_state = constants.STATE_BOREDOM_DRIVE
+			comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
+		else:
+		    boredom_turn_on_spot_counter += 1
+		    continue
 
 	    ############################
 	    # IF STUCK
@@ -188,6 +191,7 @@ def main():
 
                     system_state = constants.STATE_STUCK_LEFT
                     comms.drive(-constants.CONST_SPEED, constants.CONST_SPEED)
+		
 
 		#stop following the wall
 		wall_is_followed_left = False
@@ -239,10 +243,11 @@ def main():
 	    #####################
             else:
                 if system_state is not constants.STATE_FORWARD: 
-		    		wall_is_followed_left = False
-		    		wall_is_followed_right = False
+		    wall_is_followed_left = False
+		    wall_is_followed_right = False
+		    boredom_counter = 0
+
                     system_state = constants.STATE_FORWARD
-					boredom_counter = 0
                     comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
 
             time.sleep(0.02)
