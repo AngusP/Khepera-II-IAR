@@ -10,7 +10,7 @@
 \usepackage{caption}
 
 % DOCUMENT LAYOUT
-\usepackage{geometry} 
+\usepackage{geometry}
 \geometry{a4paper, textwidth=42em, textheight=70em, marginparsep=0.5em, marginparwidth=3.5em}
 \setlength\parindent{0em}
 \setlength\parskip{0.75em}
@@ -91,8 +91,12 @@
 
 \begin{abstract}
   We have implemented a control program for the Khepera robot, utilising eight IR distance
-  sensors to reactively avoid obstacles, follow walls and explore the environment. Multiple 
-  avenues of control were investigated and compared.
+  sensors to reactively avoid colliding with obstacles, follow the perimeter of an object 
+  or wall  and explore the environment. Multiple avenues of control were investigated and 
+  compared. The notion of the robot becoming bored affords interesting behaviours and an 
+  enhanced ability to explore an environment. The prominent limitations are the robot's 
+  sensing suite, with a small number of sensors and artefacts arising from the physics 
+  of IR sensing.
 \end{abstract}
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -182,10 +186,10 @@ following text, using some methods learned from the PID Experiment.
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
-\section{Developing Wall-Following Behaviour}
+\section{Developing Object-Following Behaviour}
 
 We observe that distance threshold based obstacle-avoidance does develop some 
-wall-following-like behaviour, yet fails to follow \emph{at a constant distance} due 
+object-following-like behaviour, yet fails to follow \emph{at a constant distance} due 
 to the fact it will turn until the wall is no longer in front of it, but has no problem 
 with over-correcting by some small angle nor does it's concept of error make it seek 
 out a wall to hug.
@@ -196,21 +200,53 @@ decide first whether an obstacle is too close, then deciding which way to turn u
 the sensors to choose a direction that presents a larger open-space to move into.
 Discrete thresholds are used to make decisions about closeness. When we have made a 
 decision to rotate left or right we stick with it until the forward direction is clear; 
-this prevents an indecisive oscillation and the robot becoming stuck.
+this prevents an indecisive oscillation and the robot becoming stuck. We make no 
+distinction between a wall and another shape.
+
+Different scaling is applied to sensors on the side of the robot than the front, as we 
+can afford to be closer to an obstacle when travelling parallel to it rather than 
+when perpendicularly approaching (Given the robot always moves forwards).
 
 \subsection{Boredom, a useful concept}
 
 The notion that the robot may become `bored' with a wall that it is pursuing gives 
-rise to some useful behaviours: If we've failed to identify that we are oscillating 
-left and right in a space we may decide to depart, thereby becoming unstuck; Secondly 
-an intrinsic property of becoming bored with a wall is that we will not forever circle 
-an obstacle thinking it is just a really long wall. This also gives the robot a much 
-higher chance of fully exploring it's environment given enough time, as random changes 
-in course will continuously occur.
+rise to some useful behaviours: An intrinsic property of becoming bored with a wall 
+is that we will not forever circle an obstacle thinking it is just a really long wall. 
+This also gives the robot a much higher chance of fully exploring it's environment 
+given enough time, as random changes in course will continuously occur.
 
-Complete algorithm in pseudo-code/algo style
+We implemented a boredom algorithm, counting how long a wall has been followed for without interruption (being stuck).
 
-Source Code is included in the Appendix.
+\section{Algorithm}
+
+The control loop starts by taking new IR measurements at every iteration 
+of the loop and waiting for 20 ms at the end of it in order for the IR sensors to update. 
+The IR sensor data is used to determine further actions in descending order of priority:
+
+\begin{enumerate}
+  \item If the robot is ``bored'' it begins a set of cycles to turn away from the followed shape 
+
+  \item If robot is finished turning away from ``boring'' wall, it drives forward until it becomes stuck when the loop resumes from ${3.}$
+
+  \item If the robot is stuck and cannot continue moving in the frontal direction, then it turns in the direction away from the previously followed shape or towards where the sensors detected more space until it detects it is no longer stuck. 
+
+  \item If the robot encounters (or was previously following) a shape it can follow, it follows it on either left or right side (depending to which one is closer) at a consistent distance perpendicular to the shape's edge.
+  
+  \item If robot has just initialized or has nothing else to do, it drives forwards until $3$ or $4$ occur. 
+\end{enumerate}
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=30em]{../assets/state-diagram.png}
+    \caption{Illustration of the algorithm in a state diagram form.}
+  \end{center}
+\end{figure}
+
+\begin{center}
+  \emph{Source Code is included in the Appendix.}
+\end{center}
+
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -235,6 +271,8 @@ RF Serial on top
 \section*{Appendix}
 \subsection{Code Listings}
 \lstinputlisting[language=python]{../../main.py}
+\lstinputlisting[language=python]{../../comms.py}
+\lstinputlisting[language=python]{../../constants.py}
 \end{appendices}
 
 

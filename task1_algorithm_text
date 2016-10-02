@@ -1,24 +1,8 @@
-Firstly, it would like to be noted that anything detected by the IR sensors is an object that has an edge / shape that can (potentially) be followed. 
-
-Firstly, we to use (IR) sensor reading thresholds for control decisions. Therefore, we discussed which values to threshold: 
-1. On each sensor reading, take derivatives (difference from previos measurement). As expected,  darker objects had double the rate of change in detected value so we knew we should stop at a lower threshold value than for ligheter ones.  
-2. However, said rate of change ocurred much closer to the object than was planned and at that point raw IR sensor data was bery high, so we decided to not complicate contol with derivatives. Hence, we stuck to simple thresholding based on raw IR readings. 
 
 Hence, for each decision made in the control loop, said values are taken from different sensors, and have individual thresholds (scaling) as follows: 
 1. Sensors 0 through 5 used to determine if robot can no longer proceed in the forward direction one way or another and which way we have more space to move and should unstuck towards.
 2. Sensors 1 through 4 to detect the shape we can follow and where to navigate (turn) to do so. 
 3. Sensors 0 and 5 used to ensure we follow a shape within a consitent range of values
 4. The back sensors (6,7) were not used due to our robot only moving in the forward direction and 6 sensors allowing better control than 2
-
-Different scaling is applied as we can afford to be closer on the side of the robot than in the front as our robot is front-moving, so having space in front to avoid  / approach object to follow is possible, we can afford to have it closer on the robot's side. 
-
-We also implemented a boredom algorithm to prevent the robot from following a wall for too long and letting it "explore" and exhibit some random behavior. It counts the number of rounds a wall was followed without interruption (being stuck).
-
-The control loop (algortihm) that gives rise to the behaviour or robot exhibits starts by taking new IR measurements at every iteration of the loop and waiting for 20 ms at the end of it in order for the IR sensors to. The IR sensor data is used to determine further actions in descending order of priority:
-1. If the robot "bored" it begins a set of cycles to turn away from the followed shape 
-2. If robot is finished turning away from "boring" wall, it begins driving straight fowrad until it becomes stuck (to avoid it continuing to follow the same shape again), when the loop resumes from 3. 
-3. If the robot is detects it cannot continue moving in the frontal direction (is stuck), then it turns (until it detects it is no longer stuck) in the direction away from previosly followed shape or towards where the sensors previosuly detected more space to continue movement. 
-4. If the robot encounters (or was previously following) a shape it can follow, it follows it on either left or right side (depending to which one it is closer) within a consistent distance (range) perpendicular to the shape's tangent. 
-5. If robot is just initialized or nothing else to do, it drives straight forward until 3 or 4 occur. 
 
 Below is a diagram illustrating the algorithm in a state diagram (omitting detailed inner workings due to word count). Please note that the states UNSTUCK_TURN_LEFT  / RIGHT are STATE_UNSTUCK_LEFT R / RIGHT in the code is the appendix, and FOLLOW_SHAPE_LEFT / RIGHT are STATE_LEFT / RIGHT_FOLLOW respectively, also all states in code are preceeded with STATE (as seen in this paragraph).  Different names (in diagram) chosen deliberately for clarity.
