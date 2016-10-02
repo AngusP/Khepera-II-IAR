@@ -31,8 +31,8 @@ wt = whiptail.Whiptail(title=namebadge)
 def is_stuck(dist):
 	
 	#check if we are scraping on the sides
-	stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST * 1.0 # multiple of 1.2 as 1.0 is handled by following
-	stuck_cone_right = dist[4] > constants.CONST_WALL_DIST *1.0  # multiple of 1.2 as 1.0 is handled by following
+	stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST * 1.2 # multiple of 1.2 as 1.0 is handled by following
+	stuck_cone_right = dist[4] > constants.CONST_WALL_DIST * 1.2  # multiple of 1.2 as 1.0 is handled by following
 	#check if we are about to be stuck in the front
 	stuck_cone_front = dist[2] > constants.CONST_WALL_DIST*0.7 or dist[3]  > constants.CONST_WALL_DIST*0.7
 
@@ -103,9 +103,9 @@ def is_more_space_on_right(dist):
 
 
 # check if the system is being unstuck
-def is_being_unstuck(system_state):
+def is_being_unstuck(state):
 
-	return (system_state is constants.STATE_STUCK_LEFT) or (system_state is constants.STATE_STUCK_RIGHT)
+	return (state is constants.STATE_STUCK_LEFT) or (state is constants.STATE_STUCK_RIGHT)
 
 
 # check if it is more beneficial to unstuck by turning to the right
@@ -119,8 +119,8 @@ def bored(wall_boredom_counter):
 	return wall_boredom_counter >= constants.CONST_WALL_BORED_MAX
 
 # check if we are handling boredom
-def is_boredom_handled():
-	return system_state == constants.STATE_BOREDOM_ROTATE or system_state == constants.STATE_BOREDOM_DRIVE
+def is_boredom_handled(state):
+	return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
 
 
 def main():
@@ -150,19 +150,24 @@ def main():
 
 
             dist = comms.get_ir()
-
+            #if system_state is constants.STATE_LEFT_FOLLOW:
+            #        print("LEFT_WALL_LOST " + str(is_left_wall_lost(dist)))
+            #if system_state is constants.STATE_RIGHT_FOLLOW:
+            #        print("RIGHT_WALL_LOST " + str(is_right_wall_lost(dist)))
+            
 	    ########################
 	    #HANDLE BOREDOM COUNTER 
 	    ########################
-
+            
 	    #record that we are still moving along a wall and not "exploring"
 	    if wall_is_followed_left or wall_is_followed_right:
 	    	wall_boredom_counter +=1
 
 	    
             #check if robot is "bored" and it is not being handled
-            if bored(wall_boredom_counter) and not is_boredom_handled():
-			
+            if bored(wall_boredom_counter) and not is_boredom_handled(system_state):
+
+                print("bored...")
 
 		#turn away from the wall that was last followed
 		if wall_is_followed_left:
@@ -201,6 +206,8 @@ def main():
             ############################
  	    if is_stuck(dist):
 		
+                print("stuck")
+
 		# do not interrupt if already handle
 		if is_being_unstuck(system_state):
 			continue
@@ -232,25 +239,27 @@ def main():
 	    #####################
             elif (wall_is_followed_left or should_follow_left_wall(dist)) and not (is_left_wall_lost(dist)):
 		
+                print("following left")
+
 		# set state accordingly 
 	    	wall_is_followed_left = True
 		wall_is_followed_right = False
 		system_state = constants.STATE_LEFT_FOLLOW
 
-		# keep the distance within the threshold range but make sure not sending the command again if already sent
-		if too_close_to_left(dist):# and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
+		# keep the distance within the threshold range
+		if too_close_to_left(dist):
 
 			speed_l = constants.CONST_SPEED
 			speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 			comms.drive(speed_l, speed_r)
 
-                elif is_away_from_left(dist):# and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
+                elif is_away_from_left(dist):
 
 			speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 			speed_r = constants.CONST_SPEED
 			comms.drive(speed_l, speed_r)
 
-		else: #elif:  not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED):
+		else: 
 
 			speed_l = constants.CONST_SPEED
 			speed_r = constants.CONST_SPEED
@@ -261,25 +270,27 @@ def main():
 	    #####################			
             elif (wall_is_followed_right or should_follow_right_wall(dist)) and not (is_right_wall_lost(dist)):
 		
+                print("following right")
+
 		# set state accordingly
 	    	wall_is_followed_left = False
 		wall_is_followed_right = True
 		system_state = constants.STATE_RIGHT_FOLLOW
 
-		# keep the distance within the threshold range but make sure not sending the command again if already sent
-		if too_close_to_right(dist):# and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
+		# keep the distance within the threshold range 
+		if too_close_to_right(dist):
 
 		    speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 		    speed_r = constants.CONST_SPEED
 		    comms.drive(speed_l, speed_r)
 
-                elif is_away_from_right(dist):# and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
+                elif is_away_from_right(dist):
 
 		    speed_l = constants.CONST_SPEED
 		    speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 		    comms.drive(speed_l, speed_r)
 
-		else: #elif not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED):
+		else: 
 
 		    speed_l = constants.CONST_SPEED
 		    speed_r = constants.CONST_SPEED
@@ -290,6 +301,9 @@ def main():
 	    # IF NONE OF THE ABOVE
 	    #####################
             else:
+
+                print("driving...")
+
 		# otherwise just drive forward
                 if system_state is not constants.STATE_DRIVE_FORWARD: 
 
