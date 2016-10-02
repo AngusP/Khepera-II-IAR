@@ -246,20 +246,20 @@ def main():
 		wall_is_followed_right = False
 		system_state = constants.STATE_LEFT_FOLLOW
 
-		# keep the distance within the threshold range but make sure not sending the command again if already sent
-		if too_close_to_left(dist): #and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
+		# keep the distance within the threshold range
+		if too_close_to_left(dist):
 
 			speed_l = constants.CONST_SPEED
 			speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 			comms.drive(speed_l, speed_r)
 
-                elif is_away_from_left(dist): #and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
+                elif is_away_from_left(dist):
 
 			speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 			speed_r = constants.CONST_SPEED
 			comms.drive(speed_l, speed_r)
 
-		else: #elif not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED):
+		else: 
 
 			speed_l = constants.CONST_SPEED
 			speed_r = constants.CONST_SPEED
@@ -277,20 +277,20 @@ def main():
 		wall_is_followed_right = True
 		system_state = constants.STATE_RIGHT_FOLLOW
 
-		# keep the distance within the threshold range but make sure not sending the command again if already sent
-		if too_close_to_right(dist):# and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
+		# keep the distance within the threshold range 
+		if too_close_to_right(dist):
 
 		    speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 		    speed_r = constants.CONST_SPEED
 		    comms.drive(speed_l, speed_r)
 
-                elif is_away_from_right(dist):# and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
+                elif is_away_from_right(dist):
 
 		    speed_l = constants.CONST_SPEED
 		    speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 		    comms.drive(speed_l, speed_r)
 
-		else: #elif not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED):
+		else: 
 
 		    speed_l = constants.CONST_SPEED
 		    speed_r = constants.CONST_SPEED
