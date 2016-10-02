@@ -31,8 +31,8 @@ wt = whiptail.Whiptail(title=namebadge)
 def is_stuck(dist):
 	
 	#check if we are scraping on the sides
-	stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST * 1.2 # multiple of 1.2 as 1.0 is handled by following
-	stuck_cone_right = dist[4] > constants.CONST_WALL_DIST *1.2  # multiple of 1.2 as 1.0 is handled by following
+	stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST * 1.0 # multiple of 1.2 as 1.0 is handled by following
+	stuck_cone_right = dist[4] > constants.CONST_WALL_DIST *1.0  # multiple of 1.2 as 1.0 is handled by following
 	#check if we are about to be stuck in the front
 	stuck_cone_front = dist[2] > constants.CONST_WALL_DIST*0.7 or dist[3]  > constants.CONST_WALL_DIST*0.7
 
@@ -238,19 +238,19 @@ def main():
 		system_state = constants.STATE_LEFT_FOLLOW
 
 		# keep the distance within the threshold range but make sure not sending the command again if already sent
-		if too_close_to_left(dist) and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
+		if too_close_to_left(dist):# and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
 
 			speed_l = constants.CONST_SPEED
 			speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 			comms.drive(speed_l, speed_r)
 
-                elif is_away_from_left(dist) and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
+                elif is_away_from_left(dist):# and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
 
 			speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 			speed_r = constants.CONST_SPEED
 			comms.drive(speed_l, speed_r)
 
-		elif not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED):
+		else: #elif:  not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED):
 
 			speed_l = constants.CONST_SPEED
 			speed_r = constants.CONST_SPEED
@@ -267,19 +267,19 @@ def main():
 		system_state = constants.STATE_RIGHT_FOLLOW
 
 		# keep the distance within the threshold range but make sure not sending the command again if already sent
-		if too_close_to_right(dist) and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
+		if too_close_to_right(dist):# and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
 
 		    speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 		    speed_r = constants.CONST_SPEED
 		    comms.drive(speed_l, speed_r)
 
-                elif is_away_from_right(dist) and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
+                elif is_away_from_right(dist):# and not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION):
 
 		    speed_l = constants.CONST_SPEED
 		    speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
 		    comms.drive(speed_l, speed_r)
 
-		elif not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED):
+		else: #elif not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED):
 
 		    speed_l = constants.CONST_SPEED
 		    speed_r = constants.CONST_SPEED
