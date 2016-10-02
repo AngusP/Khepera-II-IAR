@@ -49,6 +49,29 @@
 \usepackage{color}
 \usepackage{appendix}
 
+\usepackage{color}
+\definecolor{codered}{rgb}{0.61,0.21,0.18}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{1.0,1.0,1.0}
+\lstset{
+  backgroundcolor=\color{backcolour},   
+  commentstyle=\color{codegray},
+  keywordstyle=\color{codered},
+  numberstyle=\tiny\color{codegreen},
+  stringstyle=\color{codepurple},
+  basicstyle=\footnotesize\ttfamily,        % the size of the fonts that are used for the code
+  breaklines=true,                          % sets automatic line breaking
+  keepspaces=true,                          % keeps spaces in text, useful for keeping indentation of code
+  showspaces=false,                         % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,                   % underline spaces within strings only
+  showtabs=false,                           % show tabs within strings adding particular underscores
+  stepnumber=2,                             % the step between two line-numbers. If it's 1, each line will be numbered
+  tabsize=2, 	                            % sets default tabsize to 2 spaces
+  title=\lstname                            % show the filename of files included with \lstinputlisting
+}
+
 
 %     %%%%%%%%%%%%%%%
 %
@@ -207,12 +230,11 @@ RF Serial on top
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-
+\newpage
 \begin{appendices}
 \section*{Appendix}
 \subsection{Code Listings}
-TODO
-%\lstinputlisting[language=python]{../../main.py}
+\lstinputlisting[language=python]{../../main.py}
 \end{appendices}
 
 
