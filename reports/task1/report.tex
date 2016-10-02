@@ -123,41 +123,28 @@ algorithms \cite{principlesrobot}.
 
 \subsection{Experimenting with PID}
 
-% Commit 5837a4b
-% Commit f1258e7
-% Commit cc5b195
-
 An 8-dimensional PID controller was implemented over the sensor data, yielding an error 
 with respect to the distance from an obstacle per sensor -- Too far, the error motivates 
 a movement towards the object; Too close and the error motivates a move away.
 
-We use only the two forward-facing sensors to determine if an obstacle is too close, 
-and use the two angled sensors on the front adjacent to them to inform the direction in 
-which to turn.
-
-This approach had some promising behaviours: The robot was able to prevent itself 
-from hitting an object in its path; Similarly it was able to follow a wall to some degree. 
+The approach had some promising behaviours: The robot was able to avoid hitting an object.
 However, wall following would either oscillate towards the wall, bumping against it or 
 depart after following for a short distance. This is due in part to the narrow field 
 of view afforded by solely using the forward-facing sensor pair.
 
-In addition, the controller was very sensitive to the tuned gains ${K_p}$, ${K_i}$ \&
+However the controller was very sensitive to it's tuned gains ${K_p}$, ${K_i}$ \&
 ${K_d}$ and tended to perform best when ${K_p}$ was much larger than the other gains.
 The control is neither continuous nor low-latency, as we used discrete thresholds to 
-reactively change behaviour based on the error vector PID produced. This discrete 
-behavioural change introduced oscillations and resonances to the system, leading us 
-to discard PID in favour of a simpler reactive solution. These issues compound to 
-indicate that PID is either ill-suited to the problem or overly complex.
-
+react to the error vector PID produced. Thus, we discard PID in favour 
+of a simpler reactive solution.
 
 
 \subsection{Force-Vector Control}
 
 We consider treating each distance sensor reading as a force vector pushing 
-the robot along the axis of said sensor. Summing these forces gives us an 
+the robot along the axis of it's sensor. Summing these forces gives us an 
 `Intended Direction' resultant vector, which is used to correct the initial 
-direction vector away from the obstacle. Distances that are further away than
- a threshold are ignored, to stop the robot from moving erratically in open space.
+direction vector away from the obstacle.
 
 \begin{figure}[h]
   \begin{center}
@@ -169,32 +156,28 @@ direction vector away from the obstacle. Distances that are further away than
   \end{center}
 \end{figure}
 
-Experimentation that while promising, the lack of calibration between sensors and 
-direct mapping to forces introduced a propensity to `wobble', with no exhibition of 
-wall-following behaviour as the error vectors push in direct opposition to the wall, 
-resulting in an incident-reflection equivalence in the angle the robot takes to the 
-wall, basically bouncing off.
+Experimentation showed that the lack of calibration between sensors and 
+direct mapping to forces introduced a `wobble', with no exhibition of 
+wall-following as the error vectors push in direct opposition to the wall, 
+resulting in the robot basically bouncing off. Attempts to smooth or condition the 
+sensor signals to prevent wobbling gave the robot poor performance in any environment 
+with sharp angles.
 
-Attempts to smooth or condition the sensor signals to prevent wobbling gave the robot 
-poor performance in any environment with acute angles and unsmooth edges.
-
-The method is, however, somewhat more elegant than PID \& rule based control insofar 
+The method is somewhat more elegant than PID \& rule based control insofar 
 as the complexity of behaviour that emerges from a simple rule set. Nonetheless, we 
-discard Force-Vector control in favour of Reaction-Based control as detailed in the 
-following text, using some methods learned from the PID Experiment.
+discard Force-Vector control in favour of Reaction-Based control using some methods 
+learned from the PID Experiment.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 \section{Developing Object-Following Behaviour}
 
-We observe that distance threshold based obstacle-avoidance does develop some 
-object-following-like behaviour, yet fails to follow \emph{at a constant distance} due 
-to the fact it will turn until the wall is no longer in front of it, but has no problem 
-with over-correcting by some small angle nor does it's concept of error make it seek 
-out a wall to hug.
+It was decided to build upon threshold based avoidance control. However, 
+that would require an algorithm that accounts for the robot not being intrinsically
+able to keep a  \emph{at a constant distance} from a wall.
 
-Our final obstacle-avoidance method reactionally adjusts our trajectory away from a 
+Thus, final obstacle-avoidance method reactionally adjusts our trajectory away from a 
 collision using a composition of multiple distance sensors, using different groups to 
 decide first whether an obstacle is too close, then deciding which way to turn using 
 the sensors to choose a direction that presents a larger open-space to move into.
@@ -251,22 +234,36 @@ The IR sensor data is used to determine further actions in descending order of p
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
-\section{Possible Improvements}
+\section{Results}
+
+The robot is able to follow any shape it encounters at a close distances and 
+avoid getting stuck among obstacles. Moreover, it exhibits exploratory behavior
+due to the boredom concept implemented.
+
+
+\section{Discussion \& Possible Improvements}
+
+The chosen method and algorithm proved successful. The system works as
+per requirements and has an emergent intelligent behavior by
+navigating and exploring the environment. However, it does not fully utilize its 
+capabilities as back sensors are not used and movement is only in the
+forward direction
+
+A consistent method of differentiating between dark and light objects
+would allow a equal distance to be followed among the lightest and darkest object
+allowing for closer distance to lighter objects whereas avoiding collision with
+darker ones.
 
 \section{Physical Limitations and Possible Improvements}
 
 The Khepera's distance sensors are spaced to prioritise forward motion, which is handy 
 for exploring a space though does make reversing out of a dead-end much harder than 
-turning on the spot then driving out forwards.
-
-Evenly spaced sensors
-
-RF Serial on top
+turning on the spot then driving out forwards. Evenly spaced sensors in all directions would 
+allow better estimation of object positions.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\newpage
 \begin{appendices}
 \section*{Appendix}
 \subsection{Code Listings}
