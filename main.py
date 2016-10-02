@@ -150,10 +150,10 @@ def main():
 
 
             dist = comms.get_ir()
-            if system_state is constants.STATE_LEFT_FOLLOW:
-                    print("LEFT_WALL_LOST " + str(is_left_wall_lost(dist)))
-            if system_state is constants.STATE_RIGHT_FOLLOW:
-                    print("RIGHT_WALL_LOST " + str(is_right_wall_lost(dist)))
+            #if system_state is constants.STATE_LEFT_FOLLOW:
+            #        print("LEFT_WALL_LOST " + str(is_left_wall_lost(dist)))
+            #if system_state is constants.STATE_RIGHT_FOLLOW:
+            #        print("RIGHT_WALL_LOST " + str(is_right_wall_lost(dist)))
             
 	    ########################
 	    #HANDLE BOREDOM COUNTER 
