@@ -13,15 +13,6 @@ import time
 
 class Comms:
 
-    FORWARD = 0
-    BACKWARD = 1
-    LEFT = 2
-    RIGHT = 3
-    LEFT_FOLLOW = 4
-    RIGHT_FOLLOW = 5
-    BOREDOM_TURN_ON_SPOT = 6
-    BOREDOM_RUN_AWAY = 7
-
     port = serial.Serial()
 
     # Initialise the class, trying to open the Serial Port
@@ -97,6 +88,9 @@ class Comms:
         self.port.write("N\n")
         dist = self._parse_sensor(self.port.readline())
 
+	if len(dist) is not 8:
+	    dist = [0]*8
+	
         if sensor_no is None:
             return dist
         else:
