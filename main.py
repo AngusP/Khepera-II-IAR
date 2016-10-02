@@ -115,7 +115,7 @@ def should_unstuck_right(dist, wall_is_followed_left):
 	return wall_is_followed_left or no_preference_decision
 
 # check if robot is "bored"
-def bored(boredom_counter):
+def bored(wall_boredom_counter):
 	return wall_boredom_counter >= constants.CONST_WALL_BORED_MAX
 
 # check if we are handling boredom
@@ -161,7 +161,7 @@ def main():
 
 	    
             #check if robot is "bored" and it is not being handled
-            if bored(bored_counter) and not is_boredom_handled():
+            if bored(wall_boredom_counter) and not is_boredom_handled():
 			
 
 		#turn away from the wall that was last followed
@@ -183,7 +183,7 @@ def main():
 
 
 	    # if we are rotating on the spot	              
-	    if system_state == constants.STATE_BOREDOM_ROTATE 
+	    if system_state == constants.STATE_BOREDOM_ROTATE:
 		#check if we are done rotating
 		if boredom_turn_on_spot_counter >= constants.CONST_BORED_TURN_MAX:
 			#different from normal forward driving as we try to get very far from the wall
@@ -296,7 +296,7 @@ def main():
 		    # reset variables as not doing anything
 		    wall_is_followed_left = False
 		    wall_is_followed_right = False
-		    boredom_counter = 0
+		    wall_boredom_counter = 0
 
 		    # set state accordingly
                     system_state = constants.STATE_DRIVE_FORWARD
