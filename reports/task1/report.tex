@@ -67,7 +67,9 @@
 
 
 \begin{abstract}
-  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam sodales ullamcorper mi, vitae venenatis ex rhoncus sed. Duis aliquam a felis eget scelerisque. Sed cursus euismod metus eu euismod. Suspendisse feugiat faucibus ex. Donec rutrum ipsum sodales justo posuere, ornare consequat mi varius. Suspendisse convallis ullamcorper lorem, non laoreet orci vestibulum sit amet. Aliquam accumsan odio elit, in pharetra leo semper in. Fusce eget varius felis, at semper est. Aenean molestie at felis et fermentum. Fusce ornare risus magna, ac facilisis odio bibendum nec. Vivamus in eros venenatis, interdum odio ac, mollis risus. Praesent urna eros, egestas in gravida ac.
+  We have implemented a control program for the Khepera robot, utilising eight IR distance
+  sensors to reactively avoid obstacles, follow walls and explore the environment. Multiple 
+  avenues of control were investigated and compared.
 \end{abstract}
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -132,7 +134,7 @@ direction vector away from the obstacle. Distances that are further away than
 
 \begin{figure}[h]
   \begin{center}
-    \includegraphics[width=20em]{../assets/force-vector.png}
+    \includegraphics[width=18em]{../assets/force-vector.png}
     \caption{Showing the derivation of Force Vector from distance readings to the
       obstacle; A shorter distance to the obstacle yields a stronger push in the 
       opposite direction. Distances over a threshold (shown dashed) are ignored 
