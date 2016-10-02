@@ -88,6 +88,9 @@ class Comms:
         self.port.write("N\n")
         dist = self._parse_sensor(self.port.readline())
 
+	if len(dist) is not 8:
+	    dist = [0]*8
+	
         if sensor_no is None:
             return dist
         else:
