@@ -186,9 +186,27 @@ decision to rotate left or right we stick with it until the forward direction is
 this prevents an indecisive oscillation and the robot becoming stuck. We make no 
 distinction between a wall and another shape.
 
+\subsection{Sensor Use}
+
 Different scaling is applied to sensors on the side of the robot than the front, as we 
 can afford to be closer to an obstacle when travelling parallel to it rather than 
-when perpendicularly approaching (Given the robot always moves forwards).
+when perpendicularly approaching (Given the robot always moves forwards). Please 
+see the code for more detailed implementation explanation. The outline of sensor use in 
+the control loop is as follows:
+
+\begin{enumerate}
+
+	\item Sensors ($0$, $1$, $2$, $3$, $4$, $5$) used to determine if robot can no longer proceed in the 
+forward direction and which way we have more space to move and, hence, should unstuck towards.
+
+	\item Sensors ($1$, $2$, $3$, $4$) to detect followable shape and what side of the robot (left / right) to follow it on. 
+
+	\item Sensors ($0$, $5$) used to ensure we follow the shape within a consitent range of values
+
+	\item The back sensors ($6$, $7$) were not used due to our robot only moving in the forward direction 
+and 6 sensors allowing better control than 2
+
+\end{enumerate}
 
 \subsection{Boredom, a useful concept}
 
@@ -202,9 +220,9 @@ We implemented a boredom algorithm, counting how long a wall has been followed f
 
 \section{Algorithm}
 
-The control loop starts by taking new IR measurements at every iteration 
-of the loop and waiting for 20 ms at the end of it in order for the IR sensors to update. 
-The IR sensor data is used to determine further actions in descending order of priority:
+Every 20 ms a control loop iteration starts by taking new IR measurements. The 20 ms delay is used 
+in order for the IR sensors to update between iterations. The IR data is then used 
+determine further actions in descending order of priority:
 
 \begin{enumerate}
   \item If the robot is ``bored'' it begins a set of cycles to turn away from the followed shape 
@@ -239,21 +257,25 @@ The following is a representation of the algorithm in a state diagram form:
 
 The robot is able to follow any shape it encounters at a close distances and 
 avoid getting stuck among obstacles, dead ends and mazes. Moreover, it exhibits 
-exploratory behavior due to the boredom concept implemented.
+exploratory behavior due to the boredom concept implemented. However, it approached
+the outlines of darker objects noticeably closer than that of lighter ones 
+even after several rounds of calibrating the thresholds.
 
 
 \section{Discussion \& Possible Improvements}
 
 The chosen method and algorithm proved successful. The system works as
-per requirements and has an emergent intelligent behavior by
-navigating and exploring the environment. However, it does not fully utilize its 
-capabilities as back sensors are not used and movement is only in the
-forward direction
+per requirements and has an emergent intelligent behavior by navigating and 
+exploring the environment. However, physical capabilities were not fully utilized
+as back sensors are not used and movement is only in the forward direction. 
 
-A consistent method of differentiating between dark and light objects
-would allow a equal distance to be followed among the lightest and darkest object
-allowing for closer distance to lighter objects whereas avoiding collision with
-darker ones.
+
+Darker objects absorb more light, reaching the threshold IR value at a considerably closer 
+distance than lighter ones. The algortihm does not discriminate, emanign darker objects are 
+followed at a closer distance than lighter ones as same threshold value is used. Thus, a 
+method allowing differentiation would allow equal distances to be held from all objects 
+regardless of their absorbant properties. 
+
 
 \section{Physical Limitations and Possible Improvements}
 
@@ -261,6 +283,9 @@ The Khepera's distance sensors are spaced to prioritise forward motion, which is
 for exploring a space though does make reversing out of a dead-end much harder than 
 turning on the spot then driving out forwards. Evenly spaced sensors in all directions would 
 allow better estimation of object positions.
+
+Moreover, a bump (or other touch) sensor would allow easier detection of collisions and 
+obstacles in case the IR sensor based algorithms fails to detect or predict an object.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
