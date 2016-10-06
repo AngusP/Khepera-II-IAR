@@ -24,9 +24,6 @@ helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 
 wt = whiptail.Whiptail(title=namebadge)
 
-#./main.py -p /dev/ttyS0 to use serial port 
-
-
 # check if we are stuck
 def is_stuck(dist):
 	
@@ -150,10 +147,6 @@ def main():
 
 
             dist = comms.get_ir()
-            #if system_state is constants.STATE_LEFT_FOLLOW:
-            #        print("LEFT_WALL_LOST " + str(is_left_wall_lost(dist)))
-            #if system_state is constants.STATE_RIGHT_FOLLOW:
-            #        print("RIGHT_WALL_LOST " + str(is_right_wall_lost(dist)))
             
 	    ########################
 	    #HANDLE BOREDOM COUNTER 
@@ -204,6 +197,7 @@ def main():
 	    ############################
 	    # IF STUCK
             ############################
+
  	    if is_stuck(dist):
 		
                 print("stuck")
@@ -237,6 +231,7 @@ def main():
 	    #####################
 	    ##WALL FOLLOWING LEFT
 	    #####################
+
             elif (wall_is_followed_left or should_follow_left_wall(dist)) and not (is_left_wall_lost(dist)):
 		
                 print("following left")
