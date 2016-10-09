@@ -30,34 +30,55 @@ TICKS_PER_M = 12000 # encoder ticks per meter
 WHEEL_BASE_M = 0.01 # m
 MEASUREMENT_PERIOD_S = 0.02 # s
 
+
+# Class to define state to not have arrays... cause arrays are ugly
+class State:
+  # time when state recorded
+  time 	= 0
+  # x location relative to initial placament at time of recording
+  x 	= 0
+  # y location relative to initial placament at time of recording
+  y 	= 0
+  # y location relative to initial placament at time of recording
+  theta = 0
+  # encoder values at the time of recording
+  encoder_l = 0
+  encoder_r = 0
+
+
+
+
 def delta_l_r(prev_l, prev_r):
-	result = [0]*2
-	odo = comms.get_odo()
-	delta_l = prev_l - odo[0]
-	delta_r = prev_r - odo[1]
+	result 		= [0]*2
+	odo 		= comms.get_odo()
+	delta_l 	= prev_l - odo[0]
+	delta_r 	= prev_r - odo[1]
 	
-	result[0] = delta_l
-	result[1] = delta_r
+	result[0] 	= delta_l
+	result[1] 	= delta_r
 	return result
 
 def delta_s(prev_l, prev_r):
-	result = 0
-    delta_odo = delta_l_r(prev_l, prev_r)
-	result = ((delta_odo[0] + delta_odo[1]) / 2 ) / TICKS_PER_M 
+	result 		= 0
+    delta_odo 	= delta_l_r(prev_l, prev_r)
+	result 		= ((delta_odo[0] + delta_odo[1]) / 2 ) / TICKS_PER_M 
+	
 	return result # m
 
 def delfa_theta(prev_l, prev_r):
-	result = 0
-        delta_odo = delta_lr(prev_l, prev_r)
-	result = ((delta_odo[1] - delta_odo[0]) / WHEEL_BASE_M ) / TICKS_PER_M 
+	result 		= 0
+    delta_odo 	= delta_lr(prev_l, prev_r)
+	result 		= ((delta_odo[1] - delta_odo[0]) / WHEEL_BASE_M ) / TICKS_PER_M 
+	
 	return result #radians
 
 def delta_x_y_angle(prev_l, prev_r, curr_theta):
-	result = [0]*3
-	delta_dist = delta_s(prev_l, prev_r)
+	result 		= [0]*3
+	
+	delta_dist  = delta_s(prev_l, prev_r)
 	delta_angle = delta_theta(prev_l, prev_r)
-	delta_x = delta_dist*math.cos(curr_theta + delta_angle / 2)
-    delta_y = delta_dist*math.sin(curr_theta + delta_angle / 2)
+	delta_x 	= delta_dist*math.cos(curr_theta + delta_angle / 2)
+    delta_y 	= delta_dist*math.sin(curr_theta + delta_angle / 2)
     
     #altetrnative (still an approximation) is 
     #delta_x = delta_dist*math.cos(curr_theta + delta_angle )
@@ -68,6 +89,28 @@ def delta_x_y_angle(prev_l, prev_r, curr_theta):
 	result[1] = delta_y
 	result[2] = delta_angle
 	
+	return result
+
+def new_state(prev_state)
+
+    state_change = delta_x_y_angle(prev_state.encoder_l, prev_state.encoder_r, prev_state.theta)
+    
+	x_n 	= prev_x 	 + state_change[0]
+	y_n 	= prev_y 	 + state_change[1]
+	theta_n	= prev_theta + state_change[2]
+	
+    odo 		= comms.get_odo()
+	
+	#return new state
+	result 		= State() 
+	result.time = prev_state.time + t
+	result.x 	= x_n
+	result.y	= y_n
+	
+	result.theta 	 = theta_n
+	result.encoder_l = odo[0]
+	result.encorer_r = odo[1]
+
 	return result
 -----------------------------------------------------------------------
 
