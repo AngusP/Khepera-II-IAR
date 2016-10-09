@@ -3,8 +3,16 @@ CALIBRATIN STUFF:
 http://www-personal.umich.edu/~johannb/Papers/pos96rep.pdf 
 http://rossum.sourceforge.net/papers/DiffSteer/DiffSteer.html#d2 
 
+
+
 FORMULAS :
 
-http://ttuadvancedrobotics.wikidot.com/odometry 
 https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
 https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab%203.html 
+
+
+
+ENCODERS (other stuff is useless in this document):
+
+http://ttuadvancedrobotics.wikidot.com/odometry 
+
