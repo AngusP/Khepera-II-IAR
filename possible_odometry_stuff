@@ -1,15 +1,10 @@
-http://rossum.sourceforge.net/papers/DiffSteer/DiffSteer.html#d2
-http://www-personal.umich.edu/~johannb/Papers/pos96rep.pdf ------> most mathematicall prominent one
-https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-186-mobile-autonomous-systems-laboratory-january-iap-2005/study-materials/odomtutorial.pdf
-http://ttuadvancedrobotics.wikidot.com/odometry -----------> most straight-foward to implement ( dumb logic of "here is formula, use formula" ) 
+CALIBRATIN STUFF:
 
+http://www-personal.umich.edu/~johannb/Papers/pos96rep.pdf 
+http://rossum.sourceforge.net/papers/DiffSteer/DiffSteer.html#d2 
+
+FORMULAS :
+
+http://ttuadvancedrobotics.wikidot.com/odometry 
 https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
-
-
-http://seattlerobotics.org/encoder/200610/Article3/IMU%20Odometry,%20by%20David%20Anderson.htm --------> practically used example of above algorithms
-
-
-https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab%203.html --------> cheat sheet (in case: women zhen shi zi le gou)
-
-
-So use dead reckoning algorithm as per second paper I guess because all of them boil down to the same equations
+https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab%203.html 
