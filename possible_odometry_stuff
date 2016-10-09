@@ -177,7 +177,7 @@ def velocity_linear_angular(prev_l, prev_r):
 	velocity_left_right = velocity_l_r(prev_l, prev_r)
 	
 	velocity_linear = (velocity_left_right[0] + velocity_left_right[1] ) / 2 # m /s
-	velocity_angular = (velocity_left_right[0] + velocity_left_right[1] ) / WHEEL_BASE_M # rad / s
+	velocity_angular = (velocity_left_right[1] - velocity_left_right[0] ) / WHEEL_BASE_M # rad / s
 	
 	result[0] = velocity_linear
 	result[1] = velocity_angular
