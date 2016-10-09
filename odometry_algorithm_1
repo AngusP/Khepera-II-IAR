@@ -86,7 +86,7 @@ def new_state(prev_state)
 	result.encorer_r = odo[1]
 
 	return result
------------------------------------------------------------------------
+
 
 	
 	
