@@ -23,7 +23,6 @@ ODOMETRY V1 (no calibration, dumb formulas based on encoders)
 USES https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
 
 -----------------------------------------------------------------------
-#TODO check if need to subtrack the motorc ticks from stuff
 
 from math import *
 
@@ -43,14 +42,14 @@ def delta_l_r(prev_l, prev_r):
 
 def delta_s(prev_l, prev_r):
 	result = 0
-        delta_odo = delta_l_r(prev_l, prev_r)
-	result = ((delta_odo[0] + delta_odo[1]) / 2 ) * TICKS_PER_MM
-	return result # mm
+    delta_odo = delta_l_r(prev_l, prev_r)
+	result = ((delta_odo[0] + delta_odo[1]) / 2 ) / TICKS_PER_M 
+	return result # m
 
 def delfa_theta(prev_l, prev_r):
 	result = 0
         delta_odo = delta_lr(prev_l, prev_r)
-	result = ((delta_odo[1] - delta_odo[0]) / WHEEL_BASE ) * TICKS_PER_MM
+	result = ((delta_odo[1] - delta_odo[0]) / WHEEL_BASE_M ) / TICKS_PER_M 
 	return result #radians
 
 def delta_x_y_angle(prev_l, prev_r, curr_theta):
@@ -58,7 +57,12 @@ def delta_x_y_angle(prev_l, prev_r, curr_theta):
 	delta_dist = delta_s(prev_l, prev_r)
 	delta_angle = delta_theta(prev_l, prev_r)
 	delta_x = delta_dist*math.cos(curr_theta + delta_angle / 2)
-        delta_y = delta_dist*math.sin(curr_theta + delta_angle / 2)
+    delta_y = delta_dist*math.sin(curr_theta + delta_angle / 2)
+    
+    #altetrnative (still an approximation) is 
+    #delta_x = delta_dist*math.cos(curr_theta + delta_angle )
+    #delta_y = delta_dist*math.sin(curr_theta + delta_angle )
+    
 	
 	result[0] = delta_x
 	result[1] = delta_y
