@@ -9,10 +9,67 @@ FORMULAS :
 
 https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
 https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab%203.html 
-
+http://rossum.sourceforge.net/papers/DiffSteer/DiffSteer.html#d2
 
 
 ENCODERS (other stuff is useless in this document):
 
-http://ttuadvancedrobotics.wikidot.com/odometry 
+http://ttuadvancedrobotics.wikidot.com/odometry
+
+
+
+
+ODOMETRY V1 (no calibration, dumb formulas based on encoders)
+USES https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
+
+-------------------------------------
+#TODO check if need to subtrack the motorc ticks from stuff
+
+from math import *
+
+TICKS_PER_MM = 12 #encoder ticks
+WHEEL_BASE = 100 #mm
+
+def delta_l_r(prev_l, prev_r):
+	result = [0]*2
+	odo = comms.get_odo()
+	delta_l = prev_l - odo[0]
+	delta_r = prev_r - odo[1]
+	
+	result[0] = delta_l
+	result[1] = delta_r
+	return result
+
+def delta_s(prev_l, prev_r):
+	result = 0
+        delta_odo = delta_l_r(prev_l, prev_r)
+	result = ((delta_odo[0] + delta_odo[1]) / 2 ) * TICKS_PER_MM
+	return result # mm
+
+def delfa_theta(prev_l, prev_r):
+	result = 0
+        delta_odo = delta_lr(prev_l, prev_r)
+	result = ((delta_odo[1] - delta_odo[0]) / WHEEL_BASE ) * TICKS_PER_MM
+	return result #radians
+
+def delta_x_y_angle(prev_l, prev_r, curr_theta):
+	result = [0]*3
+	delta_dist = delta_s(prev_l, prev_r)
+	delta_angle = delta_theta(prev_l, prev_r)
+	delta_x = delta_dist*math.cos(curr_theta + delta_angle / 2)
+        delta_y = delta_dist*math.sin(curr_theta + delta_angle / 2)
+	
+	result[0] = delta_x
+	result[1] = delta_y
+	result[2] = delta_angle
+	
+	return result
+-----------------------------------------------------------------------
+
+
+
+
+
+
+
 
