@@ -71,13 +71,11 @@ class DataStore:
         if time < 0:
             raise ValueError("Time must be positive you crazy person!")
 
-        keys = self.get(0, -1) # All keys
+        keys = self.r.lrange(self.listname, 0, -1) # All keys
         
-        print(keys)
-
         for key in keys:
             if int(key) <= int(time):
-                self.r.lrem(self.listname, key)
+                self.r.lrem(self.listname, count=0, value=key)
                 self.r.delete(key)
 
     def _purge(self):
@@ -110,7 +108,9 @@ if __name__ == "__main__":
             ds._purge()
         elif opt in ('-t', '--test'):
             ## TEST CODE HERE ##
+            print("Pushing keys...")
             ds.push(s1)
             print(ds.get())
+            print("Deleting...")
             ds.delete_before(10)
 
