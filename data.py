@@ -19,14 +19,20 @@ class DataStore:
         todo = {"key1":1, "key2":2}
         
         for key, value in todo.iteritems():
-            print(key)
-            print(value)
+            self.r.hset(this.time, key, value)
             
-        self.r.lpush(self.listname, todo)
+        self.r.lpush(self.listname, this.time)
         del this
 
     def get(self, start, stop):
-        return self.r.lrange(self.listname, int(start), int(stop))
+        keys = self.r.lrange(self.listname, int(start), int(stop))
+        
+        ret = dict()
+
+        for key in keys:
+            ret[int(key)] = self.r.hgetall(key)
+
+        return ret
 
     def _purge(self):
         if self.wt.confirm("Really destroy all data in Redis store?\n\nThis is not undoable!\n(run FLUSHDB)",
@@ -37,6 +43,7 @@ class DataStore:
             print("Did not purge Redis Store")
 
 
+# Only run if we're invoked directly:
 if __name__ == "__main__":
 
     ds = DataStore()

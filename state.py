@@ -12,16 +12,16 @@ MEASUREMENT_PERIOD_S = 0.02 # s
 class GenericState(object):
   
   def __init__(self):
-    time = None
+    self.time = 0
     # x location relative to initial placament at time of recording
-    x = None
+    self.x = None
     # y location relative to initial placament at time of recording
-    y = None
+    self.y = None
     # y location relative to initial placament at time of recording
-    theta = None
+    self.theta = None
     # encoder values at the time of recording
-    encoder_l = None
-    encoder_r = None
+    self.encoder_l = None
+    self.encoder_r = None
 
   def delta_l_r(self, prev_l, prev_r):
     raise NotImplementedError
