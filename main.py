@@ -156,16 +156,24 @@ def main():
         # reset odometry for this robot run 
         comms.reset_odo()
 
-        #begin control loop
+	odo = [0,0]
+	#begin control loop
         while True:
+	    #TODO remove below line if does nto wortk
+	    #comms.reset_odo()
+	    dist = comms.get_ir()
 
-            dist = comms.get_ir()
-            odometry_state_1 = odo1.new_state(odometry_state_1, dist)
-            odometry_state_2 = odo2.new_state(odometry_state_2, dist)
-                        
-            print("ODO #1 : (" + str(odometry_state_1.x) + "," + str(odometry_state_1.y) + "," + str(odometry_state_1.theta) + ")" )
-            print("ODO #2 : (" + str(odometry_state_2.x) + "," + str(odometry_state_2.y) + "," + str(odometry_state_2.theta) + ")" )
+	    odo_new = comms.get_odo()
+	    delta_odo = odo_new - odo
+	    odo = odo + delta_odo
+		
+	    odometry_state_1 = odo1.new_state(odometry_state_1, delta_odo)
+	    odometry_state_2 = odo2.new_state(odometry_state_2, delta_odo)
+			
+	    #print("ODO #1 : X (" + "{0:.2f}".format(odometry_state_1.x)+ ", Y" + "{0:.2f}".format(odometry_state_1.y) + ", THETA " + "{0:.0f}".format(odometry_state_1.theta) + ")" )
+	    #print("ODO #2 : X (" + "{0:.2f}".format(odometry_state_2.x)+ ", Y" + "{0:.2f}".format(odometry_state_2.x) + ", THETA " + "{0:.0f}".format(odometry_state_2.theta) + ")" )
             
+            print("ODO new " + str(odo[0]) + " , " + str(odo[1]))
             
             ########################
             #HANDLE BOREDOM COUNTER 
@@ -329,10 +337,10 @@ def main():
                     # set state accordingly
                     system_state = constants.STATE_DRIVE_FORWARD
                     comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
-            
-            # do not attempt to instantly read sensors again
-            time.sleep(0.02)
 
+	    
+	    # do not attempt to instantly read sensors again
+            time.sleep(constants.MEASUREMENT_PERIOD_S)
 
     except TypeError as e:
         comms.drive(0,0)

@@ -16,21 +16,10 @@ import time
 class Odometry_Algorithm_2(GenericState):
         def __init__(self):
                 GenericState.__init__(self)
-
-	def delta_l_r(self, prev_l, prev_r, odo):
-		result = [0]*2
 	
-		delta_l = prev_l - odo[0]
-		delta_r = prev_r - odo[1]
-	
-		result[0] = delta_l
-		result[1] = delta_r
-		return result
-	
-	def velocity_l_r(self, prev_l, prev_r, odo):
+	def velocity_l_r(self, prev_l, prev_r, delta_odo):
 	
 		result = [0]*2
-		delta_odo = self.delta_l_r(prev_l, prev_r, odo)
 	
 		speed_l = (delta_odo[0] / constants.TICKS_PER_M) /  constants.MEASUREMENT_PERIOD_S # m / s
 		speed_r = (delta_odo[1] / constants.TICKS_PER_M) /  constants.MEASUREMENT_PERIOD_S # m / s
@@ -40,10 +29,10 @@ class Odometry_Algorithm_2(GenericState):
 	
 		return result
 	
-	def velocity_linear_angular(self, prev_l, prev_r, odo):
+	def velocity_linear_angular(self, prev_l, prev_r, delta_odo):
 		result = [0]*2
 	
-		velocity_left_right = self.velocity_l_r(prev_l, prev_r, odo)
+		velocity_left_right = self.velocity_l_r(prev_l, prev_r, delta_odo)
 	
 		velocity_linear = (velocity_left_right[0] + velocity_left_right[1] ) / 2 # m /s
 		velocity_angular = (velocity_left_right[1] - velocity_left_right[0] ) / constants.WHEEL_BASE_M # rad / s
@@ -54,9 +43,9 @@ class Odometry_Algorithm_2(GenericState):
 		return result
 	
 	
-	def new_state(self, prev_state, odo):
+	def new_state(self, prev_state, delta_odo):
 	
-		velocities = self.velocity_linear_angular(prev_state.encoder_l, prev_state.encoder_r, odo)
+		velocities = self.velocity_linear_angular(prev_state.encoder_l, prev_state.encoder_r, delta_odo)
 	
 		v = velocities[0]
 		w = velocities[1]
@@ -93,9 +82,8 @@ class Odometry_Algorithm_2(GenericState):
 		result.time = prev_state.time + t
 		result.x = x_n
 		result.y = y_n
-		result.theta = theta_n
-		result.encoder_l = odo[0]
-		result.encorer_r = odo[1]
+		result.theta = ((theta_n % (2*math.pi)) / (2*math.pi)) * 360
+
 	
 		return result
 

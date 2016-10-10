@@ -34,7 +34,7 @@ STATE_BOREDOM_DRIVE = 7
 
 TICKS_PER_M = 12000 # encoder ticks per meter
 WHEEL_BASE_M = 0.01 # m
-MEASUREMENT_PERIOD_S = 0.02 # s
+MEASUREMENT_PERIOD_S = 0.2 # s
 
 
 
