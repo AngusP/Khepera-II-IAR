@@ -1,3 +1,12 @@
+#!/usr/bin/env/python
+
+#
+#     - - - -  I A R  - - - -
+#
+#  s1311631         Angus Pearson
+#  s1346981    Jevgenij Zubovskij
+#
+
 from __future__ import print_function
 import redis
 import whiptail
@@ -27,9 +36,7 @@ class DataStore:
             't'    : point.time,
             'x'    : point.x,
             'y'    : point.y,
-            'theta': point.theta,
-            'e_l'  : point.encoder_l,
-            'e_r'  : point.encoder_r
+            'theta': point.theta
         }
         
         # For each part of the _python_ dict we

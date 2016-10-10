@@ -1,12 +1,10 @@
-# ODOMETRY V1 (no calibration, dumb formulas based on encoders)
-# USES https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
 
-from math import *
-
-TICKS_PER_M = 12000 # encoder ticks per meter
-WHEEL_BASE_M = 0.01 # m
-MEASUREMENT_PERIOD_S = 0.02 # s
-
+#
+#     - - - -  I A R  - - - -
+#
+#  s1311631         Angus Pearson
+#  s1346981    Jevgenij Zubovskij
+#
 
 # Class to define state to not have arrays... cause arrays are ugly
 class GenericState(object):
@@ -19,9 +17,6 @@ class GenericState(object):
     self.y = None
     # y location relative to initial placament at time of recording
     self.theta = None
-    # encoder values at the time of recording
-    self.encoder_l = None
-    self.encoder_r = None
 
   def delta_l_r(self, prev_l, prev_r):
     raise NotImplementedError
