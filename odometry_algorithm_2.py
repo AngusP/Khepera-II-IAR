@@ -5,6 +5,8 @@
 #TODO check if the thing works for equal speeds on both wheels (and previous solutions as well)
 
 from odometry_state import Odometry_State
+
+
 from state import GenericState
 import constants
 
@@ -34,7 +36,7 @@ class Odometry_Algorithm_2(GenericState):
 	
 		velocity_left_right = self.velocity_l_r(delta_odo)
 	
-		velocity_linear = (velocity_left_right[0] + velocity_left_right[1] ) / 2 # m /s
+		velocity_linear = (velocity_left_right[0] + velocity_left_right[1] ) / float(2) # m /s
 		velocity_angular = (velocity_left_right[1] - velocity_left_right[0] ) / constants.WHEEL_BASE_M # rad / s
 	
 		result[0] = velocity_linear
@@ -61,16 +63,16 @@ class Odometry_Algorithm_2(GenericState):
 		k01 = v * math.sin(prev_theta)
 		k02 = w
 	
-		k10 = v * math.cos(prev_theta + t * k02/2)
-		k11 = v * math.sin(prev_theta + t * k02/2)
+		k10 = v * math.cos(prev_theta + t * k02/float(2))
+		k11 = v * math.sin(prev_theta + t * k02/float(2))
 		k12 = w
 	
-		k20 = v * math.cos(prev_theta + t * k12/2)
-		k21 = v * math.sin(prev_theta + t * k12/2)
+		k20 = v * math.cos(prev_theta + t * k12/float(2))
+		k21 = v * math.sin(prev_theta + t * k12/float(2))
 		k22 = w	
 
-		k30 = v * math.cos(prev_theta + t * k22/2)
-		k31 = v * math.sin(prev_theta + t * k22/2)
+		k30 = v * math.cos(prev_theta + t * k22/float(2))
+		k31 = v * math.sin(prev_theta + t * k22/float(2))
 		k32 = w		
 	
 		x_n 	= prev_x     + t/6 * (k00 + 2*(k10 + k20) + k30)
@@ -82,7 +84,9 @@ class Odometry_Algorithm_2(GenericState):
 		result.time = prev_state.time + t
 		result.x = x_n
 		result.y = y_n
-		result.theta = ((theta_n % (2*math.pi)) / (2*math.pi)) * 360
+
+		#print(theta_n)
+		result.theta = theta_n 
 
 	
 		return result

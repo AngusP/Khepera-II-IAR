@@ -1,9 +1,11 @@
 # ODOMETRY V1 (no calibration, dumb formulas based on encoders)
 # USES https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
 
+
 from odometry_state import Odometry_State
 import constants
 from state import GenericState
+
 
 import math
 
@@ -15,15 +17,21 @@ class Odometry_Algorithm_1(GenericState):
                 GenericState.__init__(self)
 
 	def delta_s(self, delta_odo):
+		#print "///////////////////////////////////////////////////////////////////////////////////////////////////////"
 		result 		= 0
-		result 		= ((delta_odo[0] + delta_odo[1]) / 2 ) / constants.TICKS_PER_M 
+		result 		= ((delta_odo[0] + delta_odo[1]) / float(2) ) / constants.TICKS_PER_MM
+		#print "DELTA_S------------------------------------"
+		#print(result )
 	
-		return result # m
+		return result # mm
 
 	def delta_theta(self, delta_odo):
+
 		result 		= 0
-		result 		= ((delta_odo[1] - delta_odo[0]) / constants.WHEEL_BASE_M ) / constants.TICKS_PER_M 
+		result 		= ((delta_odo[1] - delta_odo[0]) / constants.TICKS_PER_MM) / constants.WHEEL_BASE_MM 
 	
+		#print "DELTA_THETA------------------------------------"
+		#print(result )
 		return result #radians
 
 	def delta_x_y_angle(self, curr_theta, delta_odo):
@@ -31,17 +39,31 @@ class Odometry_Algorithm_1(GenericState):
 	
 		delta_dist  = self.delta_s(delta_odo)
 		delta_angle = self.delta_theta(delta_odo)
-		delta_x     = delta_dist*math.cos(curr_theta + delta_angle / 2)
-	    	delta_y     = delta_dist*math.sin(curr_theta + delta_angle / 2)
+
+		
+		new_angle = curr_theta + delta_angle #/ float(2) # thsi is the alternative
+		
+		#print "CURRENT THETA***********************************************"
+		#print(math.degrees(curr_theta))
+		#print "NEW THETA ***********************************************"
+		#print(math.degrees(delta_angle))
+		#print(delta_angle)	
+
+		#delta_x     = delta_dist*math.cos(math.radians(new_angle)) # in mm
+	    	#delta_y     = delta_dist*math.sin(math.radians(new_angle)) # in mm
+
+		delta_x     = delta_dist*math.cos(new_angle) # in mm
+	    	delta_y     = delta_dist*math.sin(new_angle) # in mm
 	    
-	    	#altetrnative (still an approximation) is 
-	    	#delta_x = delta_dist*math.cos(curr_theta + delta_angle )
-	    	#delta_y = delta_dist*math.sin(curr_theta + delta_angle )
-	    
-	
+		
 		result[0] = delta_x
 		result[1] = delta_y
 		result[2] = delta_angle
+		
+
+		print "==================================="
+		print(result)
+		print "==================================="
 	
 		return result
 
@@ -66,7 +88,7 @@ class Odometry_Algorithm_1(GenericState):
 		result.x    = x_n
 		result.y    = y_n
 	
-		result.theta 	 = ((theta_n % (2*math.pi)) / (2*math.pi)) * 360
+		result.theta = theta_n 
 
 		return result
 

@@ -170,10 +170,11 @@ def main():
 	    odometry_state_1 = odo1.new_state(odometry_state_1, delta_odo)
 	    odometry_state_2 = odo2.new_state(odometry_state_2, delta_odo)
 			
-	    #print("ODO #1 : X (" + "{0:.2f}".format(odometry_state_1.x)+ ", Y" + "{0:.2f}".format(odometry_state_1.y) + ", THETA " + "{0:.0f}".format(odometry_state_1.theta) + ")" )
-	    #print("ODO #2 : X (" + "{0:.2f}".format(odometry_state_2.x)+ ", Y" + "{0:.2f}".format(odometry_state_2.x) + ", THETA " + "{0:.0f}".format(odometry_state_2.theta) + ")" )
+	    #print(delta_odo)
+	    print("ODO #1 : X (" + "{0:.2f}".format(odometry_state_1.x)+ ", Y" + "{0:.2f}".format(odometry_state_1.y) + ", THETA " + "{0:.0f}".format(math.degrees(odometry_state_1.theta)) + ")" )
+	    print("ODO #2 : X (" + "{0:.2f}".format(odometry_state_2.x)+ ", Y" + "{0:.2f}".format(odometry_state_2.x) + ", THETA " + "{0:.0f}".format(odometry_state_2.theta) + ")" )
             
-            print("ODO new " + str(odo[0]) + " , " + str(odo[1]))
+            #print("ODO new " + str(odo[0]) + " , " + str(odo[1]))
             
             ########################
             #HANDLE BOREDOM COUNTER 
@@ -342,7 +343,7 @@ def main():
 	    # do not attempt to instantly read sensors again
             time.sleep(constants.MEASUREMENT_PERIOD_S)
 
-    except Exception as e:
+    except TypeError as e:
         comms.drive(0,0)
         raise(e)
 

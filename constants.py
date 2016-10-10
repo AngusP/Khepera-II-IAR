@@ -32,9 +32,14 @@ STATE_BOREDOM_DRIVE = 7
 
 #ODOMETRY_CONSTANTS
 
-TICKS_PER_M = 12000 # encoder ticks per meter
-WHEEL_BASE_M = 0.01 # m
-MEASUREMENT_PERIOD_S = 0.2 # s
+TICKS_PER_MM = 12.0    # encoder ticks per milimeter
+TICKS_PER_M = TICKS_PER_MM * 1000.0 # encoder ticks per meter
+
+
+WHEEL_BASE_MM = 55.0 # mm
+WHEEL_BASE_M = WHEEL_BASE_MM / 1000.0 # m
+
+MEASUREMENT_PERIOD_S = 0.02 # s
 
 
 
