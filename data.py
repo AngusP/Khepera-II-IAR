@@ -67,10 +67,17 @@ class DataStore:
 
     def delete_before(self, time):
         # Remove data with a key from earlier than specified
-        keys = self.get(0, -1) # Al keys
+
+        if time < 0:
+            raise ValueError("Time must be positive you crazy person!")
+
+        keys = self.get(0, -1) # All keys
         
+        print(keys)
+
         for key in keys:
             if int(key) <= int(time):
+                self.r.lrem(self.listname, key)
                 self.r.delete(key)
 
     def _purge(self):
@@ -102,5 +109,8 @@ if __name__ == "__main__":
         if opt in ('-p', '--purge'):
             ds._purge()
         elif opt in ('-t', '--test'):
+            ## TEST CODE HERE ##
             ds.push(s1)
+            print(ds.get())
+            ds.delete_before(10)
 
