@@ -19,6 +19,13 @@ import time
 import math
 import matplotlib.pyplot as plt
 
+
+
+import odometry_algorithm_1
+import odometry_algorithm_2
+from odometry_state import Odometry_State
+
+
 namebadge = " -- IAR C&C -- "
 helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
 
@@ -133,6 +140,12 @@ def main():
 	wall_boredom_counter = 0
 	boredom_turn_on_spot_counter = 0
 
+	#set odometry state to 0
+	#TODO check whihc one works better
+	
+	odometry_state_1 = Odometry_State()
+	odometry_state_2 = Odometry_State()
+	
 	#drive forward
 	system_state = constants.STATE_DRIVE_FORWARD
         comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
@@ -140,12 +153,17 @@ def main():
 	# varaibles to not resend speeds during wall following
 	speed_l = constants.CONST_SPEED
 	speed_r = constants.CONST_SPEED
-
+    
+	# reset odometry for this robot run 
+	comms.reset_odo()
 
 	#begin control loop
         while True:
-
-
+			odometry_state_1 = odometry_state_1.new_state(odometry_state_1)
+			odometry_state_2 = odometry_state_1.new_state(odometry_state_2)
+			
+			print("ODO #1 : (" + str(odometry_state_1.x) + "," + str(odometry_state_1.y) + "," + str(odometry_state_1.theta) + ")" )
+			print("ODO #2 : (" + str(odometry_state_2.x) + "," + str(odometry_state_2.y) + "," + str(odometry_state_2.theta) + ")" )
             dist = comms.get_ir()
             
 	    ########################

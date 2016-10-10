@@ -1,26 +1,15 @@
 # ODOMETRY V1 (no calibration, dumb formulas based on encoders)
 # USES https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf
 
-from math import *
+from comms import Comms
+from odometry_state import Odometry_State
+import constants
 
-TICKS_PER_M = 12000 # encoder ticks per meter
-WHEEL_BASE_M = 0.01 # m
-MEASUREMENT_PERIOD_S = 0.02 # s
+import math
 
+import sys
+import time
 
-# Class to define state to not have arrays... cause arrays are ugly
-class State:
-  # time when state recorded
-  time 	= 0
-  # x location relative to initial placament at time of recording
-  x 	= 0
-  # y location relative to initial placament at time of recording
-  y 	= 0
-  # y location relative to initial placament at time of recording
-  theta = 0
-  # encoder values at the time of recording
-  encoder_l = 0
-  encoder_r = 0
 
 def delta_l_r(prev_l, prev_r):
 	result 		= [0]*2
@@ -35,14 +24,14 @@ def delta_l_r(prev_l, prev_r):
 def delta_s(prev_l, prev_r):
 	result 		= 0
     delta_odo 	= delta_l_r(prev_l, prev_r)
-	result 		= ((delta_odo[0] + delta_odo[1]) / 2 ) / TICKS_PER_M 
+	result 		= ((delta_odo[0] + delta_odo[1]) / 2 ) / constants.TICKS_PER_M 
 	
 	return result # m
 
 def delfa_theta(prev_l, prev_r):
 	result 		= 0
     delta_odo 	= delta_lr(prev_l, prev_r)
-	result 		= ((delta_odo[1] - delta_odo[0]) / WHEEL_BASE_M ) / TICKS_PER_M 
+	result 		= ((delta_odo[1] - delta_odo[0]) / constants.WHEEL_BASE_M ) / constants.TICKS_PER_M 
 	
 	return result #radians
 
@@ -76,7 +65,7 @@ def new_state(prev_state)
     odo 		= comms.get_odo()
 	
 	#return new state
-	result 		= State() 
+	result 		= Odometry_State() 
 	result.time = prev_state.time + t
 	result.x 	= x_n
 	result.y	= y_n
