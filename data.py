@@ -7,38 +7,71 @@ import getopt
 
 class DataStore:
 
-    def __init__(self, host='localhost', db=9, port=6379):
+    def __init__(self, host='localhost', db=0, port=6379):
         self.r = redis.StrictRedis(host=host, port=port, db=db)
         self.wt = whiptail.Whiptail()
         self.listname = "statestream"
 
-    def push(self, this):
-        # We only accept a specific data type:
-        if not isinstance(this, GenericState):
-            raise TypeError
+    def __del__(self):
+        self.save()
 
-        todo = {"key1":1, "key2":2}
+    def push(self, point):
+        # We only accept a specific data type:
+        if not isinstance(point, GenericState):
+            raise TypeError("Expected instance of GenericState or derivative")
+
+        # Build hashmap from given state class
+        hmap = {
+            't'    : point.time,
+            'x'    : point.x,
+            'y'    : point.y,
+            'theta': point.theta,
+            'e_l'  : point.encoder_l,
+            'e_r'  : point.encoder_r
+        }
         
         # For each part of the _python_ dict we
         # create a Redis hashmap using the time as index
-        for key, value in todo.iteritems():
-            self.r.hset(this.time, key, value)
+        for key, value in hmap.iteritems():
+            self.r.hset(point.time, key, value)
     
         # We push a reference to this new hashmap onto 
         # the statestream list
-        self.r.lpush(self.listname, this.time)
+        self.r.lpush(self.listname, point.time)
         # Decrememt reference counter
-        del this
+        del point
 
-    def get(self, start, stop):
-        # Get references from list
+    def get(self, start=0, stop=-1):
+        # Returns a list in-order over the range
         keys = self.r.lrange(self.listname, int(start), int(stop))
-        ret = dict()
+        ret = list()
 
+        # Pull all the hashmaps out of the store
         for key in keys:
-            ret[int(key)] = self.r.hgetall(key)
+            ret.append(self.r.hgetall(key))
 
         return ret
+
+    def get_dict(self, start=0, stop=-1):
+        # Return a dictionary instead of a list
+        lst = self.get(start, stop)
+        ret = dict()
+        for item in lst:
+            ret[int(item['t'])] = item
+            
+        return ret
+
+    def save(self):
+        # Copy DB to disk
+        return self.r.save()
+
+    def delete_before(self, time):
+        # Remove data with a key from earlier than specified
+        keys = self.get(0, -1) # Al keys
+        
+        for key in keys:
+            if int(key) <= int(time):
+                self.r.delete(key)
 
     def _purge(self):
         if self.wt.confirm("Really destroy all data in Redis store?\n\nThis is not undoable!\n(run FLUSHDB)",
