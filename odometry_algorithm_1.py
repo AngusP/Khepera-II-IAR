@@ -4,13 +4,17 @@
 from comms import Comms
 from odometry_state import Odometry_State
 import constants
+from state import GenericState
 
 import math
 
 import sys
 import time
 
-class Odometry_Algorithm_1:
+class Odometry_Algorithm_1(GenericState):
+        def __init__(self):
+                GenericState.__init__(self)
+
 	def delta_l_r(self, prev_l, prev_r):
 		result 	  = [0]*2
 		odo 	  = comms.get_odo()

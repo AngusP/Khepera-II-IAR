@@ -34,7 +34,7 @@ class DataStore:
         # create a Redis hashmap using the time as index
         for key, value in hmap.iteritems():
             self.r.hset(point.time, key, value)
-    
+
         # We push a reference to this new hashmap onto 
         # the statestream list
         self.r.lpush(self.listname, point.time)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 'p', ['purge','test'])
+        optlist, args = getopt.getopt(args, 'pt', ['purge','test'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-p or --purge : Destroy all data held in Redis")
