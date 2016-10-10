@@ -9,6 +9,9 @@
 
 from __future__ import print_function
 from comms import Comms
+from odometry_algorithm_1 import Odometry_Algorithm_1
+from odometry_algorithm_2 import Odometry_Algorithm_2
+from odometry_state import Odometry_State
 
 
 import constants
@@ -18,12 +21,6 @@ import whiptail    # Simplest kinda-GUI thing
 import time
 import math
 import matplotlib.pyplot as plt
-
-
-
-import odometry_algorithm_1
-import odometry_algorithm_2
-from odometry_state import Odometry_State
 
 
 namebadge = " -- IAR C&C -- "
@@ -159,11 +156,12 @@ def main():
 
 	#begin control loop
         while True:
-			odometry_state_1 = odometry_state_1.new_state(odometry_state_1)
-			odometry_state_2 = odometry_state_1.new_state(odometry_state_2)
+
+	    odometry_state_1 = odometry_algorithm_1.new_state(odometry_state_1)
+	    odometry_state_2 = odometry_algorithm_2.new_state(odometry_state_2)
 			
-			print("ODO #1 : (" + str(odometry_state_1.x) + "," + str(odometry_state_1.y) + "," + str(odometry_state_1.theta) + ")" )
-			print("ODO #2 : (" + str(odometry_state_2.x) + "," + str(odometry_state_2.y) + "," + str(odometry_state_2.theta) + ")" )
+	    print("ODO #1 : (" + str(odometry_state_1.x) + "," + str(odometry_state_1.y) + "," + str(odometry_state_1.theta) + ")" )
+	    print("ODO #2 : (" + str(odometry_state_2.x) + "," + str(odometry_state_2.y) + "," + str(odometry_state_2.theta) + ")" )
             dist = comms.get_ir()
             
 	    ########################
