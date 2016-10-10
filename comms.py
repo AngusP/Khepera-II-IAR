@@ -47,7 +47,7 @@ class Comms:
 
             raise(e1)
         self.clear_port()
-                
+
 
     def __del__(self):
         if self.port.is_open:
@@ -77,11 +77,16 @@ class Comms:
     def get_odo(self):
         self.port.write("H\n")
         odo = self._parse_sensor(self.port.readline()) 
+
+        if len(odo) != 2:
+            return [0,0]
+
         return odo
 
     # Reset the robot's wheel counts to 0
     def reset_odo(self):
         self.port.write("G,0,0\n")
+        self.port.readline()
 
     # Return IR Distance measurements
     def get_ir(self, sensor_no=None):
