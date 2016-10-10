@@ -14,23 +14,23 @@ class Odometry_Algorithm_1(GenericState):
         def __init__(self):
                 GenericState.__init__(self)
 
-	def delta_s(self, prev_l, prev_r, delta_odo):
+	def delta_s(self, delta_odo):
 		result 		= 0
 		result 		= ((delta_odo[0] + delta_odo[1]) / 2 ) / constants.TICKS_PER_M 
 	
 		return result # m
 
-	def delta_theta(self, prev_l, prev_r, odo):
+	def delta_theta(self, delta_odo):
 		result 		= 0
 		result 		= ((delta_odo[1] - delta_odo[0]) / constants.WHEEL_BASE_M ) / constants.TICKS_PER_M 
 	
 		return result #radians
 
-	def delta_x_y_angle(self, prev_l, prev_r, curr_theta, odo):
+	def delta_x_y_angle(self, curr_theta, delta_odo):
 		result 	    = [0]*3
 	
-		delta_dist  = self.delta_s(prev_l, prev_r, delta_odo)
-		delta_angle = self.delta_theta(prev_l, prev_r, delta_odo)
+		delta_dist  = self.delta_s(delta_odo)
+		delta_angle = self.delta_theta(delta_odo)
 		delta_x     = delta_dist*math.cos(curr_theta + delta_angle / 2)
 	    	delta_y     = delta_dist*math.sin(curr_theta + delta_angle / 2)
 	    
@@ -47,7 +47,7 @@ class Odometry_Algorithm_1(GenericState):
 
 	def new_state(self, prev_state, delta_odo):
 
-		state_change = self.delta_x_y_angle(prev_state.encoder_l, prev_state.encoder_r, prev_state.theta, delta_odo)
+		state_change = self.delta_x_y_angle(prev_state.theta, delta_odo)
 	    
 		prev_x = prev_state.x
 		prev_y = prev_state.y

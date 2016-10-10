@@ -17,7 +17,7 @@ class Odometry_Algorithm_2(GenericState):
         def __init__(self):
                 GenericState.__init__(self)
 	
-	def velocity_l_r(self, prev_l, prev_r, delta_odo):
+	def velocity_l_r(self, delta_odo):
 	
 		result = [0]*2
 	
@@ -29,10 +29,10 @@ class Odometry_Algorithm_2(GenericState):
 	
 		return result
 	
-	def velocity_linear_angular(self, prev_l, prev_r, delta_odo):
+	def velocity_linear_angular(self, delta_odo):
 		result = [0]*2
 	
-		velocity_left_right = self.velocity_l_r(prev_l, prev_r, delta_odo)
+		velocity_left_right = self.velocity_l_r(delta_odo)
 	
 		velocity_linear = (velocity_left_right[0] + velocity_left_right[1] ) / 2 # m /s
 		velocity_angular = (velocity_left_right[1] - velocity_left_right[0] ) / constants.WHEEL_BASE_M # rad / s
@@ -45,7 +45,7 @@ class Odometry_Algorithm_2(GenericState):
 	
 	def new_state(self, prev_state, delta_odo):
 	
-		velocities = self.velocity_linear_angular(prev_state.encoder_l, prev_state.encoder_r, delta_odo)
+		velocities = self.velocity_linear_angular(delta_odo)
 	
 		v = velocities[0]
 		w = velocities[1]

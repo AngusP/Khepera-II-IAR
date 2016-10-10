@@ -164,8 +164,8 @@ def main():
 	    dist = comms.get_ir()
 
 	    odo_new = comms.get_odo()
-	    delta_odo = odo_new - odo
-	    odo = odo + delta_odo
+	    delta_odo = [odo_new[0] - odo[0], odo_new[1] - odo[1]]
+	    odo = [delta_odo[0] + odo[0], delta_odo[1] + odo[1]]
 		
 	    odometry_state_1 = odo1.new_state(odometry_state_1, delta_odo)
 	    odometry_state_2 = odo2.new_state(odometry_state_2, delta_odo)
