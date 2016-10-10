@@ -13,6 +13,7 @@ import whiptail
 from state import *
 import sys
 import getopt
+import matplotlib.pyplot as plt
 
 class DataStore:
 
@@ -50,6 +51,9 @@ class DataStore:
         # We push a reference to this new hashmap onto 
         # the statestream list
         self.r.lpush(self.listname, point.time)
+
+        # Also publish onto a channel
+        self.r.publish(self.listanme, point.time)
         # Decrememt reference counter
         del point
 
@@ -100,6 +104,27 @@ class DataStore:
             print("!!! Flushed Redis Data Store !!!")
         else:
             print("Did not purge Redis Store")
+
+    def plot(self):
+        print("Plotting Subroutines...")
+        try:
+            pubsub = self.r.pubsub()
+            pubsub.subscribe([self.listname])
+            #plt.axis([0, 10, 0, 1])
+            #plt.ion()
+            while True:
+                # Loop until stopped plotting the path
+                for item in pubsub.listen():
+                    print(item)
+                    if self.r.hexists(item['data'], 'x'):
+                        data = self.r.hgetall(item['data'])
+                        #plt.scatter(data['x'], data['y'])
+                        print(data)
+                    #plt.pause(0.05)
+                
+        except KeyboardInterrupt as e:
+            print(e)
+            #plt.show()
 
 
 # Only run if we're invoked directly:
