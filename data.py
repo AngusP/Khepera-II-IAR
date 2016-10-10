@@ -98,7 +98,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 'pt', ['purge','test'])
+        optlist, args = getopt.getopt(args, 'pts:', ['purge','test','server='])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-p or --purge : Destroy all data held in Redis")
@@ -108,6 +108,7 @@ if __name__ == "__main__":
     for opt, arg in optlist:
         if opt in ('-p', '--purge'):
             ds._purge()
+        
         elif opt in ('-t', '--test'):
             ## TEST CODE HERE ##
             print("Pushing keys...")
@@ -115,4 +116,7 @@ if __name__ == "__main__":
             print(ds.get())
             print("Deleting...")
             ds.delete_before(10)
+        
+        elif opt in ('-s', '--server'):
+            print(str(arg))
 

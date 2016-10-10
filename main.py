@@ -349,7 +349,8 @@ if __name__ == "__main__":
 
     # Read & Parse command line options
     try:
-        optlist, args = getopt.getopt(args, 'hp:t:b:s:', ['help'])
+        optlist, args = getopt.getopt(args, 'hp:t:b:s:', 
+                                      ['help','port=','server=','baud=','timeout='])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print(helptext)
@@ -369,19 +370,19 @@ if __name__ == "__main__":
             print(namebadge)
             print(helptext)
             sys.exit(0)
-        elif opt == '-p':
+        elif opt in ('-p', '--port'):
             # change serial port to use
             port = str(arg)
             
-        elif opt == '-t':
+        elif opt in ('-t','--timeout'):
             # change blocking timeout for reading
             timeout = float(arg)
             
-        elif opt == '-b':
+        elif opt in ('-b', '--baud'):
             # change baud rate
             baud = int(arg)
             
-        elif opt == '-s':
+        elif opt in ('-s', '--server'):
             server = str(arg)
             print("Connecting to Redis server at " + str(server))
             
