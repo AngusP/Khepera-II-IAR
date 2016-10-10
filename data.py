@@ -26,6 +26,9 @@ class DataStore:
     def __del__(self):
         self.save()
 
+    def keys(self):
+        return self.r.keys()
+
     def push(self, point):
         # We only accept a specific data type:
         if not isinstance(point, GenericState):
@@ -66,6 +69,7 @@ class DataStore:
         lst = self.get(start, stop)
         ret = dict()
         for item in lst:
+            # time as key, dict as value
             ret[int(item['t'])] = item
             
         return ret
@@ -80,11 +84,13 @@ class DataStore:
         if time < 0:
             raise ValueError("Time must be positive you crazy person!")
 
-        keys = self.r.lrange(self.listname, 0, -1) # All keys
+        keys = self.r.lrange(self.listname, 0, -1) # All keys in our stream
         
         for key in keys:
             if int(key) <= int(time):
+                # Remove from list
                 self.r.lrem(self.listname, count=0, value=key)
+                # delete the key (hashmap)
                 self.r.delete(key)
 
     def _purge(self):
@@ -112,6 +118,7 @@ if __name__ == "__main__":
         print("-t or --test  : Development tests")
         sys.exit(2)
 
+    # Command line options parsing
     for opt, arg in optlist:
         if opt in ('-p', '--purge'):
             ds._purge()
