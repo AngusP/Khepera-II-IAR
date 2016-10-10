@@ -342,7 +342,7 @@ def main():
 	    # do not attempt to instantly read sensors again
             time.sleep(constants.MEASUREMENT_PERIOD_S)
 
-    except TypeError as e:
+    except Exception as e:
         comms.drive(0,0)
         raise(e)
 
