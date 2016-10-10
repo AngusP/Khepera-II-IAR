@@ -349,7 +349,7 @@ if __name__ == "__main__":
 
     # Read & Parse command line options
     try:
-        optlist, args = getopt.getopt(args, 'hp:t:b:s:', ['help','server'])
+        optlist, args = getopt.getopt(args, 'hp:t:b:s:', ['help'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print(helptext)
@@ -361,6 +361,8 @@ if __name__ == "__main__":
     port = "/dev/ttyUSB0"
     timeout = 1
     baud = 9600
+
+    server = "localhost"
         
     for opt, arg in optlist:
         if opt in ('-h', '--help'):
@@ -379,8 +381,9 @@ if __name__ == "__main__":
             # change baud rate
             baud = int(arg)
             
-        elif opt in ('-s', '--server'):
+        elif opt == '-s':
             server = str(arg)
+            print("Connecting to Redis server at " + str(server))
             
     # Initialise a serial class, or 
     try:
@@ -392,7 +395,7 @@ if __name__ == "__main__":
             
     print(namebadge)
         
-    ds = DataStore()
+    ds = DataStore(host=server)
     
     try:
         main()
@@ -406,5 +409,6 @@ else:
     # if *not* running as __main__
     # invoke the class with defaults
     comms = Comms()
+    ds = DataStore()
 
 

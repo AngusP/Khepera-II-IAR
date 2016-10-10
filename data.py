@@ -12,6 +12,8 @@ class DataStore:
         self.wt = whiptail.Whiptail()
         self.listname = "statestream"
 
+        self.r.ping()
+
     def __del__(self):
         self.save()
 
