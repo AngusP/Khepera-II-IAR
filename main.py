@@ -160,12 +160,13 @@ def main():
 	#begin control loop
         while True:
 
-	    odometry_state_1 = odo1.new_state(odometry_state_1)
-	    odometry_state_2 = odo2.new_state(odometry_state_2)
+	    dist = comms.get_ir()
+	    odometry_state_1 = odo1.new_state(odometry_state_1, dist)
+	    odometry_state_2 = odo2.new_state(odometry_state_2, dist)
 			
 	    print("ODO #1 : (" + str(odometry_state_1.x) + "," + str(odometry_state_1.y) + "," + str(odometry_state_1.theta) + ")" )
 	    print("ODO #2 : (" + str(odometry_state_2.x) + "," + str(odometry_state_2.y) + "," + str(odometry_state_2.theta) + ")" )
-            dist = comms.get_ir()
+            
             
 	    ########################
 	    #HANDLE BOREDOM COUNTER 
