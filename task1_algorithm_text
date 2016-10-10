@@ -1,8 +1,0 @@
-
-Hence, for each decision made in the control loop, said values are taken from different sensors, and have individual thresholds (scaling) as follows: 
-1. Sensors 0 through 5 used to determine if robot can no longer proceed in the forward direction one way or another and which way we have more space to move and should unstuck towards.
-2. Sensors 1 through 4 to detect the shape we can follow and where to navigate (turn) to do so. 
-3. Sensors 0 and 5 used to ensure we follow a shape within a consitent range of values
-4. The back sensors (6,7) were not used due to our robot only moving in the forward direction and 6 sensors allowing better control than 2
-
-Below is a diagram illustrating the algorithm in a state diagram (omitting detailed inner workings due to word count). Please note that the states UNSTUCK_TURN_LEFT  / RIGHT are STATE_UNSTUCK_LEFT R / RIGHT in the code is the appendix, and FOLLOW_SHAPE_LEFT / RIGHT are STATE_LEFT / RIGHT_FOLLOW respectively, also all states in code are preceeded with STATE (as seen in this paragraph).  Different names (in diagram) chosen deliberately for clarity.
