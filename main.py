@@ -21,7 +21,7 @@ import whiptail    # Simplest kinda-GUI thing
 import time
 import math
 import matplotlib.pyplot as plt
-
+from data import DataStore
 
 namebadge = " -- IAR C&C -- "
 helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout>'
@@ -140,6 +140,9 @@ def main():
 	#set odometry state to 0
 	#TODO check whihc one works better
 	
+        odo1 = Odometry_Algorithm_1()
+        odo2 = Odometry_Algorithm_2()
+
 	odometry_state_1 = Odometry_State()
 	odometry_state_2 = Odometry_State()
 	
@@ -157,8 +160,8 @@ def main():
 	#begin control loop
         while True:
 
-	    odometry_state_1 = odometry_algorithm_1.new_state(odometry_state_1)
-	    odometry_state_2 = odometry_algorithm_2.new_state(odometry_state_2)
+	    odometry_state_1 = odo1.new_state(odometry_state_1)
+	    odometry_state_2 = odo2.new_state(odometry_state_2)
 			
 	    print("ODO #1 : (" + str(odometry_state_1.x) + "," + str(odometry_state_1.y) + "," + str(odometry_state_1.theta) + ")" )
 	    print("ODO #2 : (" + str(odometry_state_2.x) + "," + str(odometry_state_2.y) + "," + str(odometry_state_2.theta) + ")" )
@@ -331,7 +334,7 @@ def main():
             time.sleep(0.02)
 
 
-    except Exception as e:
+    except TypeError as e:
         comms.drive(0,0)
         raise(e)
 
@@ -387,10 +390,13 @@ if __name__ == "__main__":
 
     print(namebadge)
 
+    ds = DataStore()
+
     try:
         main()
     except KeyboardInterrupt as e:
         comms.drive(0,0)
+        ds.save()
         print("Stopping and Quitting...")
         raise e
 
