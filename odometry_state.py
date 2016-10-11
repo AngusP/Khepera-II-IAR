@@ -8,4 +8,6 @@ class Odometry_State:
   y 	= 0
   # y location relative to initial placament at time of recording
   theta = 0
+  #odometry values
+  odo = [0]*2
 
