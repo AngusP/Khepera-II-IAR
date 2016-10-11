@@ -61,9 +61,9 @@ class Odometry_Algorithm_1(GenericState):
 		result[2] = delta_angle
 		
 
-		print "==================================="
-		print(result)
-		print "==================================="
+		#print "==================================="
+		#print(result)
+		#print "==================================="
 	
 		return result
 

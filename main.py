@@ -172,7 +172,7 @@ def main():
 			
 	    #print(delta_odo)
 	    print("ODO #1 : X (" + "{0:.2f}".format(odometry_state_1.x)+ ", Y" + "{0:.2f}".format(odometry_state_1.y) + ", THETA " + "{0:.0f}".format(math.degrees(odometry_state_1.theta)) + ")" )
-	    print("ODO #2 : X (" + "{0:.2f}".format(odometry_state_2.x)+ ", Y" + "{0:.2f}".format(odometry_state_2.x) + ", THETA " + "{0:.0f}".format(odometry_state_2.theta) + ")" )
+	    #print("ODO #2 : X (" + "{0:.2f}".format(odometry_state_2.x)+ ", Y" + "{0:.2f}".format(odometry_state_2.x) + ", THETA " + "{0:.0f}".format(odometry_state_2.theta) + ")" )
             
             #print("ODO new " + str(odo[0]) + " , " + str(odo[1]))
             

@@ -36,10 +36,10 @@ TICKS_PER_MM = 12.0    # encoder ticks per milimeter
 TICKS_PER_M = TICKS_PER_MM * 1000.0 # encoder ticks per meter
 
 
-WHEEL_BASE_MM = 55.0 # mm
+WHEEL_BASE_MM = 50.0 # mm
 WHEEL_BASE_M = WHEEL_BASE_MM / 1000.0 # m
 
-MEASUREMENT_PERIOD_S = 0.02 # s
+MEASUREMENT_PERIOD_S = 0.05 # s
 
 
 
