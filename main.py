@@ -31,8 +31,10 @@ wt = whiptail.Whiptail(title=namebadge)
 # check if we are stuck
 def is_stuck(dist):
     #check if we are scraping on the sides
-    stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST * 1.2 # multiple of 1.2 as 1.0 is handled by following
-    stuck_cone_right = dist[4] > constants.CONST_WALL_DIST * 1.2  # multiple of 1.2 as 1.0 is handled by following
+    # multiple of 1.2 as 1.0 is handled by following
+    stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST * 1.2
+    # multiple of 1.2 as 1.0 is handled by following
+    stuck_cone_right = dist[4] > constants.CONST_WALL_DIST * 1.2
     #check if we are about to be stuck in the front
     stuck_cone_front = dist[2] > constants.CONST_WALL_DIST*0.7 or dist[3]  > constants.CONST_WALL_DIST*0.7
 
@@ -70,7 +72,7 @@ def too_close_to_right(dist):
 def is_away_from_right(dist):
 
     wall_in_range = dist[5] < constants.CONST_WALL_DIST - constants.CONST_WALL_OFFSET
-    return wall_in_range  
+    return wall_in_range
 
 
 # check if we are under the distance threshold w.r.t. object on the left
@@ -169,6 +171,8 @@ def main():
 		
 	    odometry_state_1 = odo1.new_state(odometry_state_1, delta_odo)
 	    odometry_state_2 = odo2.new_state(odometry_state_2, delta_odo)
+
+            ds.push(odometry_state_1)
 			
 	    #print(delta_odo)
 	    print("ODO #1 : X (" + "{0:.2f}".format(odometry_state_1.x)+ ", Y" + "{0:.2f}".format(odometry_state_1.y) + ", THETA " + "{0:.0f}".format(math.degrees(odometry_state_1.theta)) + ")" )

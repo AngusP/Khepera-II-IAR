@@ -14,6 +14,8 @@ from state import *
 import sys
 import getopt
 import matplotlib.pyplot as plt
+import math
+import time
 
 class DataStore:
 
@@ -55,7 +57,7 @@ class DataStore:
         # Also publish onto a channel
         self.r.publish(self.listanme, point.time)
         # Decrememt reference counter
-        del point
+        #del point
 
     def get(self, start=0, stop=-1):
         # Returns a list in-order over the range
@@ -110,52 +112,75 @@ class DataStore:
         try:
             pubsub = self.r.pubsub()
             pubsub.subscribe([self.listname])
-            #plt.axis([0, 10, 0, 1])
-            #plt.ion()
+            plt.axis([0, 10, -1, 1])
+            plt.ion()
             while True:
                 # Loop until stopped plotting the path
                 for item in pubsub.listen():
                     print(item)
                     if self.r.hexists(item['data'], 'x'):
                         data = self.r.hgetall(item['data'])
-                        #plt.scatter(data['x'], data['y'])
-                        print(data)
-                    #plt.pause(0.05)
+                        plt.scatter(float(data['x']), float(data['y']))
+                        print(str(data['x']) + " " + str(data['y']))
+                        plt.show()
+                        plt.pause(0.05)
                 
         except KeyboardInterrupt as e:
             print(e)
-            #plt.show()
+
+
+    def _pubtest(self):
+        print("PubSub test")
+        # Publish cosine to the channel
+        data = {
+            'x' : 0.0,
+            'y' : 0.0
+        }
+
+        try:
+            while True:
+                data['x'] = data['x'] + 0.01
+                data['y'] = math.cos(data['x'])
+                self.r.hset('testh', 'x', data['x'])
+                self.r.hset('testh', 'y', data['y'])
+                self.r.publish(self.listname, 'testh')
+                time.sleep(0.05)
+        except KeyboardInterrupt as e:
+            self.r.delete('testh')
+            print(e)
 
 
 # Only run if we're invoked directly:
 if __name__ == "__main__":
 
-    ds = DataStore()
-    s1 = GenericState()
-    
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 'pts:', ['purge','test','server='])
+        optlist, args = getopt.getopt(args, 'dts:p', ['delete','test','server=', 'plot'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
-        print("-p or --purge : Destroy all data held in Redis")
-        print("-t or --test  : Development tests")
+        print("-d or --delete : Destroy all data held in Redis")
+        print("-t or --test   : Publish test data to a plotter")
+        print("-s or --server : Hostname of redis server to use. Default localhost")
+        print("-p or --plot   : Live plot of published data")
         sys.exit(2)
 
-    # Command line options parsing
+    # Pre-instantiation options
     for opt, arg in optlist:
-        if opt in ('-p', '--purge'):
+        if opt in ('-s', '--server'):
+            print("Using Redis server at '" + str(arg) + "'")
+            server = str(arg)
+
+    ds = DataStore(host=server)
+
+    # Post-instantioation options
+    for opt, arg in optlist:
+        if opt in ('-d', '--delete'):
             ds._purge()
         
         elif opt in ('-t', '--test'):
-            ## TEST CODE HERE ##
-            print("Pushing keys...")
-            ds.push(s1)
-            print(ds.get())
-            print("Deleting...")
-            ds.delete_before(10)
-        
-        elif opt in ('-s', '--server'):
-            print(str(arg))
+            ds._pubtest()
+
+        elif opt in ('-p', '--plot'):
+            ds.plot()
 
