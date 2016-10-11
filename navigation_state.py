@@ -8,5 +8,6 @@ class Navigation_State:
     speed_left = constants.CONST_SPEED
     speed_right = constants.CONST_SPEED
     system_state = constants.STATE_DRIVE_FORWARD
+    dist = [0]*8
     
     
