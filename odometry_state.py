@@ -13,3 +13,7 @@ class Odometry_State(GenericState):
     # y location relative to initial placament at time of recording
     self.theta  = 0
 
+    self.odo = [0]*2
+    #ir values
+    self.nav = [0]*8
+
