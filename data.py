@@ -123,7 +123,7 @@ class DataStore:
                         plt.scatter(float(data['x']), float(data['y']))
                         #print(str(data['x']) + " " + str(data['y']))
                         plt.show()
-                        plt.pause(0.001)
+                        plt.pause(0.0001)
                 
         except KeyboardInterrupt as e:
             print(e)
