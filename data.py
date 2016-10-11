@@ -128,6 +128,25 @@ class DataStore:
         except KeyboardInterrupt as e:
             print(e)
 
+    def static_plot(self):
+        # Plot all existing data after a run.
+        plt.axis([-500, 500, -500, 500])
+        plt.ion()
+        
+        # Loop until stopped plotting the path
+        data = self.get()
+        
+        xs = []
+        ys = []
+        
+        for point in data:
+            xs.append(point['x'])
+            ys.append(point['y'])
+            
+        plt.axis([-500, 500, -500, 500])
+        plt.plot(xs, ys)
+        plt.show()
+
 
     def _pubtest(self):
         print("PubSub test")

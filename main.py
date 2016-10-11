@@ -171,7 +171,7 @@ def main():
             ds.push(odometry_state_1)
 			
 	    #print(delta_odo)
-	    print("ODO #1 : X (" + "{0:.2f}".format(odometry_state_1.x)+ ", Y" + "{0:.2f}".format(odometry_state_1.y) + ", THETA " + "{0:.0f}".format(math.degrees(odometry_state_1.theta)) + ")" )
+	    print("ODO #1 : X (" + "{0:.2f}".format(odometry_state_1.x)+ ", Y" + "{0:.2f}".format(odometry_state_1.y) + ", THETA " + "{0:.0f}".format(math.degrees(odometry_state_1.theta) % 360.0) + ")" )
             
             #print("ODO new " + str(odo[0]) + " , " + str(odo[1]))
             
