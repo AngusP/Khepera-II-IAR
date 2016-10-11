@@ -10,4 +10,6 @@ class Odometry_State:
   theta = 0
   #odometry values
   odo = [0]*2
+  #ir values
+  nav = [0]*8
 
