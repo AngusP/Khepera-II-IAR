@@ -112,7 +112,7 @@ class DataStore:
         try:
             pubsub = self.r.pubsub()
             pubsub.subscribe([self.listname])
-            #plt.axis([-500, 500, -500, 500])
+            plt.axis([-500, 500, -500, 500])
             plt.ion()
             while True:
                 # Loop until stopped plotting the path
