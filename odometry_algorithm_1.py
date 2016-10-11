@@ -40,7 +40,7 @@ class Odometry_Algorithm_1:
 		delta_angle = self.delta_theta(delta_odo)
 
 		
-		new_angle = curr_theta + delta_angle #/ float(2) # thsi is the alternative
+		new_angle = curr_theta + delta_angle / float(2) # this is the alternative
 		
 		#print "CURRENT THETA***********************************************"
 		#print(math.degrees(curr_theta))

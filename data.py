@@ -112,7 +112,7 @@ class DataStore:
         try:
             pubsub = self.r.pubsub()
             pubsub.subscribe([self.listname])
-            #plt.axis([-500, 500, -500, 500])
+            plt.axis([-500, 500, -500, 500])
             plt.ion()
             while True:
                 # Loop until stopped plotting the path
@@ -123,7 +123,7 @@ class DataStore:
                         plt.scatter(float(data['x']), float(data['y']))
                         #print(str(data['x']) + " " + str(data['y']))
                         plt.show()
-                        plt.pause(0.001)
+                        plt.pause(0.0001)
                 
         except KeyboardInterrupt as e:
             print(e)

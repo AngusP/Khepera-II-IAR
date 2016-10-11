@@ -10,7 +10,6 @@
 from __future__ import print_function
 from comms import Comms
 from odometry_algorithm_1 import Odometry_Algorithm_1
-from odometry_algorithm_2 import Odometry_Algorithm_2
 from odometry_state import Odometry_State
 
 
@@ -142,11 +141,9 @@ def main():
         #TODO check whihc one works better
         
         odo1 = Odometry_Algorithm_1()
-        odo2 = Odometry_Algorithm_2()
 
         odometry_state_1 = Odometry_State()
-        odometry_state_2 = Odometry_State()
-        
+
         #drive forward
         system_state = constants.STATE_DRIVE_FORWARD
         comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
@@ -170,13 +167,11 @@ def main():
 	    odo = [delta_odo[0] + odo[0], delta_odo[1] + odo[1]]
 		
 	    odometry_state_1 = odo1.new_state(odometry_state_1, delta_odo)
-	    odometry_state_2 = odo2.new_state(odometry_state_2, delta_odo)
 
             ds.push(odometry_state_1)
 			
 	    #print(delta_odo)
 	    print("ODO #1 : X (" + "{0:.2f}".format(odometry_state_1.x)+ ", Y" + "{0:.2f}".format(odometry_state_1.y) + ", THETA " + "{0:.0f}".format(math.degrees(odometry_state_1.theta)) + ")" )
-	    #print("ODO #2 : X (" + "{0:.2f}".format(odometry_state_2.x)+ ", Y" + "{0:.2f}".format(odometry_state_2.x) + ", THETA " + "{0:.0f}".format(odometry_state_2.theta) + ")" )
             
             #print("ODO new " + str(odo[0]) + " , " + str(odo[1]))
             
