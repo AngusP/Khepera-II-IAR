@@ -278,13 +278,13 @@ def main():
 
                     speed_l = constants.CONST_SPEED
                     speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
-                    comms.drive(constants.CONST_SPEED,-constants.CONST_SPEED)
+                    comms.drive(speed_l, speed_r)
 
                 elif is_away_from_left(dist):
 
                     speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
                     speed_r = constants.CONST_SPEED
-                    comms.drive(-constants.CONST_SPEED,constants.CONST_SPEED)
+                    comms.drive(speed_l, speed_r)
 
                 else: 
 
@@ -309,13 +309,13 @@ def main():
 
                     speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
                     speed_r = constants.CONST_SPEED
-                    comms.drive(-constants.CONST_SPEED,constants.CONST_SPEED)
+                    comms.drive(speed_l, speed_r)
 
                 elif is_away_from_right(dist):
 
                     speed_l = constants.CONST_SPEED
                     speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
-                    comms.drive(constants.CONST_SPEED,-constants.CONST_SPEED)
+                    comms.drive(speed_l, speed_r)
 
                 else: 
 
