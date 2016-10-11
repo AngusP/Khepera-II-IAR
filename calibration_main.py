@@ -151,6 +151,7 @@ def main():
 	    odo = [delta_odo[0] + odo[0], delta_odo[1] + odo[1]]
 		
 	    odometry_state_1 = odo1.new_state(odometry_state_1, delta_odo)
+            ds.push(odometry_state_1)
 			
 	    print("ODO #1 : THETA " + "{0:.0f}".format(math.degrees(odometry_state_1.theta)) + ")" )          
             
