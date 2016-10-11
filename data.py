@@ -35,7 +35,7 @@ class DataStore:
     def push(self, point):
         # We only accept a specific data type:
         if not isinstance(point, GenericState):
-            raise TypeError("Expected instance of GenericState or derivative")
+            raise TypeError("Expected instance of GenericState or derivative in DataStore.push")
 
         # Build hashmap from given state class
         hmap = {
@@ -55,7 +55,7 @@ class DataStore:
         self.r.lpush(self.listname, point.time)
 
         # Also publish onto a channel
-        self.r.publish(self.listanme, point.time)
+        self.r.publish(self.listname, point.time)
         # Decrememt reference counter
         #del point
 
@@ -108,22 +108,22 @@ class DataStore:
             print("Did not purge Redis Store")
 
     def plot(self):
-        print("Plotting Subroutines...")
+        print("Plotting Subroutine...")
         try:
             pubsub = self.r.pubsub()
             pubsub.subscribe([self.listname])
-            plt.axis([0, 10, -1, 1])
+            #plt.axis([-500, 500, -500, 500])
             plt.ion()
             while True:
                 # Loop until stopped plotting the path
                 for item in pubsub.listen():
-                    print(item)
+                    #print(item)
                     if self.r.hexists(item['data'], 'x'):
                         data = self.r.hgetall(item['data'])
                         plt.scatter(float(data['x']), float(data['y']))
-                        print(str(data['x']) + " " + str(data['y']))
+                        #print(str(data['x']) + " " + str(data['y']))
                         plt.show()
-                        plt.pause(0.05)
+                        plt.pause(0.001)
                 
         except KeyboardInterrupt as e:
             print(e)
@@ -164,6 +164,8 @@ if __name__ == "__main__":
         print("-s or --server : Hostname of redis server to use. Default localhost")
         print("-p or --plot   : Live plot of published data")
         sys.exit(2)
+
+    server = "localhost"
 
     # Pre-instantiation options
     for opt, arg in optlist:

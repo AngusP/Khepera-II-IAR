@@ -5,9 +5,6 @@
 #TODO check if the thing works for equal speeds on both wheels (and previous solutions as well)
 
 from odometry_state import Odometry_State
-
-
-from state import GenericState
 import constants
 
 import math
@@ -15,9 +12,9 @@ import math
 import sys
 import time
 
-class Odometry_Algorithm_2(GenericState):
+class Odometry_Algorithm_2:
         def __init__(self):
-                GenericState.__init__(self)
+                pass
 	
 	def velocity_l_r(self, delta_odo):
 	

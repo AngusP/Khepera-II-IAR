@@ -26,6 +26,7 @@ Download [Redis](http://redis.io) and follow it's instructions for compiling, te
 The server instance should be run with the given `redis.conf` file: 
 
     $ redis-server ./redis.conf
+    
                     _._
                _.-``__ ''-._
           _.-``    `.  `_.  ''-._           Redis 3.2.4 (00000000/0) 64 bit

@@ -4,7 +4,6 @@
 
 from odometry_state import Odometry_State
 import constants
-from state import GenericState
 
 
 import math
@@ -12,9 +11,9 @@ import math
 import sys
 import time
 
-class Odometry_Algorithm_1(GenericState):
+class Odometry_Algorithm_1:
         def __init__(self):
-                GenericState.__init__(self)
+                pass
 
 	def delta_s(self, delta_odo):
 		#print "///////////////////////////////////////////////////////////////////////////////////////////////////////"
