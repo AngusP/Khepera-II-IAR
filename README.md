@@ -48,6 +48,19 @@ The server instance should be run with the given `redis.conf` file:
 
 Bear in mind Redis is an in-memory data store, so on-disk saves won't occur that often; Manual saves may be neecded to force data retention.
 
+### Plotting
 
 
+    (VENV)$ python -i ./data.py
+    >>> ds.plot()         # Live plotting
+    >>> ds.static_plot()  # plot existing data
+    >>> ds._purge()       # Clear Redis
+    >>> ds.get()          # return all data
+
+
+Further reference:
+
+    (VENV)$ python ./data.py --help
+    
+Methods in `data.py` also have documentation
 
