@@ -16,6 +16,23 @@ import getopt
 import matplotlib.pyplot as plt
 import math
 import time
+import yaml
+
+
+# Check for ROS (http://ros.org/) support
+try:
+    import rospy
+    ros = True
+    from std_msgs.msg import String
+    from geometry_msgs.msg import PoseStamped
+    import tf
+except Exception as e:
+    print(e)
+    print("Continuing without ROS integration")
+    ros = False
+    pass
+
+
 
 class DataStore:
 
@@ -23,6 +40,7 @@ class DataStore:
         self.r = redis.StrictRedis(host=host, port=port, db=db)
         self.wt = whiptail.Whiptail()
         self.listname = "statestream"
+        self.topic = self.listname
 
         self.r.ping()
 
@@ -168,6 +186,50 @@ class DataStore:
             self.r.delete('testh')
             print(e)
 
+
+    def rospipe(self):
+        print("Piping Redis ---> ROS")
+        # Pipe data out of Redis into ROS
+
+        if not ros:
+            raise ImportError("ROS (rospy) Not supported/found")
+
+        pub = rospy.Publisher(self.topic, PoseStamped, queue_size=10)
+        rospy.init_node('talker', anonymous=True)
+
+        pubsub = self.r.pubsub()
+        pubsub.subscribe([self.listname])
+
+        # Loop until stopped plotting the path
+        for item in pubsub.listen():
+
+            if rospy.is_shutdown():
+                print("\nStopping rospipe...")
+                break
+            
+            if self.r.hexists(item['data'], 'x'):
+                # Pull from redis:
+                data = self.r.hgetall(item['data'])
+                # Generate new pose
+                pose = PoseStamped()
+                quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
+                
+                pose.pose.orientation.x = quat[0]
+                pose.pose.orientation.y = quat[1]
+                pose.pose.orientation.z = quat[2]
+                pose.pose.orientation.w = quat[3]
+                
+                pose.pose.position.x = float(data['x'])
+                pose.pose.position.y = float(data['y'])
+                pose.pose.position.z = 0.0
+                
+                pose.header.frame_id = "map"
+                pose.header.stamp = rospy.Time.now()
+                
+                # rospy.loginfo(pose)
+                # Publish to ROS topi
+                pub.publish(pose)
+                    
 
 # Only run if we're invoked directly:
 if __name__ == "__main__":
