@@ -45,8 +45,8 @@ def main():
 
 
         # varaibles to not resend speeds during wall following
-        speed_l = constants.CONST_SPEED
-        speed_r = constants.CONST_SPEED
+        speed_l = 0
+        speed_r = 0
     
         # reset odometry for this robot run 
         comms.reset_odo()
