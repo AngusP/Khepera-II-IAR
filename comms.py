@@ -11,6 +11,9 @@ import sys
 from serial.tools import list_ports as list_ports
 import time
 
+class CommsReadException(Exception):
+	pass
+
 class Comms:
 
     port = serial.Serial()
@@ -79,7 +82,7 @@ class Comms:
         odo = self._parse_sensor(self.port.readline()) 
 
         if len(odo) != 2:
-            return [0,0]
+            raise CommsReadException("Odometry wrong length")
 
         return odo
 
@@ -94,7 +97,7 @@ class Comms:
         dist = self._parse_sensor(self.port.readline())
 
 	if len(dist) is not 8:
-	    dist = [0]*8
+	    raise CommsReadException("IR wrong length")
 	
         if sensor_no is None:
             return dist
@@ -105,8 +108,11 @@ class Comms:
     # Return IR Ambient Light Measurements
     def get_ambient(self, sensor_no=None):
         self.port.write("O\n")
-        amb = self._parse_sensor(self.port.readline()) 
-        return amb
+        amb = self._parse_sensor(self.port.readline())
+	
+	if len(amb) is not 8:
+	    raise CommsReadException("IR wrong length")
+	return amb
 
     # control status LEDs on the robot
     def led(self, led_num=None, state=1):

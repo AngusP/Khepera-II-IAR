@@ -31,29 +31,25 @@ wt = whiptail.Whiptail(title=namebadge)
 def is_stuck(dist):
     #check if we are scraping on the sides
     # multiple of 1.2 as 1.0 is handled by following
-    stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST * 1.2 or dist[0] > constants.CONST_WALL_DIST*1.5
-    if stuck_cone_left:
-	print("STUCK LEFT")
+    stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST * 1.2
     # multiple of 1.2 as 1.0 is handled by following
-    stuck_cone_right = dist[4] > constants.CONST_WALL_DIST * 1.2  or dist[5] > constants.CONST_WALL_DIST*1.5
-
+    stuck_cone_right = dist[4] > constants.CONST_WALL_DIST * 1.2
     #check if we are about to be stuck in the front
-    stuck_cone_front = dist[2] > constants.CONST_WALL_DIST*0.6 or dist[3]  > constants.CONST_WALL_DIST*0.6
-    if stuck_cone_front:
-	print("STUCK FRONT")   
+    stuck_cone_front = dist[2] > constants.CONST_WALL_DIST*0.7 or dist[3]  > constants.CONST_WALL_DIST*0.7
+
     return stuck_cone_left or stuck_cone_right or stuck_cone_front 
 
 
 # check if we "see" the left wall and it is closer than the one on the right
 def should_follow_left_wall(dist):
-    a = (too_close_to_left(dist) or is_away_from_left(dist)) and not is_left_wall_lost(dist)
-    return a #dist[0] > constants.CONST_WALL_DIST and dist[0] > dist[5]
+        
+    return dist[0] > constants.CONST_WALL_DIST and dist[0] > dist[5]
         
 
 # check if we "see" the right wall and it is closer than the one on the left
 def should_follow_right_wall(dist):
-    a = (too_close_to_right(dist) or is_away_from_right(dist)) and not is_right_wall_lost(dist)
-    return a #dist[5] > constants.CONST_WALL_DIST and dist[5] > dist[0]
+
+    return dist[5] > constants.CONST_WALL_DIST and dist[5] > dist[0]
 
 
 # check if we are over the distance threshold w.r.t. object on the left
@@ -116,8 +112,8 @@ def is_being_unstuck(state):
 # check if it is more beneficial to unstuck by turning to the right
 def should_unstuck_right(dist, wall_is_followed_left):
 
-    no_preference_decision = is_more_space_on_right(dist)
-    return no_preference_decision #or wall_is_followed_left 
+    no_preference_decision = (not wall_is_followed_left) and is_more_space_on_right(dist)
+    return wall_is_followed_left or no_preference_decision
 
 # check if robot is "bored"
 def bored(wall_boredom_counter):
@@ -142,6 +138,7 @@ def main():
         boredom_turn_on_spot_counter = 0
 
         #set odometry state to 0
+        #TODO check whihc one works better
         
         odo1 = Odometry_Algorithm_1()
 
@@ -262,7 +259,7 @@ def main():
             ##WALL FOLLOWING LEFT
             #####################
 
-            elif (should_follow_left_wall(dist)):
+            elif (wall_is_followed_left or should_follow_left_wall(dist)) and not (is_left_wall_lost(dist)):
                 
                 print("following left")
 
@@ -272,25 +269,19 @@ def main():
                 system_state = constants.STATE_LEFT_FOLLOW
 
                 # keep the distance within the threshold range
-                if too_close_to_left(dist):
+                if too_close_to_left(dist) and not (speed_r == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_l == constants.CONST_SPEED):
 
-                    #speed_l = constants.CONST_SPEED
-                    #speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
-
-
-		    speed_l = constants.CONST_SPEED
-		    speed_r = -speed_l
+                    speed_l = constants.CONST_SPEED
+                    speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
                     comms.drive(speed_l, speed_r)
 
-                elif is_away_from_left(dist):
+                elif is_away_from_left(dist) and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
 
-                    #speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
-                    #speed_r = constants.CONST_SPEED
-		    speed_r = constants.CONST_SPEED
-		    speed_l = -speed_l
+                    speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
+                    speed_r = constants.CONST_SPEED
                     comms.drive(speed_l, speed_r)
 
-                else: 
+                elif not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED): 
 
                     speed_l = constants.CONST_SPEED
                     speed_r = constants.CONST_SPEED
@@ -299,7 +290,7 @@ def main():
             #####################
             ##WALL FOLLOWING RIGHT
             #####################                       
-            elif (should_follow_right_wall(dist)):
+            elif (wall_is_followed_right or should_follow_right_wall(dist)) and not (is_right_wall_lost(dist)):
                 
                 print("following right")
 
@@ -309,19 +300,19 @@ def main():
                 system_state = constants.STATE_RIGHT_FOLLOW
 
                 # keep the distance within the threshold range 
-                if too_close_to_right(dist):
+                if too_close_to_right(dist) and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
 
                     speed_l = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
                     speed_r = constants.CONST_SPEED
                     comms.drive(speed_l, speed_r)
 
-                elif is_away_from_right(dist):
+                elif is_away_from_right(dist) and not (speed_l == constants.CONST_SPEED * constants.CONST_TURN_PROPORTION and speed_r == constants.CONST_SPEED):
 
                     speed_l = constants.CONST_SPEED
                     speed_r = constants.CONST_SPEED * constants.CONST_TURN_PROPORTION
                     comms.drive(speed_l, speed_r)
 
-                else: 
+                elif not (speed_l == constants.CONST_SPEED and speed_r == constants.CONST_SPEED): 
 
                     speed_l = constants.CONST_SPEED
                     speed_r = constants.CONST_SPEED
@@ -428,5 +419,3 @@ else:
     # invoke the class with defaults
     comms = Comms()
     ds = DataStore()
-
-
