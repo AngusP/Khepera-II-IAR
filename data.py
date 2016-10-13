@@ -24,7 +24,8 @@ try:
     import rospy
     ros = True
     from std_msgs.msg import String
-    from geometry_msgs.msg import PoseStamped
+    from geometry_msgs.msg import PoseWithCovariance, PoseStamped
+    from nav_msgs.msg import Odometry
     import tf
 except Exception as e:
     print(e)
@@ -40,7 +41,8 @@ class DataStore:
         self.r = redis.StrictRedis(host=host, port=port, db=db)
         self.wt = whiptail.Whiptail()
         self.listname = "statestream"
-        self.topic = self.listname
+        self.posetopic = self.listname + "pose"
+        self.odomtopic = self.listname + "odom"
 
         self.r.ping()
 
@@ -194,14 +196,15 @@ class DataStore:
         if not ros:
             raise ImportError("ROS (rospy) Not supported/found")
 
-        pub = rospy.Publisher(self.topic, PoseStamped, queue_size=10)
+        pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=10)
+        odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=10)
         rospy.init_node('talker', anonymous=True)
 
-        pubsub = self.r.pubsub()
-        pubsub.subscribe([self.listname])
+        sub = self.r.pubsub()
+        sub.subscribe([self.listname])
 
         # Loop until stopped plotting the path
-        for item in pubsub.listen():
+        for item in sub.listen():
 
             if rospy.is_shutdown():
                 print("\nStopping rospipe...")
@@ -212,8 +215,8 @@ class DataStore:
                 data = self.r.hgetall(item['data'])
                 # Generate new pose
                 pose = PoseStamped()
-                quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
                 
+                quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
                 pose.pose.orientation.x = quat[0]
                 pose.pose.orientation.y = quat[1]
                 pose.pose.orientation.z = quat[2]
@@ -225,10 +228,22 @@ class DataStore:
                 
                 pose.header.frame_id = "map"
                 pose.header.stamp = rospy.Time.now()
+
+                # Generate odometry data
+                odom = Odometry()
+                opose = PoseWithCovariance()
+                
+                odom.header.frame_id = "map"
+                odom.header.stamp = rospy.Time.now()
+                opose.pose.position.x = float(data['x'])
+                opose.pose.position.y = float(data['y'])
+                opose.pose.position.z = 0.0
+                odom.pose = opose
                 
                 # rospy.loginfo(pose)
-                # Publish to ROS topi
-                pub.publish(pose)
+                # Publish to ROS topic
+                pose_pub.publish(pose)
+                odom_pub.publish(odom)
                     
 
 # Only run if we're invoked directly:
