@@ -56,9 +56,9 @@ class DataStore:
         return self.r.keys()
 
     
-    def push(self, pose, ):
+    def push(self, pose, ranges=None):
         # We only accept a specific data type:
-        if not isinstance(point, GenericState):
+        if not isinstance(pose, GenericState):
             raise TypeError("Expected instance of GenericState or derivative in DataStore.push")
 
         # Build hashmap from given state class
@@ -68,6 +68,18 @@ class DataStore:
             'y'    : pose.y,
             'theta': pose.theta
         }
+
+        if ranges is not None and len(ranges) == 8:
+            hmap.update({
+                'r0' : float(ranges[0]),
+                'r1' : float(ranges[1]),
+                'r2' : float(ranges[2]),
+                'r3' : float(ranges[3]),
+                'r4' : float(ranges[4]),
+                'r5' : float(ranges[5]),
+                'r6' : float(ranges[6]),
+                'r7' : float(ranges[7])
+                })
         
         # For each part of the _python_ dict we
         # create a Redis hashmap using the time as index
