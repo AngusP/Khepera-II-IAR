@@ -1,0 +1,142 @@
+
+%     %%%%%%%%%%%%%%%
+%
+%     P A C K A G E S
+%
+%     %%%%%%%%%%%%%%%
+
+\documentclass[11pt, a4paper]{article}
+\usepackage{fontspec}
+\usepackage{caption}
+
+% DOCUMENT LAYOUT
+\usepackage{geometry}
+\geometry{a4paper, textwidth=42em, textheight=70em, marginparsep=0.5em, marginparwidth=3.5em}
+\setlength\parindent{0em}
+\setlength\parskip{0.75em}
+\captionsetup{width=0.8\textwidth}
+
+% FONTS
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{xunicode}
+\usepackage{xltxtra}
+\defaultfontfeatures{Mapping=tex-text}
+%\setromanfont [Ligatures={Common}, Numbers={OldStyle}, Variant=01]{Linux Libertine O}
+%\setmonofont[Scale=0.8]{Monaco}
+%%% modified by Karol Kozioł for ShareLaTeX use
+\setmainfont[
+  Ligatures={Common}, Numbers={OldStyle}, Variant=01,
+  BoldFont=LinLibertine_RB.otf,
+  ItalicFont=LinLibertine_RI.otf,
+  BoldItalicFont=LinLibertine_RBI.otf
+]{LinLibertine_R.otf}
+\setmonofont[Scale=0.8]{DejaVuSansMono.ttf}
+
+% HEADINGS
+\usepackage{sectsty}
+\usepackage[normalem]{ulem}
+\sectionfont{\mdseries\upshape\Large}
+\subsectionfont{\mdseries\scshape\normalsize}
+\subsubsectionfont{\mdseries\upshape\large}
+
+\renewenvironment{abstract}{%
+{\mdseries\scshape\Large\abstractname}
+\vspace{1em}\\
+}{\par\noindent}
+
+% LISTINGS
+\usepackage{listings}
+\usepackage{color}
+\usepackage{appendix}
+
+\usepackage{color}
+\definecolor{codered}{rgb}{0.61,0.21,0.18}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{1.0,1.0,1.0}
+\lstset{
+  backgroundcolor=\color{backcolour},   
+  commentstyle=\color{codegray},
+  keywordstyle=\color{codered},
+  numberstyle=\tiny\color{codegreen},
+  stringstyle=\color{codepurple},
+  basicstyle=\footnotesize\ttfamily,        % the size of the fonts that are used for the code
+  breaklines=true,                          % sets automatic line breaking
+  keepspaces=true,                          % keeps spaces in text, useful for keeping indentation of code
+  showspaces=false,                         % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,                   % underline spaces within strings only
+  showtabs=false,                           % show tabs within strings adding particular underscores
+  stepnumber=2,                             % the step between two line-numbers. If it's 1, each line will be numbered
+  tabsize=2, 	                            % sets default tabsize to 2 spaces
+  title=\lstname                            % show the filename of files included with \lstinputlisting
+}
+
+
+%     %%%%%%%%%%%%%%%
+%
+%     D O C U M E N T
+%
+%     %%%%%%%%%%%%%%%
+
+
+\begin{document}
+\title{IAR Task 2 Report}
+\author{Angus Pearson -- s1311631\\ Jevgenij Zubovskij -- s1346981}
+\date{\today}
+\maketitle
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+\begin{abstract}
+  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus eu nisi ligula.
+  Vivamus ac ultricies dui, in maximus sapien. Etiam mattis scelerisque neque, eu
+  hendrerit mi ultricies nec. Phasellus justo felis, ullamcorper ac nulla et,
+  aliquet egestas nunc. Donec vestibulum mi ac venenatis aliquam. Cras ante dui,
+  porttitor nec lobortis in, lobortis nec massa. Sed et tortor felis. Etiam
+  imperdiet mauris quis ante commodo maximus.
+
+  Donec sodales pulvinar urna sed consectetur. Vivamus porttitor tortor non diam
+  tincidunt semper et ac quam. Aenean in tempor risus. Donec pretium tellus nec
+  lobortis lobortis. Fusce nulla ligula, varius placerat justo vitae, pulvinar euismod.
+\end{abstract}
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+\section{Introduction}
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+\newpage
+\section{Results}
+
+
+\section{Discussion \& Possible Improvements}
+
+
+\section{Physical Limitations and Possible Improvements}
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+\begin{appendices}
+\section*{Appendix}
+\subsection{Code Listings}
+\lstinputlisting[language=python]{../../main.py}
+\lstinputlisting[language=python]{../../data.py}
+\lstinputlisting[language=python]{../../comms.py}
+\lstinputlisting[language=python]{../../constants.py}
+\end{appendices}
+
+
+\begin{thebibliography}{1}
+
+%\bibitem{principlesrobot}
+%rinciples of Robot Motion: Theory, Algorithms, and Implementation\\
+%\textit{Howie Choset}
+
+\end{thebibliography}
+\end{document}

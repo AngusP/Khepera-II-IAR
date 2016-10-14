@@ -26,8 +26,9 @@ try:
     from std_msgs.msg import String
     from geometry_msgs.msg import PoseWithCovariance, PoseStamped
     from nav_msgs.msg import Odometry
+    from sensor_msgs.msg import Range
     import tf
-except Exception as e:
+except ImportError as e:
     print(e)
     print("Continuing without ROS integration")
     ros = False
@@ -40,7 +41,9 @@ class DataStore:
     def __init__(self, host='localhost', db=0, port=6379):
         self.r = redis.StrictRedis(host=host, port=port, db=db)
         self.wt = whiptail.Whiptail()
+        # Redis List and Channel name
         self.listname = "statestream"
+        # ROS Topics
         self.posetopic = self.listname + "pose"
         self.odomtopic = self.listname + "odom"
 
@@ -52,33 +55,35 @@ class DataStore:
     def keys(self):
         return self.r.keys()
 
-    def push(self, point):
+    
+    def push(self, pose, ):
         # We only accept a specific data type:
         if not isinstance(point, GenericState):
             raise TypeError("Expected instance of GenericState or derivative in DataStore.push")
 
         # Build hashmap from given state class
         hmap = {
-            't'    : point.time,
-            'x'    : point.x,
-            'y'    : point.y,
-            'theta': point.theta
+            't'    : pose.time,
+            'x'    : pose.x,
+            'y'    : pose.y,
+            'theta': pose.theta
         }
         
         # For each part of the _python_ dict we
         # create a Redis hashmap using the time as index
         for key, value in hmap.iteritems():
-            self.r.hset(point.time, key, value)
+            self.r.hset(pose.time, key, value)
 
         # We push a reference to this new hashmap onto 
         # the statestream list
-        self.r.lpush(self.listname, point.time)
+        self.r.lpush(self.listname, pose.time)
 
         # Also publish onto a channel
-        self.r.publish(self.listname, point.time)
+        self.r.publish(self.listname, pose.time)
         # Decrememt reference counter
         #del point
 
+        
     def get(self, start=0, stop=-1):
         # Returns a list in-order over the range
         keys = self.r.lrange(self.listname, int(start), int(stop))
@@ -90,6 +95,7 @@ class DataStore:
 
         return ret
 
+    
     def get_dict(self, start=0, stop=-1):
         # Return a dictionary instead of a list
         lst = self.get(start, stop)
@@ -100,10 +106,12 @@ class DataStore:
             
         return ret
 
+    
     def save(self):
         # Copy DB to disk
         return self.r.save()
 
+    
     def delete_before(self, time):
         # Remove data with a key from earlier than specified
 
@@ -119,15 +127,10 @@ class DataStore:
                 # delete the key (hashmap)
                 self.r.delete(key)
 
-    def _purge(self):
-        if self.wt.confirm("Really destroy all data in Redis store?\n\nThis is not undoable!\n(run FLUSHDB)",
-                           default='no'):
-            self.r.flushdb()
-            print("!!! Flushed Redis Data Store !!!")
-        else:
-            print("Did not purge Redis Store")
-
     def plot(self):
+        self.static_plot()
+
+    def live_plot(self):
         print("Plotting Subroutine...")
         try:
             pubsub = self.r.pubsub()
@@ -148,12 +151,9 @@ class DataStore:
         except KeyboardInterrupt as e:
             print(e)
 
+            
     def static_plot(self):
-        # Plot all existing data after a run.
-        plt.axis([-500, 500, -500, 500])
-        plt.ion()
-        
-        # Loop until stopped plotting the path
+        # Plot all existing data after a run
         data = self.get()
         
         xs = []
@@ -163,30 +163,10 @@ class DataStore:
             xs.append(point['x'])
             ys.append(point['y'])
             
-        plt.axis([-500, 500, -500, 500])
+        plt.axis([-600, 600, -600, 600])
+        plt.ion()
         plt.plot(xs, ys)
         plt.show()
-
-
-    def _pubtest(self):
-        print("PubSub test")
-        # Publish cosine to the channel
-        data = {
-            'x' : 0.0,
-            'y' : 0.0
-        }
-
-        try:
-            while True:
-                data['x'] = data['x'] + 0.01
-                data['y'] = math.cos(data['x'])
-                self.r.hset('testh', 'x', data['x'])
-                self.r.hset('testh', 'y', data['y'])
-                self.r.publish(self.listname, 'testh')
-                time.sleep(0.05)
-        except KeyboardInterrupt as e:
-            self.r.delete('testh')
-            print(e)
 
 
     def rospipe(self):
@@ -238,27 +218,41 @@ class DataStore:
                 opose.pose.position.x = float(data['x'])
                 opose.pose.position.y = float(data['y'])
                 opose.pose.position.z = 0.0
+                opose.pose.orientation.x = quat[0]
+                opose.pose.orientation.y = quat[1]
+                opose.pose.orientation.z = quat[2]
+                opose.pose.orientation.w = quat[3]
                 odom.pose = opose
                 
                 # rospy.loginfo(pose)
                 # Publish to ROS topic
                 pose_pub.publish(pose)
                 odom_pub.publish(odom)
-                    
 
+            
+    def _purge(self):
+        # Clear out all (literally all) data held in Redis
+        if self.wt.confirm("Really destroy all data in Redis store?\n\nThis is not undoable!\n(run FLUSHDB)",
+                           default='no'):
+            self.r.flushdb()
+            print("!!! Flushed Redis Data Store !!!")
+        else:
+            print("Did not purge Redis Store")
+
+            
 # Only run if we're invoked directly:
 if __name__ == "__main__":
 
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 'dts:p', ['delete','test','server=', 'plot'])
+        optlist, args = getopt.getopt(args, 'ds:pr', ['delete','server=', 'plot', 'rospipe'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
-        print("-d or --delete : Destroy all data held in Redis")
-        print("-t or --test   : Publish test data to a plotter")
-        print("-s or --server : Hostname of redis server to use. Default localhost")
-        print("-p or --plot   : Live plot of published data")
+        print("-d or --delete   : Destroy all data held in Redis")
+        print("-s or --server   : Hostname of redis server to use. Default localhost")
+        print("-p or --plot     : Live plot of published data")
+        print("-r or --rospipe  : Pipe redis messages into ROS topics")
         sys.exit(2)
 
     server = "localhost"
@@ -275,10 +269,10 @@ if __name__ == "__main__":
     for opt, arg in optlist:
         if opt in ('-d', '--delete'):
             ds._purge()
-        
-        elif opt in ('-t', '--test'):
-            ds._pubtest()
 
         elif opt in ('-p', '--plot'):
             ds.plot()
+
+        elif opt in ('-r', '--rospipe'):
+            ds.rospipe()
 
