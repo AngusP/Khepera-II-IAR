@@ -7,9 +7,8 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
-        - /Odometry1
         - /Odometry1/Status1
-        - /Pose1
+        - /PointCloud1
       Splitter Ratio: 0.5
     Tree Height: 775
   - Class: rviz/Selection
@@ -24,13 +23,14 @@ Panels:
   - Class: rviz/Views
     Expanded:
       - /Current View1
+      - /XYOrbit1
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz/Time
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud
 Visualization Manager:
   Class: ""
   Displays:
@@ -49,7 +49,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Plane: XY
-      Plane Cell Count: 10
+      Plane Cell Count: 50
       Reference Frame: <Fixed Frame>
       Value: true
     - Angle Tolerance: 0.1
@@ -57,7 +57,7 @@ Visualization Manager:
       Color: 0; 102; 255
       Enabled: true
       Keep: 400
-      Length: 8
+      Length: 10
       Name: Odometry
       Position Tolerance: 0.1
       Topic: /statestreamodom
@@ -76,6 +76,36 @@ Visualization Manager:
       Shape: Arrow
       Topic: /statestreampose
       Unreliable: false
+      Value: true
+    - Alpha: 0.5
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 0
+        Min Value: 0
+        Value: true
+      Axis: Z
+      Channel Name: intensities
+      Class: rviz/PointCloud
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 20
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 0; 0
+      Max Intensity: 232
+      Min Color: 0; 255; 17
+      Min Intensity: 48
+      Name: PointCloud
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 6
+      Size (m): 3
+      Style: Boxes
+      Topic: /statestreamdist
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
       Value: true
   Enabled: true
   Global Options:
@@ -101,7 +131,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 82.6473
+      Distance: 518.077
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -113,11 +143,28 @@ Visualization Manager:
         Z: 0
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.460398
+      Pitch: 0.659795
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz)
-      Yaw: 5.48858
-    Saved: ~
+      Yaw: 2.00358
+    Saved:
+      - Class: rviz/XYOrbit
+        Distance: 518.077
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.06
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Focal Point:
+          X: 0
+          Y: 0
+          Z: 0
+        Name: XYOrbit
+        Near Clip Distance: 0.01
+        Pitch: 0.659795
+        Target Frame: <Fixed Frame>
+        Value: XYOrbit (rviz)
+        Yaw: 2.00358
 Window Geometry:
   Displays:
     collapsed: false

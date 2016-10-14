@@ -26,7 +26,7 @@ try:
     from std_msgs.msg import String
     from geometry_msgs.msg import PoseWithCovariance, PoseStamped, Point32
     from nav_msgs.msg import Odometry
-    from sensor_msgs.msg import PointCloud
+    from sensor_msgs.msg import PointCloud, ChannelFloat32
     import tf
 except ImportError as e:
     print(e)
@@ -321,11 +321,13 @@ class ROSGenerator:
 
         pre_points = zip(keys, sensor_angles)
         points = []
+        intensities = []
 
         # Basic trig, converts ranges to points relative to robot
         for point in pre_points:
             reading = float(data[point[0]])
-
+            intensities.append(reading)
+            
             pt = Point32()
             pt.x = reading * math.cos(point[1]) + robot_pos[0]
             pt.y = reading * math.sin(point[1]) + robot_pos[1]
@@ -334,6 +336,20 @@ class ROSGenerator:
             points.append(pt)
 
         dist.points = points
+        intensities_chan = ChannelFloat32()
+        intensity_chan = ChannelFloat32()
+
+        intensities_chan.name = "intensities"
+        intensities_chan.values = intensities
+        intensity_chan.name = "intensity"
+        intensity_chan.values = [
+            100.0, # min intensity
+            1000.0, # max intensity
+            0.0,   # min color
+            1.0    # max color
+        ]
+
+        dist.channels = [intensities_chan, intensity_chan]
         
         return dist
         
