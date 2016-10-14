@@ -18,6 +18,8 @@ import math
 import time
 import yaml
 
+import constants
+
 
 # Check for ROS (http://ros.org/) support
 try:
@@ -199,6 +201,8 @@ class DataStore:
         if not ros:
             raise ImportError("ROS (rospy) Not supported/found")
 
+        rg = ROSGenerator()
+        
         pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=10)
         odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=10)
         dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=10)
@@ -220,7 +224,6 @@ class DataStore:
 
             # Pull from redis:
             data = self.r.hgetall(item['data'])
-            rg = ROSGenerator()
             
             # Generate new pose
             pose = rg.gen_pose(data)
@@ -293,6 +296,7 @@ class ROSGenerator:
 
         return odom
 
+
     def gen_dist(self, data):
         dist = PointCloud()
         
@@ -300,26 +304,39 @@ class ROSGenerator:
         dist.header.stamp = rospy.Time.now()
 
         robot_pos = (float(data['x']), float(data['y']))
+        robot_ang = float(data['theta'])
 
         # TODO : Calibrate
         
         # Angles of the sensor from the X axis (in rad)
         sensor_angles = [
-            1.5 * math.pi,  # Left perpendicular
-            1.75 * math.pi, # Left angled
+            0.5 * math.pi,  # Left perpendicular
+            0.25 * math.pi, # Left angled
             0.0,            # Left forward
             0.0,            # Right forward
-            0.25 * math.pi, # Right angled
-            0.5 * math.pi,  # Right perpendicular
+            1.75 * math.pi, # Right angled
+            1.5 * math.pi,  # Right perpendicular
             math.pi,        # Back right
             math.pi         # Back left
+        ]
+
+        # Physical (x,y) offset of the sensor from the center of the bot in mm
+        sensor_offsets = [
+            (-25.0, 15.0),  # Left perpendicular
+            (-20.0, 20.0),  # Left angled
+            (-8.0,  27.0),  # Left forward
+            (8.0,   27.0),  # Right forward
+            (20.0,  20.0),  # Right angled
+            (25.0,  15.0),  # Right perpendicular
+            (-10.0,  -26.0),  # Back right
+            (10.0, -26.0),  # Back left
         ]
 
         # TODO : Convert distance reading to an actual range
 
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
 
-        pre_points = zip(keys, sensor_angles)
+        pre_points = zip(keys, sensor_angles, sensor_offsets)
         points = []
         intensities = []
 
@@ -329,8 +346,9 @@ class ROSGenerator:
             intensities.append(reading)
             
             pt = Point32()
-            pt.x = reading * math.cos(point[1]) + robot_pos[0]
-            pt.y = reading * math.sin(point[1]) + robot_pos[1]
+            #                         Offset from center of body v
+            pt.x = reading * math.cos(point[1] + robot_ang) + robot_pos[0] + point[2][0]
+            pt.y = reading * math.sin(point[1] + robot_ang) + robot_pos[1] + point[2][0]
             pt.z = 0.0
 
             points.append(pt)

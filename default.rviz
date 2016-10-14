@@ -7,7 +7,9 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
+        - /Odometry1
         - /Odometry1/Status1
+        - /Pose1
         - /PointCloud1
       Splitter Ratio: 0.5
     Tree Height: 775
@@ -23,7 +25,6 @@ Panels:
   - Class: rviz/Views
     Expanded:
       - /Current View1
-      - /XYOrbit1
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz/Time
@@ -56,7 +57,7 @@ Visualization Manager:
       Class: rviz/Odometry
       Color: 0; 102; 255
       Enabled: true
-      Keep: 400
+      Keep: 200
       Length: 10
       Name: Odometry
       Position Tolerance: 0.1
@@ -88,20 +89,20 @@ Visualization Manager:
       Class: rviz/PointCloud
       Color: 255; 255; 255
       Color Transformer: Intensity
-      Decay Time: 20
+      Decay Time: 10
       Enabled: true
-      Invert Rainbow: false
+      Invert Rainbow: true
       Max Color: 255; 0; 0
-      Max Intensity: 232
+      Max Intensity: 272
       Min Color: 0; 255; 17
-      Min Intensity: 48
+      Min Intensity: 52
       Name: PointCloud
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 6
-      Size (m): 3
-      Style: Boxes
+      Size (Pixels): 12
+      Size (m): 12
+      Style: Spheres
       Topic: /statestreamdist
       Unreliable: false
       Use Fixed Frame: true
@@ -131,7 +132,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 518.077
+      Distance: 737.75
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -143,28 +144,11 @@ Visualization Manager:
         Z: 0
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.659795
+      Pitch: 0.869796
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz)
-      Yaw: 2.00358
-    Saved:
-      - Class: rviz/XYOrbit
-        Distance: 518.077
-        Enable Stereo Rendering:
-          Stereo Eye Separation: 0.06
-          Stereo Focal Distance: 1
-          Swap Stereo Eyes: false
-          Value: false
-        Focal Point:
-          X: 0
-          Y: 0
-          Z: 0
-        Name: XYOrbit
-        Near Clip Distance: 0.01
-        Pitch: 0.659795
-        Target Frame: <Fixed Frame>
-        Value: XYOrbit (rviz)
-        Yaw: 2.00358
+      Yaw: 2.1354
+    Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
