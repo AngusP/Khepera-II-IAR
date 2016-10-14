@@ -26,13 +26,18 @@ try:
     from std_msgs.msg import String
     from geometry_msgs.msg import PoseWithCovariance, PoseStamped
     from nav_msgs.msg import Odometry
-    from sensor_msgs.msg import Range
+    from sensor_msgs.msg import PointCloud
     import tf
 except ImportError as e:
     print(e)
     print("Continuing without ROS integration")
     ros = False
     pass
+
+
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
@@ -46,6 +51,7 @@ class DataStore:
         # ROS Topics
         self.posetopic = self.listname + "pose"
         self.odomtopic = self.listname + "odom"
+        self.disttopic = self.listname + "dist"
 
         self.r.ping()
 
@@ -195,6 +201,8 @@ class DataStore:
 
         pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=10)
         odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=10)
+        dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=10)
+        
         rospy.init_node('talker', anonymous=True)
 
         sub = self.r.pubsub()
@@ -207,44 +215,26 @@ class DataStore:
                 print("\nStopping rospipe...")
                 break
             
-            if self.r.hexists(item['data'], 'x'):
-                # Pull from redis:
-                data = self.r.hgetall(item['data'])
-                # Generate new pose
-                pose = PoseStamped()
-                
-                quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
-                pose.pose.orientation.x = quat[0]
-                pose.pose.orientation.y = quat[1]
-                pose.pose.orientation.z = quat[2]
-                pose.pose.orientation.w = quat[3]
-                
-                pose.pose.position.x = float(data['x'])
-                pose.pose.position.y = float(data['y'])
-                pose.pose.position.z = 0.0
-                
-                pose.header.frame_id = "map"
-                pose.header.stamp = rospy.Time.now()
+            if not self.r.hexists(item['data'], 'x'):
+                continue
 
-                # Generate odometry data
-                odom = Odometry()
-                opose = PoseWithCovariance()
-                
-                odom.header.frame_id = "map"
-                odom.header.stamp = rospy.Time.now()
-                opose.pose.position.x = float(data['x'])
-                opose.pose.position.y = float(data['y'])
-                opose.pose.position.z = 0.0
-                opose.pose.orientation.x = quat[0]
-                opose.pose.orientation.y = quat[1]
-                opose.pose.orientation.z = quat[2]
-                opose.pose.orientation.w = quat[3]
-                odom.pose = opose
-                
-                # rospy.loginfo(pose)
-                # Publish to ROS topic
-                pose_pub.publish(pose)
-                odom_pub.publish(odom)
+            # Pull from redis:
+            data = self.r.hgetall(item['data'])
+            rg = ROSGenerator()
+            
+            # Generate new pose
+            pose = rg.gen_pose(data)
+            # Generate odometry data
+            odom = rg.gen_odom(data)
+            # Generate pointcloud of distances
+            dist = rg.gen_dist(data)
+            
+            # Publish to ROS topics
+            pose_pub.publish(pose)
+            odom_pub.publish(odom)
+            dist_pub.publish(dist)
+
+            rospy.loginfo(" Redis --> ROS #" + str(data['t']))
 
             
     def _purge(self):
@@ -256,7 +246,91 @@ class DataStore:
         else:
             print("Did not purge Redis Store")
 
-            
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+# Assistant class, generates ROS Classes from data hashmap
+class ROSGenerator:
+
+    def gen_pose(self, data):
+        pose = PoseStamped()
+        
+        quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
+        pose.pose.orientation.x = quat[0]
+        pose.pose.orientation.y = quat[1]
+        pose.pose.orientation.z = quat[2]
+        pose.pose.orientation.w = quat[3]
+        
+        pose.pose.position.x = float(data['x'])
+        pose.pose.position.y = float(data['y'])
+        pose.pose.position.z = 0.0
+        
+        pose.header.frame_id = "map"
+        pose.header.stamp = rospy.Time.now()
+
+        return pose
+
+
+    def gen_odom(self, data):
+        odom = Odometry()
+        opose = PoseWithCovariance()
+
+        quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
+        
+        odom.header.frame_id = "map"
+        odom.header.stamp = rospy.Time.now()
+        opose.pose.position.x = float(data['x'])
+        opose.pose.position.y = float(data['y'])
+        opose.pose.position.z = 0.0
+        opose.pose.orientation.x = quat[0]
+        opose.pose.orientation.y = quat[1]
+        opose.pose.orientation.z = quat[2]
+        opose.pose.orientation.w = quat[3]
+        odom.pose = opose
+
+        return odom
+
+    def gen_dist(self, data):
+        dist = PointCloud()
+        
+        dist.header.frame_id = "map"
+        dist.header.stamp = rospy.Time.now()
+
+        robot_pos = (float(data['x']), float(data['y']))
+
+        # TODO : Calibrate
+        
+        # Angles of the sensor from the X axis (in rad)
+        sensor_angles = [
+            1.5 * math.pi,  # Left perpendicular
+            1.75 * math.pi, # Left angled
+            0.0,            # Left forward
+            0.0,            # Right forward
+            0.25 * math.pi, # Right angled
+            0.5 * math.pi,  # Right perpendicular
+            math.pi,        # Back right
+            math.pi         # Back left
+        ]
+
+        # TODO : Convert distance reading to an actual range
+
+        keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
+
+        pre_ranges = zip(keys, sensor_angles)
+        ranges = []
+        
+        for ran in pre_ranges:
+            reading = data[ran[0]]
+            # Append (x,y) coordinate tuple
+            ranges.append(
+                ( reading * math.cos(ran[1]), reading * math.sin(ran[0]) )
+                )
+        print ranges
+        return dist
+        
 # Only run if we're invoked directly:
 if __name__ == "__main__":
 
@@ -281,6 +355,23 @@ if __name__ == "__main__":
             server = str(arg)
 
     ds = DataStore(host=server)
+
+    # Random convenience vars
+    pos = {
+        'x': 0,
+        'y': 0,
+        't':0,
+        'theta':0.0,
+        'r0': 10,
+        'r1': 10,
+        'r2': 10,
+        'r3': 10,
+        'r4': 10,
+        'r5': 10,
+        'r6': 10,
+        'r7': 10
+    }
+    ran = [0,1,2,3,4,5,6,7]
 
     # Post-instantioation options
     for opt, arg in optlist:
