@@ -57,18 +57,26 @@ class DataStore:
 
     
     def push(self, pose, ranges=None):
-        # We only accept a specific data type:
-        if not isinstance(pose, GenericState):
-            raise TypeError("Expected instance of GenericState or derivative in DataStore.push")
+        # Type duck between GenericState and a dict
+        if isinstance(pose, GenericState):
+            hmap = {
+                't'    : pose.time,
+                'x'    : pose.x,
+                'y'    : pose.y,
+                'theta': pose.theta
+            }
+        else:
+            hmap = {
+                't'    : pose['t'],
+                'x'    : pose['x'],
+                'y'    : pose['y'],
+                'theta': pose['theta']
+            }
 
+        # Name we'll give this pose in Redis
+        mapname = "pose-" + str(hmap['t'])
+        
         # Build hashmap from given state class
-        hmap = {
-            't'    : pose.time,
-            'x'    : pose.x,
-            'y'    : pose.y,
-            'theta': pose.theta
-        }
-
         if ranges is not None and len(ranges) == 8:
             hmap.update({
                 'r0' : float(ranges[0]),
@@ -83,17 +91,14 @@ class DataStore:
         
         # For each part of the _python_ dict we
         # create a Redis hashmap using the time as index
-        for key, value in hmap.iteritems():
-            self.r.hset(pose.time, key, value)
+        self.r.hmset(mapname, hmap)
 
         # We push a reference to this new hashmap onto 
         # the statestream list
-        self.r.lpush(self.listname, pose.time)
+        self.r.lpush(self.listname, mapname)
 
         # Also publish onto a channel
-        self.r.publish(self.listname, pose.time)
-        # Decrememt reference counter
-        #del point
+        self.r.publish(self.listname, mapname)
 
         
     def get(self, start=0, stop=-1):
