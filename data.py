@@ -24,7 +24,7 @@ try:
     import rospy
     ros = True
     from std_msgs.msg import String
-    from geometry_msgs.msg import PoseWithCovariance, PoseStamped
+    from geometry_msgs.msg import PoseWithCovariance, PoseStamped, Point32
     from nav_msgs.msg import Odometry
     from sensor_msgs.msg import PointCloud
     import tf
@@ -234,7 +234,7 @@ class DataStore:
             odom_pub.publish(odom)
             dist_pub.publish(dist)
 
-            rospy.loginfo(" Redis --> ROS #" + str(data['t']))
+            rospy.loginfo(" Redis --> ROS #" + str(round(float(data['t']), 4)))
 
             
     def _purge(self):
@@ -319,18 +319,32 @@ class ROSGenerator:
 
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
 
-        pre_ranges = zip(keys, sensor_angles)
-        ranges = []
+        pre_points = zip(keys, sensor_angles)
+        points = []
+
+        # Basic trig, converts ranges to points relative to robot
+        for point in pre_points:
+            reading = float(data[point[0]])
+
+            pt = Point32()
+            pt.x = reading * math.cos(point[1]) + robot_pos[0]
+            pt.y = reading * math.sin(point[1]) + robot_pos[1]
+            pt.z = 0.0
+
+            points.append(pt)
+
+        dist.points = points
         
-        for ran in pre_ranges:
-            reading = data[ran[0]]
-            # Append (x,y) coordinate tuple
-            ranges.append(
-                ( reading * math.cos(ran[1]), reading * math.sin(ran[0]) )
-                )
-        print(ranges)
         return dist
         
+
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+
 # Only run if we're invoked directly:
 if __name__ == "__main__":
 
