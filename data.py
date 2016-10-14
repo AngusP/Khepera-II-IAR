@@ -206,6 +206,7 @@ class DataStore:
         pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=10)
         odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=10)
         dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=10)
+        tbr = tf.TransformBroadcaster()
         
         rospy.init_node('talker', anonymous=True)
 
@@ -224,11 +225,12 @@ class DataStore:
 
             # Pull from redis:
             data = self.r.hgetall(item['data'])
+            quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
             
             # Generate new pose
-            pose = rg.gen_pose(data)
+            pose = rg.gen_pose(data, quat)
             # Generate odometry data
-            odom = rg.gen_odom(data)
+            odom = rg.gen_odom(data, quat)
             # Generate pointcloud of distances
             dist = rg.gen_dist(data)
             
@@ -236,6 +238,9 @@ class DataStore:
             pose_pub.publish(pose)
             odom_pub.publish(odom)
             dist_pub.publish(dist)
+
+            tbr.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
+                              quat, rospy.Time.now(), "khepera", "map")
 
             rospy.loginfo(" Redis --> ROS #" + str(round(float(data['t']), 4)))
 
@@ -258,10 +263,9 @@ class DataStore:
 # Assistant class, generates ROS Classes from data hashmap
 class ROSGenerator:
 
-    def gen_pose(self, data):
+    def gen_pose(self, data, quat):
         pose = PoseStamped()
-        
-        quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
+
         pose.pose.orientation.x = quat[0]
         pose.pose.orientation.y = quat[1]
         pose.pose.orientation.z = quat[2]
@@ -277,27 +281,28 @@ class ROSGenerator:
         return pose
 
 
-    def gen_odom(self, data):
+    def gen_odom(self, data, quat):
         odom = Odometry()
         opose = PoseWithCovariance()
-
-        quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
         
-        odom.header.frame_id = "map"
-        odom.header.stamp = rospy.Time.now()
-        opose.pose.position.x = float(data['x'])
-        opose.pose.position.y = float(data['y'])
-        opose.pose.position.z = 0.0
         opose.pose.orientation.x = quat[0]
         opose.pose.orientation.y = quat[1]
         opose.pose.orientation.z = quat[2]
         opose.pose.orientation.w = quat[3]
+        
+        opose.pose.position.x = float(data['x'])
+        opose.pose.position.y = float(data['y'])
+        opose.pose.position.z = 0.0
+        
+        odom.header.frame_id = "map"
+        odom.header.stamp = rospy.Time.now()
         odom.pose = opose
 
         return odom
 
 
     def gen_dist(self, data):
+        # Publish a point cloud derived from the IR sensor activations
         dist = PointCloud()
         
         dist.header.frame_id = "map"
@@ -306,8 +311,6 @@ class ROSGenerator:
         robot_pos = (float(data['x']), float(data['y']))
         robot_ang = float(data['theta'])
 
-        # TODO : Calibrate
-        
         # Angles of the sensor from the X axis (in rad)
         sensor_angles = [
             0.5 * math.pi,  # Left perpendicular
@@ -332,8 +335,6 @@ class ROSGenerator:
             (10.0, -26.0),  # Back left
         ]
 
-        # TODO : Convert distance reading to an actual range
-
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
 
         pre_points = zip(keys, sensor_angles, sensor_offsets)
@@ -349,7 +350,7 @@ class ROSGenerator:
             #                         Offset from center of body v
             pt.x = reading * math.cos(point[1] + robot_ang) + robot_pos[0] + point[2][0]
             pt.y = reading * math.sin(point[1] + robot_ang) + robot_pos[1] + point[2][0]
-            pt.z = 0.0
+            pt.z = 16.0 # Sensors are 16mm off ground
 
             points.append(pt)
 

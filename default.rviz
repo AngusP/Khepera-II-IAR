@@ -4,13 +4,12 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
-        - /Status1
         - /Grid1
         - /Odometry1
         - /Odometry1/Status1
         - /Pose1
         - /PointCloud1
+        - /PointCloud2
       Splitter Ratio: 0.5
     Tree Height: 775
   - Class: rviz/Selection
@@ -38,7 +37,7 @@ Visualization Manager:
     - Alpha: 0.5
       Cell Size: 100
       Class: rviz/Grid
-      Color: 160; 160; 164
+      Color: 101; 101; 104
       Enabled: true
       Line Style:
         Line Width: 0.03
@@ -58,7 +57,7 @@ Visualization Manager:
       Color: 0; 102; 255
       Enabled: true
       Keep: 200
-      Length: 10
+      Length: 20
       Name: Odometry
       Position Tolerance: 0.1
       Topic: /statestreamodom
@@ -69,16 +68,16 @@ Visualization Manager:
       Class: rviz/Pose
       Color: 255; 25; 0
       Enabled: true
-      Head Length: 6
-      Head Radius: 6
+      Head Length: 20
+      Head Radius: 16
       Name: Pose
-      Shaft Length: 10
-      Shaft Radius: 4
+      Shaft Length: 30
+      Shaft Radius: 10
       Shape: Arrow
       Topic: /statestreampose
       Unreliable: false
       Value: true
-    - Alpha: 0.5
+    - Alpha: 0.9
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 0
@@ -89,11 +88,11 @@ Visualization Manager:
       Class: rviz/PointCloud
       Color: 255; 255; 255
       Color Transformer: Intensity
-      Decay Time: 10
+      Decay Time: 0
       Enabled: true
       Invert Rainbow: true
       Max Color: 255; 0; 0
-      Max Intensity: 272
+      Max Intensity: 268
       Min Color: 0; 255; 17
       Min Intensity: 52
       Name: PointCloud
@@ -101,7 +100,37 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 12
-      Size (m): 12
+      Size (m): 10
+      Style: Points
+      Topic: /statestreamdist
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 0.2
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 0
+        Min Value: 0
+        Value: true
+      Axis: Z
+      Channel Name: intensities
+      Class: rviz/PointCloud
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 20000
+      Enabled: true
+      Invert Rainbow: true
+      Max Color: 255; 0; 0
+      Max Intensity: 268
+      Min Color: 0; 255; 17
+      Min Intensity: 52
+      Name: PointCloud
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 12
+      Size (m): 4
       Style: Spheres
       Topic: /statestreamdist
       Unreliable: false
@@ -131,24 +160,69 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/XYOrbit
-      Distance: 737.75
+      Angle: 0
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.869796
-      Target Frame: <Fixed Frame>
-      Value: XYOrbit (rviz)
-      Yaw: 2.1354
-    Saved: ~
+      Scale: 2.82287
+      Target Frame: khepera
+      Value: TopDownOrtho (rviz)
+      X: 0
+      Y: 0
+    Saved:
+      - Class: rviz/Orbit
+        Distance: 514.548
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.06
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Focal Point:
+          X: 0
+          Y: 0
+          Z: 0
+        Name: Orbit
+        Near Clip Distance: 0.01
+        Pitch: 0.785398
+        Target Frame: khepera
+        Value: Orbit (rviz)
+        Yaw: 0.785398
+      - Class: rviz/ThirdPersonFollower
+        Distance: 623.319
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.06
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Focal Point:
+          X: 0
+          Y: 0
+          Z: 0
+        Name: ThirdPersonFollower
+        Near Clip Distance: 0.01
+        Pitch: 0.9
+        Target Frame: khepera
+        Value: ThirdPersonFollower (rviz)
+        Yaw: 3.14159
+      - Angle: 0
+        Class: rviz/TopDownOrtho
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.06
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Name: TopDownOrtho
+        Near Clip Distance: 0.01
+        Scale: 2.82287
+        Target Frame: khepera
+        Value: TopDownOrtho (rviz)
+        X: 0
+        Y: 0
 Window Geometry:
   Displays:
     collapsed: false
