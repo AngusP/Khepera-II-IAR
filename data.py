@@ -328,7 +328,7 @@ class ROSGenerator:
             ranges.append(
                 ( reading * math.cos(ran[1]), reading * math.sin(ran[0]) )
                 )
-        print ranges
+        print(ranges)
         return dist
         
 # Only run if we're invoked directly:
