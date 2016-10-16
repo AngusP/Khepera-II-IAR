@@ -259,6 +259,21 @@ class DataStore:
                 pass
 
 
+    def replay(self, limit=-1):
+        # Replay data already stored, by re-publishing to the Redis channel
+        data = self.r.lrange(self.listname, 0, limit)
+        data.reverse()
+        # ... this might take a while
+        try:
+            for epoch in data:
+                print("epoch " + str(epoch))
+                self.r.publish(self.listname, epoch)
+                time.sleep(constants.MEASUREMENT_PERIOD_S)
+                
+        except KeyboardInterrupt as e:
+            print(e)
+
+
     def _purge(self):
         # Clear out all (literally all) data held in Redis
         if self.wt.confirm("Really destroy all data in Redis store?\n\nThis is not undoable!\n(run FLUSHDB)",
@@ -362,11 +377,16 @@ class ROSGenerator:
         for point in pre_points:
             reading = float(data[point[0]])
             intensities.append(reading)
+            distance = self._ir_to_dist(reading)
+            print(str(point[0]) + " at dist " + str(distance))
             
             pt = Point32()
-            #                         Offset from center of body v
-            pt.x = reading * math.cos(point[1] + robot_ang) + robot_pos[0] + point[2][0]
-            pt.y = reading * math.sin(point[1] + robot_ang) + robot_pos[1] + point[2][0]
+            #                                                 Offset from center of body |
+            #                                           Where the robot is |             |
+            #   Angle of sensor rel. to front |                            |             |
+            #                                 V                            V             V
+            pt.x = (reading * math.cos(point[1] + robot_ang)) + robot_pos[0] + point[2][0]
+            pt.y = (reading * math.sin(point[1] + robot_ang)) + robot_pos[1] + point[2][0]
             pt.z = 16.0 # Sensors are 16mm off ground
 
             points.append(pt)
@@ -389,7 +409,14 @@ class ROSGenerator:
         
         return dist
         
-
+    def _ir_to_dist(self, reading):
+        '''
+        From solved equation:
+        y = 79.18232 + (1528.985 - 79.18232)/(1 + (A2/1.248597)^2.495803)
+        '''
+        divisor = (1 + math.pow((float(reading)/1.248597),2.495803))
+        
+        return (79.18232 + ((1528.985 - 79.18232) / divisor)) * 10.0
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -403,13 +430,14 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 'ds:pr', ['delete','server=', 'plot', 'rospipe'])
+        optlist, args = getopt.getopt(args, 'ds:pre', ['delete','server=', 'plot', 'rospipe', 'replay'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-d or --delete   : Destroy all data held in Redis")
         print("-s or --server   : Hostname of redis server to use. Default localhost")
         print("-p or --plot     : Live plot of published data")
         print("-r or --rospipe  : Pipe redis messages into ROS topics")
+        print("-e or --replay   : Take historical data from Redis and re-publish to channel")
         sys.exit(2)
 
     server = "localhost"
@@ -449,4 +477,7 @@ if __name__ == "__main__":
 
         elif opt in ('-r', '--rospipe'):
             ds.rospipe()
+
+        elif opt in ('-e', '--replay'):
+            ds.replay()
 
