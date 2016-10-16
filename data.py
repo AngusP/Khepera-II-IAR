@@ -391,7 +391,7 @@ class ROSGenerator:
             pt.y = (distance * math.sin(point[1])) + point[2][1]
             pt.z = 0.0
 
-            intensities.append(reading)
+            intensities.append(distance)
             points.append(pt)
 
         dist.points = points
@@ -402,8 +402,8 @@ class ROSGenerator:
         intensities_chan.values = intensities
         intensity_chan.name = "intensity"
         intensity_chan.values = [
-            50.0,   # min intensity
-            1000.0, # max intensity
+            30.0,   # min intensity
+            1.0,    # max intensity
             0.0,    # min color
             1.0     # max color
         ]
