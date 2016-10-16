@@ -47,3 +47,7 @@ MEASUREMENT_PERIOD_S = 0.05 # s
 
 
 
+M_DISTANCE = 30 # mm
+M_N_ANGLE = 20 # degrees
+
+
