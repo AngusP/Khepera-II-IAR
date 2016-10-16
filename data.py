@@ -233,22 +233,24 @@ class DataStore:
                     if key not in data.keys():
                         raise KeyError("Missing key " + str(key) + " from hashmap " + str(data))
 
+                # Generate a new Quaternion based on the robot's pose
                 quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
             
                 # Generate new pose
                 pose = rg.gen_pose(data, quat)
-                # Generate odometry data
-                odom = rg.gen_odom(data, quat)
-                # Generate pointcloud of distances
-                dist = rg.gen_dist(data)
-            
-                # Publish to ROS topics
                 pose_pub.publish(pose)
-                odom_pub.publish(odom)
-                dist_pub.publish(dist)
-                
+
+                # Publish Khepera transform
                 tbr.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
                                   quat, rospy.Time.now(), "khepera", "map")
+                
+                # Generate odometry data
+                odom = rg.gen_odom(data, quat)
+                odom_pub.publish(odom)
+                
+                # Generate pointcloud of distances
+                dist = rg.gen_dist(data)
+                dist_pub.publish(dist)
 
                 rospy.loginfo(" Redis --> ROS #" + str(round(float(data['t']), 4)))
 
@@ -350,7 +352,7 @@ class ROSGenerator:
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
         for key in keys:
             if key not in data.keys():
-                raise KeyError("No range data -- Missing key " + str(key))
+                raise KeyError("No range data -- Missing key " + str(key) + " " + str(data))
 
         pre_points = zip(keys, sensor_angles, sensor_offsets)
         points = []
