@@ -56,31 +56,26 @@ class Bug_Algorithm:
 	#normalizes angle in degrees to -180 : 180 degrees
         def normalize_angle(self, angle):
 		if angle < 0:
-
 		    angle = angle % -360
-
 		    if angle < -180:
 			angle = 360 + angle
-		
 		else:
-
 		    angle = angle % 360
-
 		    if angle > 180:
 			angle = -(360 - angle)
-
 		return angle
 
-
+	#vector difference calculator
 	def vector_diff(self, vector_1, vector_2):
 		dx = vector_1[0] - vector_2[0]*1.0
 		dy = vector_1[1] - vector_2[1]*1.0
 		return [dx,dy]
-
-
+	
+	#vector magnitude calculator
 	def vector_magnitude(self, vector):
 		return math.sqrt( math.pow(vector[0],2) + math.pow(vector[1],2))
-	
+
+	#vecotr normalizer
 	def normalize_vector(self, vector):
 
 		vector_magnitude = self.vector_magnitude(vector)
@@ -101,7 +96,7 @@ class Bug_Algorithm:
 		direction_angle = math.degrees(direction_angle) - self.normalize_angle(math.degrees(odo_state.theta))
 		return direction_angle
 		 	
-
+	#return new state
         def new_state(self, nav_state, odo_state, bug_state):
 	                
 	    

@@ -116,85 +116,87 @@ class Navigation_Algorithm:
            #HANDLE THE BUG OPERATIONS
            ########################
 
-	   
-	   #TODO clean this part up 
 	    if bug_state.exploration_cycle < constants.EXPLORATION_CYCLES:
 		bug_state.exploration_cycle += 1
 
+	    #now that we have explored enough, can record our position from where we need to return
 	    elif (not bug_state.algorithm_point):
 
-		#we now know where we need to return to and where from
+		#record the line parameters
 		bug_state.m_line_end = [odo_state.x, odo_state.y]
 		bug_state.m_line_start = [0,0]
+
+		#record last position on the M-line
 		bug_state.last_m_x = odo_state.x
    		bug_state.last_m_y = odo_state.y
+		#record that we have already recorded said values
+
 		bug_state.algorithm_point = True
-		#do the 180 turn
+		#do the 180 turn by recording initial turn
 		nav_state.system_state = constants.STATE_BUG_180
 		bug_state.theta_start  = odo_state.theta
-	    #otherwise, if still haven't done a 180 turn
+
+	    #now, if have not yet done a 180 degree turn before
 	    elif not bug_state.algorithm_activated:
-		#if did a 180 ....
+		#check if that is the case now
 		achieved_a_180 = math.degrees(abs(odo_state.theta - bug_state.theta_start) % (2*math.pi)) >= 180
-		print("TURNING") 
 		if nav_state.system_state == constants.STATE_BUG_180 and achieved_a_180:
+			#if done turning at 180, then can proceed to the return algorithm
 			nav_state.system_state = constants.STATE_DRIVE_FORWARD
+			#reset boredom
+		        result.boredom_counter = 0
 			bug_state.algorithm_activated = True
-			print("TURNED") 
-		
-	    #turen on the spot
-	    if nav_state.system_state is constants.STATE_BUG_180:
-                 result.speed_l = -constants.CONST_SPEED
-                 result.speed_r = constants.CONST_SPEED 
-		 return result
+		else:	
+		   #otherwise, continue turning
+		   result.speed_l = -constants.CONST_SPEED
+                   result.speed_r = constants.CONST_SPEED 
+		   return result
 
-	    if bug_state.algorithm_activated:
-		#make sure boredom never activates now
-		result.boredom_counter = 0
-
-            
             ########################
             #HANDLE BOREDOM COUNTER 
             ########################
-            
-            #record that we are still moving along a wall and not "exploring"
-            if result.system_state == constants.STATE_LEFT_FOLLOW or result.system_state == constants.STATE_RIGHT_FOLLOW:
-                result.boredom_counter +=1
 
-            
-            #check if robot is "bored" and it is not being handled
-            if self.bored(result.boredom_counter) and not self.is_boredom_handled(result.system_state):
+	    #make sure boredom never activates durin bug algorithm
+	    if not(bug_state.algorithm_activated):
+		
+		    #record that we are still moving along a wall and not "exploring"
+		    if result.system_state == constants.STATE_LEFT_FOLLOW or result.system_state == constants.STATE_RIGHT_FOLLOW:
+		        result.boredom_counter +=1
 
-                #print("bored...")
+		    
+		    #check if robot is "bored" and it is not being handled
+		    if self.bored(result.boredom_counter) and not self.is_boredom_handled(result.system_state):
 
-                #turn away from the wall that was last followed
-                if result.system_state == constants.STATE_LEFT_FOLLOW:
-		    result.speed_l = constants.CONST_SPEED
-                    result.speed_r = -constants.CONST_SPEED 
-                elif system_state == constants.STATE_RIGHT_FOLLOW:
-                    result.speed_l = -constants.CONST_SPEED
-                    result.speed_r = constants.CONST_SPEED 
-                
-                # reset state
-                result.boredom_turn_counter = 0
-                result.boredom_counter = 0
-                        
-                # set state
-                result.system_state = constants.STATE_BOREDOM_ROTATE
+		        #print("bored...")
 
-            # if we are rotating on the spot                  
-            elif result.system_state == constants.STATE_BOREDOM_ROTATE:
-                #check if we are done rotating
-                if result.boredom_turn_counter >= constants.CONST_BORED_TURN_MAX:
-                    #different from normal forward driving as we try to get very far from the wall
-                    result.system_state = constants.STATE_BOREDOM_DRIVE
+		        #turn away from the wall that was last followed
+		        if result.system_state == constants.STATE_LEFT_FOLLOW:
+			    result.speed_l = constants.CONST_SPEED
+		            result.speed_r = -constants.CONST_SPEED 
+		        elif system_state == constants.STATE_RIGHT_FOLLOW:
+		            result.speed_l = -constants.CONST_SPEED
+		            result.speed_r = constants.CONST_SPEED 
+		        
+		        # reset state
+		        result.boredom_turn_counter = 0
+		        result.boredom_counter = 0
+		                
+		        # set state
+		        result.system_state = constants.STATE_BOREDOM_ROTATE
 
-		    result.speed_l = constants.CONST_SPEED
-		    result.speed_r = constants.CONST_SPEED
+		    # if we are rotating on the spot                  
+		    elif result.system_state == constants.STATE_BOREDOM_ROTATE:
+		        #check if we are done rotating
+		        if result.boredom_turn_counter >= constants.CONST_BORED_TURN_MAX:
+		            #different from normal forward driving as we try to get very far from the wall
+		            result.system_state = constants.STATE_BOREDOM_DRIVE
 
-                # otherwise, continue rotationg for this loop iteration
-                else:
-                    result.boredom_turn_counter += 1
+			    result.speed_l = constants.CONST_SPEED
+			    result.speed_r = constants.CONST_SPEED
+
+		        # otherwise, continue rotationg for this loop iteration
+		        else:
+		            result.boredom_turn_counter += 1
 
             ############################
             # IF STUCK
@@ -226,11 +228,14 @@ class Navigation_Algorithm:
                  # stop following the wall (as it could ahve potentially led to being stuck)
                  result.boredom_counter = 0
 
+	    
+            ########################
+            #HANDLE BOREDOM DRIVE
+            ########################
 
             # if robot not stuck and we are driving away from a "boring" wall, continue doing so
-            elif result.system_state == constants.STATE_BOREDOM_DRIVE:
-                 #print("driving bored")
-		 print("")
+            elif result.system_state == constants.STATE_BOREDOM_DRIVE and not (bug_state.algorithm_activated):
+                 return result
 
             #####################
             ##WALL FOLLOWING LEFT
