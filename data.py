@@ -334,34 +334,32 @@ class ROSGenerator:
         # Publish a point cloud derived from the IR sensor activations
         dist = PointCloud()
         
-        dist.header.frame_id = "map"
+        dist.header.frame_id = "khepera" # Tie to Khepera's frame of reference
         dist.header.stamp = rospy.Time.now()
-
-        robot_pos = (float(data['x']), float(data['y']))
-        robot_ang = float(data['theta'])
 
         # Angles of the sensor from the X axis (in rad)
         sensor_angles = [
-            0.5 * math.pi,  # Left perpendicular
-            0.25 * math.pi, # Left angled
+            1.5 * math.pi,  # Left perpendicular
+            1.75 * math.pi, # Left angled
             0.0,            # Left forward
             0.0,            # Right forward
-            1.75 * math.pi, # Right angled
-            1.5 * math.pi,  # Right perpendicular
+            0.25 * math.pi, # Right angled
+            0.5 * math.pi,  # Right perpendicular
             math.pi,        # Back right
             math.pi         # Back left
         ]
 
         # Physical (x,y) offset of the sensor from the center of the bot in mm
+        # Where x is firward, y is lateral
         sensor_offsets = [
-            (-25.0, 15.0),  # Left perpendicular
-            (-20.0, 20.0),  # Left angled
-            (-8.0,  27.0),  # Left forward
-            (8.0,   27.0),  # Right forward
-            (20.0,  20.0),  # Right angled
-            (25.0,  15.0),  # Right perpendicular
-            (-10.0, -26.0), # Back right
-            (10.0, -26.0),  # Back left
+            (15.0, -25.0),   # Left perpendicular
+            (20.0, -20.0),   # Left angled
+            (27.0,  -8.0),   # Left forward
+            (27.0,   8.0),   # Right forward
+            (20.0,  20.0),   # Right angled
+            (15.0,  25.0),   # Right perpendicular
+            (-26.0, 10.0),   # Back right
+            (-26.0, -10.0)   # Back left
         ]
 
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
@@ -376,19 +374,24 @@ class ROSGenerator:
         # Basic trig, converts ranges to points relative to robot
         for point in pre_points:
             reading = float(data[point[0]])
-            intensities.append(reading)
             distance = self._ir_to_dist(reading)
-            print(str(point[0]) + " at dist " + str(distance))
+
+            #print(str(point[0]) + " at " + str(distance))
+
+            # Don't render longer distances
+            if distance > 50:
+                continue
             
             pt = Point32()
-            #                                                 Offset from center of body |
-            #                                           Where the robot is |             |
-            #   Angle of sensor rel. to front |                            |             |
-            #                                 V                            V             V
-            pt.x = (reading * math.cos(point[1] + robot_ang)) + robot_pos[0] + point[2][0]
-            pt.y = (reading * math.sin(point[1] + robot_ang)) + robot_pos[1] + point[2][0]
-            pt.z = 16.0 # Sensors are 16mm off ground
 
+            # point[2] is the sensor's coords relative to the robot
+            # point[1] is the angle the sensor takes relative to the robot's x axis
+
+            pt.x = (distance * math.sin(point[1])) + point[2][0]
+            pt.y = (distance * math.sin(point[1])) + point[2][1]
+            pt.z = 16.0
+
+            intensities.append(reading)
             points.append(pt)
 
         dist.points = points
@@ -412,11 +415,11 @@ class ROSGenerator:
     def _ir_to_dist(self, reading):
         '''
         From solved equation:
-        y = 79.18232 + (1528.985 - 79.18232)/(1 + (A2/1.248597)^2.495803)
+        y = 1.074519 + (10.57748 - 1.074519)/(1 + ( x /70.42612)^69.9039)^0.02119919
         '''
-        divisor = (1 + math.pow((float(reading)/1.248597),2.495803))
-        
-        return (79.18232 + ((1528.985 - 79.18232) / divisor)) * 10.0
+        return 10.0 * ( 1.074519 + (10.57748 - 1.074519)
+                        /
+                        math.pow(1 + (math.pow((reading / 70.42612),69.9039)), 0.02119919 ))
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
