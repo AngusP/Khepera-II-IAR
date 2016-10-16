@@ -259,6 +259,21 @@ class DataStore:
                 pass
 
 
+    def replay(self, limit=-1):
+        # Replay data already stored, by re-publishing to the Redis channel
+        data = self.r.lrange(self.listname, 0, limit)
+        data.reverse()
+        # ... this might take a while
+        try:
+            for epoch in data:
+                print("epoch " + str(epoch))
+                self.r.publish(self.listname, epoch)
+                time.sleep(constants.MEASUREMENT_PERIOD_S)
+                
+        except KeyboardInterrupt as e:
+            print(e)
+
+
     def _purge(self):
         # Clear out all (literally all) data held in Redis
         if self.wt.confirm("Really destroy all data in Redis store?\n\nThis is not undoable!\n(run FLUSHDB)",
@@ -319,34 +334,32 @@ class ROSGenerator:
         # Publish a point cloud derived from the IR sensor activations
         dist = PointCloud()
         
-        dist.header.frame_id = "map"
+        dist.header.frame_id = "khepera" # Tie to Khepera's frame of reference
         dist.header.stamp = rospy.Time.now()
-
-        robot_pos = (float(data['x']), float(data['y']))
-        robot_ang = float(data['theta'])
 
         # Angles of the sensor from the X axis (in rad)
         sensor_angles = [
-            0.5 * math.pi,  # Left perpendicular
-            0.25 * math.pi, # Left angled
-            0.0,            # Left forward
-            0.0,            # Right forward
-            1.75 * math.pi, # Right angled
-            1.5 * math.pi,  # Right perpendicular
-            math.pi,        # Back right
-            math.pi         # Back left
+            0.5 * math.pi,   # Left perpendicular
+            0.25 * math.pi,  # Left angled
+            0.0,             # Left forward
+            0.0,             # Right forward
+            1.75 * math.pi,  # Right angled
+            1.5 * math.pi,   # Right perpendicular
+            math.pi,         # Back right
+            math.pi          # Back left
         ]
 
         # Physical (x,y) offset of the sensor from the center of the bot in mm
+        # Where x is forward, y is left lateral
         sensor_offsets = [
-            (-25.0, 15.0),  # Left perpendicular
-            (-20.0, 20.0),  # Left angled
-            (-8.0,  27.0),  # Left forward
-            (8.0,   27.0),  # Right forward
-            (20.0,  20.0),  # Right angled
-            (25.0,  15.0),  # Right perpendicular
-            (-10.0, -26.0), # Back right
-            (10.0, -26.0),  # Back left
+            ( 15.0,  25.0),  # Left perpendicular
+            ( 20.0,  20.0),  # Left angled
+            ( 27.0,   8.0),  # Left forward
+            ( 27.0,  -8.0),  # Right forward
+            ( 20.0, -20.0),  # Right angled
+            ( 15.0, -25.0),  # Right perpendicular
+            (-26.0, -10.0),  # Back right
+            (-26.0,  10.0)   # Back left
         ]
 
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
@@ -361,14 +374,24 @@ class ROSGenerator:
         # Basic trig, converts ranges to points relative to robot
         for point in pre_points:
             reading = float(data[point[0]])
-            intensities.append(reading)
+            distance = self._ir_to_dist(reading)
+
+            #print(str(point[0]) + " at " + str(distance))
+
+            # Don't render 'infinite' distance
+            if distance > 70.0:
+                continue
             
             pt = Point32()
-            #                         Offset from center of body v
-            pt.x = reading * math.cos(point[1] + robot_ang) + robot_pos[0] + point[2][0]
-            pt.y = reading * math.sin(point[1] + robot_ang) + robot_pos[1] + point[2][0]
-            pt.z = 16.0 # Sensors are 16mm off ground
 
+            # point[2] is the sensor's coords relative to the robot
+            # point[1] is the angle the sensor takes relative to the robot's x axis
+
+            pt.x = (distance * math.cos(point[1])) + point[2][0]
+            pt.y = (distance * math.sin(point[1])) + point[2][1]
+            pt.z = 0.0
+
+            intensities.append(distance)
             points.append(pt)
 
         dist.points = points
@@ -379,8 +402,8 @@ class ROSGenerator:
         intensities_chan.values = intensities
         intensity_chan.name = "intensity"
         intensity_chan.values = [
-            50.0,   # min intensity
-            1000.0, # max intensity
+            30.0,   # min intensity
+            1.0,    # max intensity
             0.0,    # min color
             1.0     # max color
         ]
@@ -389,7 +412,14 @@ class ROSGenerator:
         
         return dist
         
-
+    def _ir_to_dist(self, reading):
+        '''
+        From solved equation:
+        y = 1.074519 + (10.57748 - 1.074519)/(1 + ( x /70.42612)^69.9039)^0.02119919
+        '''
+        return 10.0 * ( 1.074519 + (10.57748 - 1.074519)
+                        /
+                        math.pow(1 + (math.pow((reading / 70.42612),69.9039)), 0.02119919 ))
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -403,13 +433,14 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 'ds:pr', ['delete','server=', 'plot', 'rospipe'])
+        optlist, args = getopt.getopt(args, 'ds:pre', ['delete','server=', 'plot', 'rospipe', 'replay'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-d or --delete   : Destroy all data held in Redis")
         print("-s or --server   : Hostname of redis server to use. Default localhost")
         print("-p or --plot     : Live plot of published data")
         print("-r or --rospipe  : Pipe redis messages into ROS topics")
+        print("-e or --replay   : Take historical data from Redis and re-publish to channel")
         sys.exit(2)
 
     server = "localhost"
@@ -449,4 +480,7 @@ if __name__ == "__main__":
 
         elif opt in ('-r', '--rospipe'):
             ds.rospipe()
+
+        elif opt in ('-e', '--replay'):
+            ds.replay()
 
