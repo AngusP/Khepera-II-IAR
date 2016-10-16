@@ -8,5 +8,6 @@ class Navigation_State:
     speed_r = constants.CONST_SPEED
     system_state = constants.STATE_DRIVE_FORWARD
     dist = [0]*8
-    
-    
+
+
+    bug_control = True

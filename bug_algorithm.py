@@ -18,371 +18,198 @@ import math
 class Bug_Algorithm:
 
 
-m_line_start  = [0]*2
-m_line_end = [0]*2
+	def lineMagnitude (self, x1, y1, x2, y2):
+	    lineMagnitude = math.sqrt(math.pow((x2 - x1), 2)+ math.pow((y2 - y1), 2))
+	    return lineMagnitude
+	 
+	#Calc minimum distance from a point and a line segment (i.e. consecutive vertices in a polyline).
+	def DistancePointLine (self, px, py, x1, y1, x2, y2):
+	 
+	    LineMag = self.lineMagnitude(x1, y1, x2, y2)
+	 
+	    if LineMag < 0.00000001:
+		DistancePointLine = 9999
+		return DistancePointLine
+	 
+	    u1 = (((px - x1) * (x2 - x1)) + ((py - y1) * (y2 - y1)))
+	    u = u1 / (LineMag * LineMag)
+	 
+	    if (u < 0.00001) or (u > 1):
+		#// closest point does not fall within the line segment, take the shorter distance
+		#// to an endpoint
+		ix = self.lineMagnitude(px, py, x1, y1)
+		iy = self.lineMagnitude(px, py, x2, y2)
 
-	#give it directives to where to drive
-	def __init__(self, m_start, m_end):
-		self.m_line_start  = m_start
-		self.m_line_finish = m_end
+		if ix > iy:
+		    DistancePointLine = iy
+		else:
+		    DistancePointLine = ix
+	    else:
+		# Intersecting point is on the line, use the formula
+		ix = x1 + u * (x2 - x1)
+		iy = y1 + u * (y2 - y1)
+		DistancePointLine = self.lineMagnitude(px, py, ix, iy)
+	 
+	    return DistancePointLine	
+		
 
+	#normalizes angle in degrees to -180 : 180 degrees
+        def normalize_angle(self, angle):
+		if angle < 0:
 
-	def dot_product(self, vector_1, vector_2):
-		x_mult = vector_1[0] * (vector_2[0]*1.0)
-		y_mult = vector_1[1] * (vector_2[1]*1.0)
-		return y_mult + x_mult
+		    angle = angle % -360
+
+		    if angle < -180:
+			angle = 360 + angle
+		
+		else:
+
+		    angle = angle % 360
+
+		    if angle > 180:
+			angle = -(360 - angle)
+
+		return angle
+
 
 	def vector_diff(self, vector_1, vector_2):
 		dx = vector_1[0] - vector_2[0]*1.0
 		dy = vector_1[1] - vector_2[1]*1.0
 		return [dx,dy]
 
-	def vector_sum(self, vector_1, vector_2):
-		dx = vector_1[0] + vector_2[0]*1.0
-		dy = vector_1[1] + vector_2[1]*1.0
-		return [dx,dy]	
 
-	def vector_magnitude(self, vector)
+	def vector_magnitude(self, vector):
 		return math.sqrt( math.pow(vector[0],2) + math.pow(vector[1],2))
 	
-	def normalize_vector(self, vector)
+	def normalize_vector(self, vector):
 
 		vector_magnitude = self.vector_magnitude(vector)
+		if vector_magnitude == 0:
+			vector_magnitude = 1
 		return (vector[0] / vector_magnitude, vector[1] / vector_magnitude)
 
-	# uses http://stackoverflow.com/questions/5227373/minimal-perpendicular-vector-between-a-point-and-a-line
-	def get_normal(line_start, line_end, current_pos):
-
-		line_dir   = self.vector_diff(line_end, line_start)
-		line_dir_n = self.normalize_vector(line_dir)
-		
-
-		A = line_end
-		P = current_pos
-		D = line_dir_n
-
-		
-		diff_P_A 	   = self.vector_diff(P,A)
-		diff_P_A_dot_D     = self.dor_product(diff_P_A, D)
-		diff_P_A_dot_D_x_D = [ diff_P_A_dot_D * D[0] , diff_P_A_dot_D * D[1] ]
-		
-
-		X = self.vector_sum (  A , diff_P_A_dot_D_x_D   )
-		
-		return self.vector_diff(X,P)
-
-	#get angle to go perpendicularly to the the M-line
-	def get_N_angle_to_m(self, curr_state):
-		direction = get_normal(m_line_start, m_line_finish, [curr_state.x, curr_state.y])
-		direction_angle = curr_state.theta - math.atan(direction[1] / float(direction[0]))
-		return math.degrees(direction_angle)
 		 
 	#get angle while ON the M-line
-	def get_angle_to_m(self, curr_state):
-		direction = [m_line_start, m_line_finish]
-		direction_angle = curr_state.theta - math.atan(direction[1] / float(direction[0]))
-		#return by how much the angle differs
-		return math.degrees(direction_angle)
+	def get_angle_on_m(self, odo_state, bug_state):
+		direction = self.vector_diff( bug_state.m_line_start,  bug_state.m_line_end)
+		direction_angle = math.atan2(direction[1] , direction[0])
+		#if no difference, well then we never left the spot 
+		vector_magnitude = self.vector_magnitude(direction)
+		if vector_magnitude == 0:
+			return 0
+		
+		direction_angle = math.degrees(direction_angle) - self.normalize_angle(math.degrees(odo_state.theta))
+		return direction_angle
 		 	
 
-
-
-
-
-
-
-	# check if we are stuck
-	def is_stuck(self, dist):
-	    #check if we are scraping on the sides
-	    # multiple of 1.2 as 1.0 is handled by following
-	    stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST 
-	    # multiple of 1.2 as 1.0 is handled by following
-	    stuck_cone_right = dist[4] > constants.CONST_WALL_DIST 
-	    #check if we are about to be stuck in the front
-	    stuck_cone_front = dist[2] > constants.CONST_WALL_DIST*0.5 or dist[3]  > constants.CONST_WALL_DIST*0.5
-
-	    return stuck_cone_left or stuck_cone_right or stuck_cone_front 
-
-
-	# check if we "see" the left wall and it is closer than the one on the right
-	def should_follow_left_wall(self, dist, system_state):
-	    within_range =  dist[0] > constants.CONST_WALL_DIST * 0.5
-	    #to not switch wall if two walls nearby
-	    followed_right = system_state == constants.STATE_RIGHT_FOLLOW
-	    return within_range and dist[0] > dist[5] and not followed_right
-		print("driving...")
-
-	# check if we "see" the right wall and it is closer than the one on the left
-	def should_follow_right_wall(self, dist, system_state):
-	    within_range =  dist[5] > constants.CONST_WALL_DIST * 0.5
-	    followed_left = system_state == constants.STATE_LEFT_FOLLOW
-	    return within_range and not(dist[0] > dist[5]) and not followed_left
-
-	# check if we are over the distance threshold w.r.t. object on the left
-	def too_close_to_left(self, dist):
-
-	    distance_close   = dist[0] > constants.CONST_WALL_DIST
-	    return distance_close 
-
-
-	# check if we are over the distance threshold w.r.t. object on the right
-	def too_close_to_right(self, dist):
-
-	    distance_close   = dist[5] > constants.CONST_WALL_DIST
-	    return distance_close 
-
-
-
-	# check if we are under the distance threshold w.r.t. object on the right
-	def is_away_from_right(self, dist):
-
-	    wall_in_range = dist[5] < constants.CONST_WALL_DIST * 0.8
-	    return wall_in_range
-
-
-	# check if we are under the distance threshold w.r.t. object on the left
-	def is_away_from_left(self, dist):
-
-	    wall_in_range = dist[0] < constants.CONST_WALL_DIST * 0.8
-	    return wall_in_range
-
-
-	# check if there is more space on the right of the robot than on the left
-	def is_more_space_on_right(self, dist):
-
-	    values_on_right = dist[3] + dist[4] + dist[5]
-	    values_on_left  = dist[1] + dist[2] + dist[0]
-
-	    return (values_on_left > values_on_right) 
-
-
-	# check if the system is being unstuck
-	def is_being_unstuck(self, state):
-
-	    return (state is constants.STATE_STUCK_LEFT) or (state is constants.STATE_STUCK_RIGHT)
-
-
-	# check if it is more beneficial to unstuck by turning to the right
-	def should_unstuck_right(self, dist, system_state):
-	    stuck_on_left = system_state == constants.STATE_LEFT_FOLLOW 
-	    return stuck_on_left or self.is_more_space_on_right(dist)
-
-	# check if robot is "bored"
-	def bored(self, boredom_counter):
-	    return boredom_counter >= constants.CONST_WALL_BORED_MAX
-
-	# check if we are handling boredom
-	def is_boredom_handled(self, state):
-	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
-
-
-        def new_state(self, nav_state):
+        def new_state(self, nav_state, odo_state, bug_state):
 	                
-	    result = Navigation_State()
-	    result = nav_state
-            
-            ########################
-            #HANDLE BOREDOM COUNTER 
-            ########################
-            
-            #record that we are still moving along a wall and not "exploring"
-            if result.system_state == constants.STATE_LEFT_FOLLOW or result.system_state == constants.STATE_RIGHT_FOLLOW:
-                result.boredom_counter +=1
+	    
+            	speed_l = constants.CONST_SPEED
+	    	speed_r = constants.CONST_SPEED
+            	######################
+            	# IF IN FREE SPACE, CAN FOLLOW M-LINE
+            	#####################
+		
+		are_closer_than_before = False
+		#check if we are closer on the m_x line
+		current_pos = [odo_state.x, odo_state.y]
+		previous_pos = [bug_state.last_m_x , bug_state.last_m_y]
 
-            
-            #check if robot is "bored" and it is not being handled
-            if self.bored(result.boredom_counter) and not self.is_boredom_handled(result.system_state):
-
-                print("bored...")
-
-                #turn away from the wall that was last followed
-                if result.system_state == constants.STATE_LEFT_FOLLOW:
-		    result.speed_l = constants.CONST_SPEED
-                    result.speed_r = -constants.CONST_SPEED 
-                elif system_state == constants.STATE_RIGHT_FOLLOW:
-                    result.speed_l = -constants.CONST_SPEED
-                    result.speed_r = constants.CONST_SPEED 
-                
-                # reset state
-                result.boredom_turn_counter = 0
-                result.boredom_counter = 0
-                        
-                # set state
-                result.system_state = constants.STATE_BOREDOM_ROTATE
-
-            # if we are rotating on the spot                  
-            elif result.system_state == constants.STATE_BOREDOM_ROTATE:
-                #check if we are done rotating
-                if result.boredom_turn_counter >= constants.CONST_BORED_TURN_MAX:
-                    #different from normal forward driving as we try to get very far from the wall
-                    result.system_state = constants.STATE_BOREDOM_DRIVE
-
-		    result.speed_l = constants.CONST_SPEED
-		    result.speed_r = constants.CONST_SPEED
-
-                # otherwise, continue rotationg for this loop iteration
-                else:
-                    result.boredom_turn_counter += 1
-
-            ############################
-            # IF STUCK
-            ############################
-
-            elif self.is_stuck(result.dist):
-                
-                 print("stuck")
-
-                 # do not interrupt if already handle
-                 if self.is_being_unstuck(result.system_state):
-                        print("being unstuck")
-
-                 # determine direction of where better to turn to unstuck
-                 elif self.should_unstuck_right(result.dist, result.system_state):
-
-                      result.system_state = constants.STATE_STUCK_RIGHT
-		      result.speed_l = constants.CONST_SPEED
-		      result.speed_r = -constants.CONST_SPEED		
-
-                 else:
-
-                      result.system_state = constants.STATE_STUCK_LEFT
-		      result.speed_l = -constants.CONST_SPEED
-		      result.speed_r = constants.CONST_SPEED
-                
-
-                 # stop following the wall (as it could ahve potentially led to being stuck)
-                 result.boredom_counter = 0
+		new_distance = self.vector_magnitude(current_pos)
+		old_distance =  self.vector_magnitude(previous_pos)
 
 
-            # if robot not stuck and we are driving away from a "boring" wall, continue doing so
-            elif result.system_state == constants.STATE_BOREDOM_DRIVE:
-                 print("driving bored")
-
-            #####################
-            ##WALL FOLLOWING LEFT
-            #####################
-
-            elif self.should_follow_left_wall(result.dist, result.system_state):
-                
-                print("following left")
-	
-
-		turn_least = constants.CONST_SPEED * constants.TURN_LESS
-		turn_most  = constants.CONST_SPEED * constants.TURN_MORE
-		no_turn    = constants.CONST_SPEED
-		speed_r = result.speed_r
-		speed_l = result.speed_l
-
-                # set state accordingly 
-                result.system_state = constants.STATE_LEFT_FOLLOW
-
-                # keep the distance within the threshold range
-                if self.too_close_to_left(result.dist) and not (speed_l == turn_most and speed_r == turn_least):
-
-                    speed_l = turn_most
-                    speed_r = turn_least
-
-                elif self.is_away_from_left(result.dist) and not (speed_l == turn_least and speed_r == turn_most):
-
-                    speed_l = turn_least
-                    speed_r = turn_most
-
-                elif not (speed_l == no_turn and speed_r == no_turn): 
-
-                    speed_l = no_turn
-                    speed_r = no_turn
-
- 		result.speed_r = speed_r
-                result.speed_l = speed_l
-
-            #####################
-            ##WALL FOLLOWING RIGHT
-            #####################                       
-            elif self.should_follow_right_wall(result.dist, result.system_state):
-                
-                print("following right")
-
-		turn_least = constants.CONST_SPEED * constants.TURN_LESS
-		turn_most  = constants.CONST_SPEED * constants.TURN_MORE
-		no_turn    = constants.CONST_SPEED
-		speed_r = result.speed_r
-		speed_l = result.speed_l
-
-                # set state accordingly
-                result.system_state = constants.STATE_RIGHT_FOLLOW
-
-                # keep the distance within the threshold range 
-                if self.too_close_to_right(result.dist) and not (speed_l == turn_least and speed_r == turn_most):
-
-                    speed_l = turn_least 
-                    speed_r = turn_most 
-
-                elif self.is_away_from_right(result.dist) and not (speed_l == turn_most and speed_r == turn_least):
-
-                    speed_l = turn_most
-                    speed_r = turn_least
-
-                elif not (speed_l == no_turn and speed_r == no_turn): 
-
-                    speed_l = no_turn
-                    speed_r = no_turn
-
- 		result.speed_r = speed_r
-                result.speed_l = speed_l
-
-            ######################
-            # IF IN FREE SPACE, CAN FOLLOW M-LINE
-            #####################
-            else:
-
-		N_to_m = self.get_normal(m_line_start, m_line_finish, [result.x, result.y])
-		N_to_m_length = self.vector_magnitude(perpendicular_to_m)
+		#distance to M-line
+		dist_to_mline = self.DistancePointLine(odo_state.x , odo_state.y, bug_state.m_line_start[0] , bug_state.m_line_start[1] , bug_state.m_line_end[0], bug_state.m_line_end[1])
+		
 
 
+		
+		#check if we reached the destination
+		if new_distance < 40:
+			bug_state.done = True
+		
+		#IF IN FREE ROAM
+		print(dist_to_mline)
 		#if far away from M-line
-		if N_to_m_length > constants.M_DISTANCE:
+		if dist_to_mline > constants.M_DISTANCE and nav_state.system_state == constants.STATE_DRIVE_FORWARD:
+			#DROP IT and for a new one as driving forward and just lost it due to collision or something
+			
+			bug_state.m_line_end  = [odo_state.x , odo_state.y]
+			bug_state.m_line_start= [0,0]
 
-		    N_angle_to_m = get_N_angle_to_m(result)
+			#update last position on lube
+			bug_state.last_m_x = odo_state.x
+   			bug_state.last_m_y = odo_state.y
+			print("FUCK THIS M-LINE")
 
-		    if N_angle_to_m > constants.M_N_ANGLE:
-	            	result.speed_l = constants.CONST_SPEED
-		    	result.speed_r = -constants.CONST_SPEED
-		    if N_angle_to_m < -constants.M_N_ANGLE:
-	            	result.speed_l = -constants.CONST_SPEED
-		    	result.speed_r = constants.CONST_SPEED
-		    else: 
-			result.speed_l = constants.CONST_SPEED
-		        result.speed_r = constants.CONST_SPEED
+			angle_to_m = self.get_angle_on_m(odo_state, bug_state)
+			#print "NOT NORMALIZED angle ON M-line %s" % (angle_to_m)	
+			angle_to_m = self.normalize_angle(angle_to_m)
+
+			#print "angle ON M-line %s" % (angle_to_m)
+
+			# aggressive turning
+			if nav_state.system_state == constants.STATE_DRIVE_FORWARD:
+				turn_less = -constants.CONST_SPEED 
+				turn_more = constants.CONST_SPEED 
+				#OUR angle too small
+				if angle_to_m > constants.M_N_ANGLE:
+					speed_r = turn_more
+					speed_l = turn_less
+				#OUR angle too big
+				elif angle_to_m < -constants.M_N_ANGLE:
+					speed_r = turn_less
+					speed_l = turn_more
+
+
+		
+
+		#if veering off M-line (but still on it)
 		else:
-		    angle_to_m = get_angle_to_m(result)	
-		    turn_less = constants.CONST_SPEED * constants.TURN_LESS
-		    turn_more = constants.CONST_SPEED * constants.TURN_MORE
+			#TODO tweak
+			turn_less = -constants.CONST_SPEED / 4
+			turn_more = constants.CONST_SPEED 
+			if new_distance < old_distance:
+		
 
-		    if N_angle_to_m > constants.M_N_ANGLE:
-	            	result.speed_l = turn_more
-		    	result.speed_r = turn_less
-		    if N_angle_to_m < -constants.M_N_ANGLE:
-	            	result.speed_l = turn_less
-		    	result.speed_r = turn_more
-		    else: 
-			result.speed_l = constants.CONST_SPEED
-		        result.speed_r = constants.CONST_SPEED   	
-  
-		#away from
-		if angle > 10
+				print("OLD dist %s vs new Dist %s " % ( old_distance , new_distance ))
+				bug_state.last_m_x = odo_state.x
+   				bug_state.last_m_y = odo_state.y
+				are_closer_than_before = True
 
-                # otherwise just drive forward
-                if result.system_state is not constants.STATE_BEELINE_MLINE: 
-
-                    # reset variables as not doing anything
-                    result.boredom_counter = 0
-
-                    # set state accordingly
-                    result.system_state = constants.STATE_DRIVE_FORWARD
-	            result.speed_l = constants.CONST_SPEED
-		    result.speed_r = constants.CONST_SPEED
- 
+				turn_less = constants.CONST_SPEED * constants.TURN_LESS
+				turn_more = constants.CONST_SPEED * constants.TURN_MORE
 
 
-	    return result  
+			
+			print(are_closer_than_before)
+			angle_to_m = self.get_angle_on_m(odo_state, bug_state)
+			#print "NOT NORMALIZED angle ON M-line %s" % (angle_to_m)	
+			angle_to_m = self.normalize_angle(angle_to_m)
+
+			#print "angle ON M-line %s" % (angle_to_m)
+
+			# stay on the straight line
+			if nav_state.system_state == constants.STATE_DRIVE_FORWARD:
+
+				#OUR angle too small
+				if angle_to_m > constants.M_N_ANGLE:
+					speed_r = turn_more
+					speed_l = turn_less
+				#OUR angle too big
+				elif angle_to_m < -constants.M_N_ANGLE:
+					speed_r = turn_less
+					speed_l = turn_more
+
+			#TODO if are closer, then try leaving the wall towards the goal
+			#else 
+
+		nav_state.speed_l = speed_l
+		nav_state.speed_r = speed_r 
+		
+		#print("BUG")
+
+		return nav_state
 		    

@@ -13,6 +13,11 @@ from odometry_algorithm 	import Odometry_Algorithm
 from odometry_state 		import Odometry_State
 from navigation_state 		import Navigation_State
 from navigation_algorithm 	import Navigation_Algorithm
+from bug_algorithm 		import Bug_Algorithm
+
+
+from bug_state 			import Bug_State
+
 
 
 import constants
@@ -42,6 +47,8 @@ def main():
         odo_state = Odometry_State()
 	nav_state = Navigation_State()
 	nav = Navigation_Algorithm()
+	bug = Bug_Algorithm()
+	bug_state = Bug_State()
 
 
         # varaibles to not resend speeds during wall following
@@ -50,30 +57,74 @@ def main():
     
         # reset odometry for this robot run 
         comms.reset_odo()
+	 
 
 	#begin control loop
         while True:
+          
+	    #TODO put bug variables into its corresponding state 
 
 
-	    nav_state.dist = comms.get_ir()
-            nav_state = nav.new_state(nav_state)
-	    #odo_state.odo = comms.get_odo()
-
-		
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
-	    
+  	    nav_state.dist = comms.get_ir()
 
-            ds.push(odo_state, nav_state.dist)
+
+
+	#TODO clean this part up 
+	    if bug_state.exploration_cycle < constants.EXPLORATION_CYCLES:
+		bug_state.exploration_cycle += 1
+
+	    elif (not bug_state.algorithm_point):
+
+		#we now know where we need to return to and where from
+		bug_state.m_line_end = [odo_state.x, odo_state.y]
+		bug_state.m_line_start = [0,0]
+		bug_state.last_m_x = odo_state.x
+   		bug_state.last_m_y = odo_state.y
+		bug_state.algorithm_point = True
+
+		#do the 180 turn
+		nav_state.system_state = constants.STATE_BUG_180
+		bug_state.theta_start = odo_state.theta
+	    #otherwise, if still haven't done a 180 turn
+	    elif not bug_state.algorithm_activated:
+		#if did a 180 ....
+		achieved_a_180 = math.degrees(abs(odo_state.theta - bug_state.theta_start) % (2*math.pi)) >= 180
+		print("TURNING") 
+		if nav_state.system_state == constants.STATE_BUG_180 and achieved_a_180:
+			nav_state.system_state = constants.STATE_DRIVE_FORWARD
+			bug_state.algorithm_activated = True
+			print("TURNED") 
+		
+
+
+
+
+
+
+
+
+	    #check reactive first, then bug
+	    nav_state = nav.new_state(nav_state, bug_state)
+	    #if have free movement, use the bug algorithm
+	    if bug_state.algorithm_activated and bug_state.in_control == True:
+		nav_state = bug.new_state(nav_state, odo_state, bug_state)
+		if bug_state.done:
+			print("DONE")
+			comms.drive(0, 0)
+			break
+	
 	    #only send stuff over serial if new values
 	    if not( speed_l == nav_state.speed_l and speed_r == nav_state.speed_r):
 	    	comms.drive(nav_state.speed_l, nav_state.speed_r)
 
             speed_l = nav_state.speed_l
             speed_r = nav_state.speed_r
-
+	    
+            ds.push(odo_state, nav_state.dist)
 	    # do not attempt to instantly read sensors again
             time.sleep(constants.MEASUREMENT_PERIOD_S)
-
+		
     except TypeError as e:
         comms.drive(0,0)
         raise(e)

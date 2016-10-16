@@ -16,6 +16,8 @@ import time
 import math
 
 class Navigation_Algorithm:
+
+
 	# check if we are stuck
 	def is_stuck(self, dist):
 	    #check if we are scraping on the sides
@@ -101,10 +103,22 @@ class Navigation_Algorithm:
 	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
 
 
-        def new_state(self, nav_state):
+        def new_state(self, nav_state, bug_state):
 	                
 	    result = Navigation_State()
 	    result = nav_state
+
+	    bug_state.in_control = False
+	    #turen on the spot
+	    if nav_state.system_state is constants.STATE_BUG_180:
+                 result.speed_l = -constants.CONST_SPEED
+                 result.speed_r = constants.CONST_SPEED 
+		 return result
+
+	    if bug_state.algorithm_activated:
+		#make sure boredom never activates now
+		result.boredom_counter = 0
+
             
             ########################
             #HANDLE BOREDOM COUNTER 
@@ -118,7 +132,7 @@ class Navigation_Algorithm:
             #check if robot is "bored" and it is not being handled
             if self.bored(result.boredom_counter) and not self.is_boredom_handled(result.system_state):
 
-                print("bored...")
+                #print("bored...")
 
                 #turn away from the wall that was last followed
                 if result.system_state == constants.STATE_LEFT_FOLLOW:
@@ -155,11 +169,12 @@ class Navigation_Algorithm:
 
             elif self.is_stuck(result.dist):
                 
-                 print("stuck")
+                 #print("stuck")
 
                  # do not interrupt if already handle
                  if self.is_being_unstuck(result.system_state):
-                        print("being unstuck")
+                        #print("being unstuck")
+			print("")
 
                  # determine direction of where better to turn to unstuck
                  elif self.should_unstuck_right(result.dist, result.system_state):
@@ -181,7 +196,8 @@ class Navigation_Algorithm:
 
             # if robot not stuck and we are driving away from a "boring" wall, continue doing so
             elif result.system_state == constants.STATE_BOREDOM_DRIVE:
-                 print("driving bored")
+                 #print("driving bored")
+		 print("")
 
             #####################
             ##WALL FOLLOWING LEFT
@@ -189,8 +205,9 @@ class Navigation_Algorithm:
 
             elif self.should_follow_left_wall(result.dist, result.system_state):
                 
-                print("following left")
+                #print("following left")
 	
+		bug_state.in_control = True
 
 		turn_least = constants.CONST_SPEED * constants.TURN_LESS
 		turn_most  = constants.CONST_SPEED * constants.TURN_MORE
@@ -225,7 +242,10 @@ class Navigation_Algorithm:
             #####################                       
             elif self.should_follow_right_wall(result.dist, result.system_state):
                 
-                print("following right")
+
+		bug_state.in_control = True
+
+                #print("following right")
 
 		turn_least = constants.CONST_SPEED * constants.TURN_LESS
 		turn_most  = constants.CONST_SPEED * constants.TURN_MORE
@@ -259,11 +279,8 @@ class Navigation_Algorithm:
             # IF NONE OF THE ABOVE
             #####################
             else:
-
-                print("driving...")
-
-                # otherwise just drive forward
-                if result.system_state is not constants.STATE_DRIVE_FORWARD: 
+		
+		    bug_state.in_control = True	
 
                     # reset variables as not doing anything
                     result.boredom_counter = 0
@@ -272,6 +289,7 @@ class Navigation_Algorithm:
                     result.system_state = constants.STATE_DRIVE_FORWARD
 	            result.speed_l = constants.CONST_SPEED
 		    result.speed_r = constants.CONST_SPEED
+
 
 
 	    return result  
