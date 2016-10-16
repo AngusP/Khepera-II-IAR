@@ -339,27 +339,27 @@ class ROSGenerator:
 
         # Angles of the sensor from the X axis (in rad)
         sensor_angles = [
-            1.5 * math.pi,  # Left perpendicular
-            1.75 * math.pi, # Left angled
-            0.0,            # Left forward
-            0.0,            # Right forward
-            0.25 * math.pi, # Right angled
-            0.5 * math.pi,  # Right perpendicular
-            math.pi,        # Back right
-            math.pi         # Back left
+            0.5 * math.pi,   # Left perpendicular
+            0.25 * math.pi,  # Left angled
+            0.0,             # Left forward
+            0.0,             # Right forward
+            1.75 * math.pi,  # Right angled
+            1.5 * math.pi,   # Right perpendicular
+            math.pi,         # Back right
+            math.pi          # Back left
         ]
 
         # Physical (x,y) offset of the sensor from the center of the bot in mm
-        # Where x is firward, y is lateral
+        # Where x is forward, y is left lateral
         sensor_offsets = [
-            (15.0, -25.0),   # Left perpendicular
-            (20.0, -20.0),   # Left angled
-            (27.0,  -8.0),   # Left forward
-            (27.0,   8.0),   # Right forward
-            (20.0,  20.0),   # Right angled
-            (15.0,  25.0),   # Right perpendicular
-            (-26.0, 10.0),   # Back right
-            (-26.0, -10.0)   # Back left
+            ( 15.0,  25.0),  # Left perpendicular
+            ( 20.0,  20.0),  # Left angled
+            ( 27.0,   8.0),  # Left forward
+            ( 27.0,  -8.0),  # Right forward
+            ( 20.0, -20.0),  # Right angled
+            ( 15.0, -25.0),  # Right perpendicular
+            (-26.0, -10.0),  # Back right
+            (-26.0,  10.0)   # Back left
         ]
 
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
@@ -378,8 +378,8 @@ class ROSGenerator:
 
             #print(str(point[0]) + " at " + str(distance))
 
-            # Don't render longer distances
-            if distance > 50:
+            # Don't render 'infinite' distance
+            if distance > 70.0:
                 continue
             
             pt = Point32()
@@ -387,9 +387,9 @@ class ROSGenerator:
             # point[2] is the sensor's coords relative to the robot
             # point[1] is the angle the sensor takes relative to the robot's x axis
 
-            pt.x = (distance * math.sin(point[1])) + point[2][0]
+            pt.x = (distance * math.cos(point[1])) + point[2][0]
             pt.y = (distance * math.sin(point[1])) + point[2][1]
-            pt.z = 16.0
+            pt.z = 0.0
 
             intensities.append(reading)
             points.append(pt)
