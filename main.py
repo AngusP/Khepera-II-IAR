@@ -9,13 +9,14 @@
 
 from __future__ 		import print_function
 from comms 			import Comms
+
 from odometry_algorithm 	import Odometry_Algorithm
 from odometry_state 		import Odometry_State
+
 from navigation_state 		import Navigation_State
 from navigation_algorithm 	import Navigation_Algorithm
+
 from bug_algorithm 		import Bug_Algorithm
-
-
 from bug_state 			import Bug_State
 
 
@@ -62,50 +63,12 @@ def main():
 	#begin control loop
         while True:
           
-	    #TODO put bug variables into its corresponding state 
-
 
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 
-
-
-	#TODO clean this part up 
-	    if bug_state.exploration_cycle < constants.EXPLORATION_CYCLES:
-		bug_state.exploration_cycle += 1
-
-	    elif (not bug_state.algorithm_point):
-
-		#we now know where we need to return to and where from
-		bug_state.m_line_end = [odo_state.x, odo_state.y]
-		bug_state.m_line_start = [0,0]
-		bug_state.last_m_x = odo_state.x
-   		bug_state.last_m_y = odo_state.y
-		bug_state.algorithm_point = True
-
-		#do the 180 turn
-		nav_state.system_state = constants.STATE_BUG_180
-		bug_state.theta_start = odo_state.theta
-	    #otherwise, if still haven't done a 180 turn
-	    elif not bug_state.algorithm_activated:
-		#if did a 180 ....
-		achieved_a_180 = math.degrees(abs(odo_state.theta - bug_state.theta_start) % (2*math.pi)) >= 180
-		print("TURNING") 
-		if nav_state.system_state == constants.STATE_BUG_180 and achieved_a_180:
-			nav_state.system_state = constants.STATE_DRIVE_FORWARD
-			bug_state.algorithm_activated = True
-			print("TURNED") 
-		
-
-
-
-
-
-
-
-
 	    #check reactive first, then bug
-	    nav_state = nav.new_state(nav_state, bug_state)
+	    nav_state = nav.new_state(nav_state, odo_state, bug_state)
 	    #if have free movement, use the bug algorithm
 	    if bug_state.algorithm_activated and bug_state.in_control == True:
 		nav_state = bug.new_state(nav_state, odo_state, bug_state)

@@ -103,12 +103,45 @@ class Navigation_Algorithm:
 	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
 
 
-        def new_state(self, nav_state, bug_state):
+        def new_state(self, nav_state, odo_state, bug_state):
 	                
 	    result = Navigation_State()
 	    result = nav_state
 
 	    bug_state.in_control = False
+
+
+            
+           ########################
+           #HANDLE THE BUG OPERATIONS
+           ########################
+
+	   
+	   #TODO clean this part up 
+	    if bug_state.exploration_cycle < constants.EXPLORATION_CYCLES:
+		bug_state.exploration_cycle += 1
+
+	    elif (not bug_state.algorithm_point):
+
+		#we now know where we need to return to and where from
+		bug_state.m_line_end = [odo_state.x, odo_state.y]
+		bug_state.m_line_start = [0,0]
+		bug_state.last_m_x = odo_state.x
+   		bug_state.last_m_y = odo_state.y
+		bug_state.algorithm_point = True
+		#do the 180 turn
+		nav_state.system_state = constants.STATE_BUG_180
+		bug_state.theta_start  = odo_state.theta
+	    #otherwise, if still haven't done a 180 turn
+	    elif not bug_state.algorithm_activated:
+		#if did a 180 ....
+		achieved_a_180 = math.degrees(abs(odo_state.theta - bug_state.theta_start) % (2*math.pi)) >= 180
+		print("TURNING") 
+		if nav_state.system_state == constants.STATE_BUG_180 and achieved_a_180:
+			nav_state.system_state = constants.STATE_DRIVE_FORWARD
+			bug_state.algorithm_activated = True
+			print("TURNED") 
+		
 	    #turen on the spot
 	    if nav_state.system_state is constants.STATE_BUG_180:
                  result.speed_l = -constants.CONST_SPEED
