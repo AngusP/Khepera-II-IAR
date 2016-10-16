@@ -63,7 +63,7 @@ def main():
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
 	    
 
-            ds.push(odo_state)
+            ds.push(odo_state, nav_state.dist)
 	    #only send stuff over serial if new values
 	    if not( speed_l == nav_state.speed_l and speed_r == nav_state.speed_r):
 	    	comms.drive(nav_state.speed_l, nav_state.speed_r)
