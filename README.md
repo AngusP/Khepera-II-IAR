@@ -64,3 +64,25 @@ Further reference:
     
 Methods in `data.py` also have documentation
 
+Command-line shortcuts are
+
+    data.py --server=<REDIS SERVER>
+    data.py -s <REDIS SERVER>
+    
+    data.py --delete
+    data.py -d
+    
+    data.py --plot
+    data.py -p
+    
+    data.py --rospipe
+    data.py -r
+
+
+# ROS Integration
+
+Internally we're using Redis to publish and collect data. `data.py` has a method `DataStore.rospipe()` that pipes from Redis' PubSub into ROS topics. It can be run as a method call, or with the command line switch `--rospipe` or `-r`.
+
+[ROS.org](http://ros.org) has detailed docs on installation and dependencies. For the whole ROS pipeline to work, and instance of `roscore` must be running locally, and `rospipe()` will publish to the topics `/statestreampose`, `/statestreamodom` and `/statestreamdist`, as well as publishing a `TR` named `khepera`. Rviz should be able to detect these topics.
+
+

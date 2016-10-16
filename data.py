@@ -156,7 +156,7 @@ class DataStore:
         self.static_plot()
 
     def live_plot(self):
-        print("Plotting Subroutine...")
+        print("Deprecated, rospipe + rviz will work better")
         try:
             pubsub = self.r.pubsub()
             pubsub.subscribe([self.listname])
@@ -177,9 +177,9 @@ class DataStore:
             print(e)
 
             
-    def static_plot(self):
+    def static_plot(self, start=0, stop=-1):
         # Plot all existing data after a run
-        data = self.get()
+        data = self.get(start, stop)
         
         xs = []
         ys = []
@@ -219,32 +219,44 @@ class DataStore:
             if rospy.is_shutdown():
                 print("\nStopping rospipe...")
                 break
-            
-            if not self.r.hexists(item['data'], 'x'):
+
+            if item['type'] == "subscribe":
+                rospy.loginfo("Subscribed successfully")
                 continue
-
-            # Pull from redis:
-            data = self.r.hgetall(item['data'])
-            quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
             
-            # Generate new pose
-            pose = rg.gen_pose(data, quat)
-            # Generate odometry data
-            odom = rg.gen_odom(data, quat)
-            # Generate pointcloud of distances
-            dist = rg.gen_dist(data)
+            try:
+                # Pull from redis:
+                data = self.r.hgetall(item['data'])
+                
+                required_keys = ['x','y','theta','t']
+                for key in required_keys:
+                    if key not in data.keys():
+                        raise KeyError("Missing key " + str(key) + " from hashmap " + str(data))
+
+                quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
             
-            # Publish to ROS topics
-            pose_pub.publish(pose)
-            odom_pub.publish(odom)
-            dist_pub.publish(dist)
-
-            tbr.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
-                              quat, rospy.Time.now(), "khepera", "map")
-
-            rospy.loginfo(" Redis --> ROS #" + str(round(float(data['t']), 4)))
-
+                # Generate new pose
+                pose = rg.gen_pose(data, quat)
+                # Generate odometry data
+                odom = rg.gen_odom(data, quat)
+                # Generate pointcloud of distances
+                dist = rg.gen_dist(data)
             
+                # Publish to ROS topics
+                pose_pub.publish(pose)
+                odom_pub.publish(odom)
+                dist_pub.publish(dist)
+                
+                tbr.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
+                                  quat, rospy.Time.now(), "khepera", "map")
+
+                rospy.loginfo(" Redis --> ROS #" + str(round(float(data['t']), 4)))
+
+            except KeyError as e:
+                rospy.logwarn(str(e))
+                pass
+
+
     def _purge(self):
         # Clear out all (literally all) data held in Redis
         if self.wt.confirm("Really destroy all data in Redis store?\n\nThis is not undoable!\n(run FLUSHDB)",
@@ -331,11 +343,14 @@ class ROSGenerator:
             (8.0,   27.0),  # Right forward
             (20.0,  20.0),  # Right angled
             (25.0,  15.0),  # Right perpendicular
-            (-10.0,  -26.0),  # Back right
+            (-10.0, -26.0), # Back right
             (10.0, -26.0),  # Back left
         ]
 
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
+        for key in keys:
+            if key not in data.keys():
+                raise KeyError("No range data -- Missing key " + str(key))
 
         pre_points = zip(keys, sensor_angles, sensor_offsets)
         points = []
@@ -362,10 +377,10 @@ class ROSGenerator:
         intensities_chan.values = intensities
         intensity_chan.name = "intensity"
         intensity_chan.values = [
-            100.0, # min intensity
+            50.0,   # min intensity
             1000.0, # max intensity
-            0.0,   # min color
-            1.0    # max color
+            0.0,    # min color
+            1.0     # max color
         ]
 
         dist.channels = [intensities_chan, intensity_chan]
