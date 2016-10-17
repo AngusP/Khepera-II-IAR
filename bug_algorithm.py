@@ -193,6 +193,9 @@ class Bug_Algorithm:
 					speed_r = turn_less
 					speed_l = turn_more
 					#print("our angle too big")
+			
+		nav_state.speed_l = speed_l
+		nav_state.speed_r = speed_r 
 		
 		#print("BUG")
 
