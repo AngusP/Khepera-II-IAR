@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import math
 import time
 import yaml
+import pprint
 
 import constants
 
@@ -55,7 +56,11 @@ class DataStore:
         self.odomtopic = self.listname + "odom"
         self.disttopic = self.listname + "dist"
 
+        # Test Redis connection
         self.r.ping()
+
+        self.pp = pprint.PrettyPrinter(indent=4)
+
 
     def __del__(self):
         self.save()
@@ -107,6 +112,21 @@ class DataStore:
 
         # Also publish onto a channel
         self.r.publish(self.listname, mapname)
+
+    def sub(self):
+        # Mostly a test method, subscribe and print
+        sub = self.r.pubsub()
+        sub.subscribe([self.listname])
+
+        # Loop until stopped plotting the path
+        try:
+            for item in sub.listen():
+                data = self.r.hgetall(item['data'])
+                item['data'] = data
+                self.pp.pprint(item)
+        except KeyboardInterrupt as e:
+            print("Stopping...")
+            pass
 
         
     def get(self, start=0, stop=-1):
