@@ -28,7 +28,7 @@ try:
     ros = True
     from std_msgs.msg import String
     from geometry_msgs.msg import PoseWithCovariance, PoseStamped, Point32
-    from nav_msgs.msg import Odometry
+    from nav_msgs.msg import Odometry, Path
     from sensor_msgs.msg import PointCloud, ChannelFloat32
     import tf
 except ImportError as e:
@@ -51,10 +51,12 @@ class DataStore:
         self.wt = whiptail.Whiptail()
         # Redis List and Channel name
         self.listname = "statestream"
+        self.goallist = "goalstream"
         # ROS Topics
         self.posetopic = self.listname + "pose"
         self.odomtopic = self.listname + "odom"
         self.disttopic = self.listname + "dist"
+        self.goaltopic = self.listname + "goal"
 
         # Test Redis connection
         self.r.ping()
@@ -112,6 +114,22 @@ class DataStore:
 
         # Also publish onto a channel
         self.r.publish(self.listname, mapname)
+
+
+    def push_goal(self, path):
+        # Expects a list of dicts
+        # e.g. [{'x': 0.0, 'y':100.0},{'x': 1502.5, 'y': 1337.0}]
+        self.r.delete(self.goallist)
+
+        pointnum = 0
+        for point in path:
+            pointname = "goal" + str(pointnum)
+            pointnum += 1
+            self.r.hmset(pointname, point)
+            self.r.lpush(self.goallist, pointname)
+
+        self.r.publish(self.goallist, self.goallist)
+
 
     def sub(self):
         # Mostly a test method, subscribe and print
@@ -226,12 +244,13 @@ class DataStore:
         pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=10)
         odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=10)
         dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=10)
+        goal_pub = rospy.Publisher(self.goaltopic, Path, queue_size=10)
         tbr = tf.TransformBroadcaster()
         
         rospy.init_node('talker', anonymous=True)
 
         sub = self.r.pubsub()
-        sub.subscribe([self.listname])
+        sub.subscribe([self.listname, self.goallist])
 
         # Loop until stopped plotting the path
         for item in sub.listen():
@@ -241,40 +260,75 @@ class DataStore:
                 break
 
             if item['type'] == "subscribe":
-                rospy.loginfo("Subscribed successfully")
+                rospy.loginfo("Subscribed successfully to " + item['channel'])
                 continue
             
             try:
-                # Pull from redis:
-                data = self.r.hgetall(item['data'])
+                if item['channel'] == self.listname:
+                    # Stream of poses and distance data
+
+                    # Pull from redis:
+                    data = self.r.hgetall(item['data'])
+                    
+                    required_keys = ['x','y','theta','t']
+                    for key in required_keys:
+                        if key not in data.keys():
+                            raise KeyError("Missing key " + str(key) + " from hashmap " +
+                                           str(data) + " on channel " + str(item['channel']))
+
+                    # Generate a new Quaternion based on the robot's pose
+                    quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
+
+                    # Generate new pose
+                    pose = rg.gen_pose(data, quat)
+                    pose_pub.publish(pose)
+
+                    # Publish Khepera transform
+                    tbr.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
+                                      quat, rospy.Time.now(), "khepera", "map")
                 
-                required_keys = ['x','y','theta','t']
-                for key in required_keys:
-                    if key not in data.keys():
-                        raise KeyError("Missing key " + str(key) + " from hashmap " + str(data))
+                    # Generate odometry data
+                    odom = rg.gen_odom(data, quat)
+                    odom_pub.publish(odom)
 
-                # Generate a new Quaternion based on the robot's pose
-                quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
-            
-                # Generate new pose
-                pose = rg.gen_pose(data, quat)
-                pose_pub.publish(pose)
+                    # Generate pointcloud of distances
+                    dist = rg.gen_dist(data)
+                    dist_pub.publish(dist)
 
-                # Publish Khepera transform
-                tbr.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
-                                  quat, rospy.Time.now(), "khepera", "map")
+                    rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
+
+
+                elif item['channel'] == self.goallist:
+                    # Less frequent planning channel
                 
-                # Generate odometry data
-                odom = rg.gen_odom(data, quat)
-                odom_pub.publish(odom)
-                
-                # Generate pointcloud of distances
-                dist = rg.gen_dist(data)
-                dist_pub.publish(dist)
+                    # Pull co-ords from Redis
+                    data = self.r.lrange(self.goallist, 0, -1)
+                    path = rg.gen_path()
+                    quat = tf.transformations.quaternion_from_euler(0.0, 0.0, 0.0)
 
-                rospy.loginfo(" Redis --> ROS #" + str(round(float(data['t']), 4)))
+                    for datapoint in data:
+                        raw_pose = self.r.hgetall(datapoint)
+                        
+                        required_keys = ['x','y']
+                        for key in required_keys:
+                            if key not in raw_pose.keys():
+                                raise KeyError("Missing key " + str(key) + " from point " +
+                                               str(raw_pose) + " on channel " + str(item['channel']))
 
-            except KeyError as e:
+                        
+                        this_pose = rg.gen_pose(raw_pose, quat)
+                        path.poses.append(this_pose)
+                        
+                    goal_pub.publish(path)
+                    rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
+                        
+
+                else:
+                    # If we get an unexpected channel, complain loudly
+                    raise ValueError("Encountered unknown channel '" + str(item['channel']) + "'")
+
+
+            except (KeyError, ValueError) as e:
                 rospy.logwarn(str(e))
                 pass
 
@@ -431,7 +485,18 @@ class ROSGenerator:
         dist.channels = [intensities_chan, intensity_chan]
         
         return dist
-        
+
+
+    def gen_path(self):
+        path = Path()
+        path.header.stamp = rospy.Time.now()
+        path.header.frame_id = "map"
+        return path
+
+    def gen_path_pose(self, data):
+        pass
+
+
     def _ir_to_dist(self, reading):
         '''
         From solved equation:
