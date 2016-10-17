@@ -103,7 +103,7 @@ class Navigation_Algorithm:
 	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
 
 
-        def new_state(self, nav_state, odo_state, bug_state):
+        def new_state(self, nav_state, odo_state, bug_state, comms):
 	                
 	    result = Navigation_State()
 	    result = nav_state
@@ -121,6 +121,8 @@ class Navigation_Algorithm:
 
 	    #now that we have explored enough, can record our position from where we need to return
 	    elif (not bug_state.algorithm_point):
+
+		comms.led(0,1)
 
 		#record the line parameters
 		bug_state.m_line_end = [odo_state.x, odo_state.y]
@@ -220,12 +222,12 @@ class Navigation_Algorithm:
 			return result
 
 		 #update m-line
-		 #bug_state.m_line_end  = [odo_state.x , odo_state.y]
-		 #bug_state.m_line_start= [0,0]
+		 bug_state.m_line_end  = [odo_state.x , odo_state.y]
+		 bug_state.m_line_start= [0,0]
  
 		 #update last position on m-line
-		 #bug_state.last_m_x = odo_state.x
-   		 #bug_state.last_m_y = odo_state.y
+		 bug_state.last_m_x = odo_state.x
+   		 bug_state.last_m_y = odo_state.y
 		
                  # determine direction of where better to turn to unstuck
                  if self.should_unstuck_right(result.dist, result.system_state):

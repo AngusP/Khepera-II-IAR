@@ -160,7 +160,7 @@ class Bug_Algorithm:
 
 				turn_less = constants.CONST_SPEED * constants.TURN_LESS
 				turn_more = constants.CONST_SPEED * constants.TURN_MORE
-				print("trying to correct trijectory")
+				#print("trying to correct trijectory")
 
 
 			# if can leave a wall closer on m-line
@@ -172,7 +172,7 @@ class Bug_Algorithm:
 
 			
 			angle_to_m = self.get_angle_on_m(odo_state, bug_state)
-			print "ANGLE TO MLINE %s" % (angle_to_m)	
+			#print "ANGLE TO MLINE %s" % (angle_to_m)	
 
 			#OUR angle too small
 			if angle_to_m > constants.M_N_ANGLE:
@@ -182,7 +182,7 @@ class Bug_Algorithm:
 					# if there is none, turn left
 					speed_r = turn_more
 					speed_l = turn_less	
-					print("our angle too small")
+					#print("our angle too small")
 
 			#OUR angle too big
 			elif angle_to_m < -constants.M_N_ANGLE:
@@ -192,10 +192,7 @@ class Bug_Algorithm:
 					# if there is none, turn right
 					speed_r = turn_less
 					speed_l = turn_more
-					print("our angle too big")
-			
-		nav_state.speed_l = speed_l
-		nav_state.speed_r = speed_r 
+					#print("our angle too big")
 		
 		#print("BUG")
 

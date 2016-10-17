@@ -68,7 +68,7 @@ def main():
   	    nav_state.dist = comms.get_ir()
 
 	    #check reactive first, then bug
-	    nav_state = nav.new_state(nav_state, odo_state, bug_state)
+	    nav_state = nav.new_state(nav_state, odo_state, bug_state, comms)
 	    #if have free movement, use the bug algorithm
 	    if bug_state.algorithm_activated and bug_state.in_control == True:
 		nav_state = bug.new_state(nav_state, odo_state, bug_state)

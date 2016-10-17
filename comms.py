@@ -123,6 +123,7 @@ class Comms:
             self.port.write("L,0," + str(state) + "\n")
         else:
             self.port.write("L,1," + str(state) + "\n")
+	self.port.readline()
 
 
     def blinkyblink(self):
