@@ -58,12 +58,17 @@ class Bug_Algorithm:
 	def vector_magnitude(self, vector):
 		return math.sqrt( math.pow(vector[0],2) + math.pow(vector[1],2))
 
-	def get_vector_angle(vector1, vector2):
+	def get_vector_angle(self, vector1, vector2):
+
 		dot_prod = vector1[0] * vector2[0] + vector1[1]*vector2[1]
 		mult_magnitude = self.vector_magnitude(vector1)*self.vector_magnitude(vector2)
-		angle = math.acos(dot_product / mult_magnitude)
+		angle = math.acos(dot_prod / mult_magnitude)
 
-	def vector_x_product(vector1, vector2)
+		sign = vector1[0]*vector2[1] < vector1[1]*vector2[0]
+		angle = angle * ( -1 if sign else 1)
+		return math.degrees(angle)
+
+	
 		
 
 	#normalizes angle in degrees to -180 : 180 degrees
@@ -96,52 +101,17 @@ class Bug_Algorithm:
 		 
 	#get angle while ON the M-line
 	def get_angle_on_m(self, odo_state, bug_state):
-		direction = self.vector_diff( bug_state.m_line_start,  bug_state.m_line_end)
 		
 		#if no difference, well then we never left the spot 
-		vector_magnitude = self.vector_magnitude(direction)
+		vector_magnitude = self.vector_magnitude(bug_state.m_line_end)
 		if vector_magnitude == 0:
 			return 0
 
-		direction_angle = math.degrees(math.atan2(direction[1] , direction[0]))
+		direction_angle = math.degrees(math.atan2(bug_state.m_line_end[1], bug_state.m_line_end[0]))
 		direction_angle = self.normalize_angle(direction_angle)
-		
 
-		actual_direction = self.vector_diff( bug_state.m_line_start,  [odo_state.x, odo_state.y])
-
-
-
-		
-		overshot_x = actual_direction[0] < 0 and math.cos(math.radians(direction_angle)) > 0
-		undershot_x = actual_direction[0] > 0 and math.cos(math.radians(direction_angle)) < 0
-
-		overshot_y = actual_direction[1] < 0 and math.sin(math.radians(direction_angle)) > 0
-		undershot_y = actual_direction[1] > 0 and math.sin(math.radians(direction_angle)) < 0
-
-
-		# check if the direction is cotnadicted by angle calculations
-		if overshot_x or undershot_x:
-			
-			old_angle = direction_angle
-			direction_angle = 180 + direction_angle
-			print("WRONG ANGLE YYYYYY old %s, new %s as OS %s US %s" % (old_angle, direction_angle, overshot_x, undershot_x))
-			direction_angle = self.normalize_angle(direction_angle)
-
-		elif overshot_y or undershot_y:
-			
-			old_angle = direction_angle
-			direction_angle = 180 + direction_angle
-			print("WRONG ANGLE XXXXX old %s, new %s as OS %s US %s" % (old_angle, direction_angle, overshot_y, undershot_y))
-			direction_angle = self.normalize_angle(direction_angle)
-			
-		
-		
-		actual_angle = math.degrees(odo_state.theta)
-
-		angle_diff = direction_angle - actual_angle
-
-
-	        print("DIRECTION to to head to %s and angle %s and actual angle %s actual direction %s" % (direction, direction_angle, actual_angle, actual_direction))
+		actual_angle = self.normalize_angle(math.degrees(odo_state.theta))
+		angle_diff =   self.normalize_angle(actual_angle - direction_angle)
 
 		return angle_diff
 
@@ -206,7 +176,7 @@ class Bug_Algorithm:
    				bug_state.last_m_y = odo_state.y
 				are_closer_than_before = True
 			
-			print(are_closer_than_before)
+			#print(are_closer_than_before)
 			
 
 			#print "angle ON M-line %s" % (angle_to_m)
@@ -216,7 +186,7 @@ class Bug_Algorithm:
 
 				turn_less = constants.CONST_SPEED * constants.TURN_LESS
 				turn_more = constants.CONST_SPEED * constants.TURN_MORE
-				#print("trying to correct trijectory")
+				print("trying to correct trijectory")
 
 
 			# if can leave a wall closer on m-line
@@ -224,14 +194,20 @@ class Bug_Algorithm:
 
 				turn_less = -constants.CONST_SPEED 
 				turn_more = constants.CONST_SPEED 
-				#print("trying to leave wall")
+				print("trying to leave wall")
 
+			
+			#return_vector = self.vector_diff(bug_state.m_line_start , bug_state.m_line_end)
+			#new_angle = self.get_vector_angle([odo_state.x, odo_state.y], return_vector)
+		
+			#angle_to_m = new_angle
+
+
+			
 			angle_to_m = self.get_angle_on_m(odo_state, bug_state)
-			new_angle = self.get_vector_angle(odo_state.x, odo_state.y 
-
-			print "NEW %s vs OLD %s " % (angle_to_m, new_angle)	
 			angle_to_m = self.normalize_angle(angle_to_m)
-			print "NORMALIZED angle ON M-line %s" % (angle_to_m)	
+			print "ANGLE TO MLINE %s" % (angle_to_m)	
+
 			#OUR angle too small
 			if angle_to_m > constants.M_N_ANGLE:
 
@@ -239,7 +215,8 @@ class Bug_Algorithm:
 				if nav_state.system_state is not constants.STATE_LEFT_FOLLOW:
 					# if there is none, turn left
 					speed_r = turn_more
-					speed_l = turn_less
+					speed_l = turn_less	
+					print("our angle too small")
 
 			#OUR angle too big
 			elif angle_to_m < -constants.M_N_ANGLE:
@@ -249,6 +226,7 @@ class Bug_Algorithm:
 					# if there is none, turn right
 					speed_r = turn_less
 					speed_l = turn_more
+					print("our angle too big")
 			
 		nav_state.speed_l = speed_l
 		nav_state.speed_r = speed_r 
