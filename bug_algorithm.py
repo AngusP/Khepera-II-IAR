@@ -57,18 +57,6 @@ class Bug_Algorithm:
 	#vector magnitude calculator
 	def vector_magnitude(self, vector):
 		return math.sqrt( math.pow(vector[0],2) + math.pow(vector[1],2))
-
-	def get_vector_angle(self, vector1, vector2):
-
-		dot_prod = vector1[0] * vector2[0] + vector1[1]*vector2[1]
-		mult_magnitude = self.vector_magnitude(vector1)*self.vector_magnitude(vector2)
-		angle = math.acos(dot_prod / mult_magnitude)
-
-		sign = vector1[0]*vector2[1] < vector1[1]*vector2[0]
-		angle = angle * ( -1 if sign else 1)
-		return math.degrees(angle)
-
-	
 		
 
 	#normalizes angle in degrees to -180 : 180 degrees
@@ -89,32 +77,18 @@ class Bug_Algorithm:
 		dy = vector_1[1] - vector_2[1]*1.0
 		return [dx,dy]
 
-
-	#vecotr normalizer
-	def normalize_vector(self, vector):
-
-		vector_magnitude = self.vector_magnitude(vector)
-		if vector_magnitude == 0:
-			vector_magnitude = 1
-		return (vector[0] / vector_magnitude, vector[1] / vector_magnitude)
-
 		 
 	#get angle while ON the M-line
 	def get_angle_on_m(self, odo_state, bug_state):
-		
+		direction = self.vector_diff( bug_state.m_line_start,  bug_state.m_line_end)
+		direction_angle = math.atan2(direction[1] , direction[0])
 		#if no difference, well then we never left the spot 
-		vector_magnitude = self.vector_magnitude(bug_state.m_line_end)
+		vector_magnitude = self.vector_magnitude(direction)
 		if vector_magnitude == 0:
 			return 0
-
-		direction_angle = math.degrees(math.atan2(bug_state.m_line_end[1], bug_state.m_line_end[0]))
-		direction_angle = self.normalize_angle(direction_angle)
-
-		actual_angle = self.normalize_angle(math.degrees(odo_state.theta))
-		angle_diff =   self.normalize_angle(actual_angle - direction_angle)
-
-		return angle_diff
-
+		
+		direction_angle = math.degrees(direction_angle) - self.normalize_angle(math.degrees(odo_state.theta))
+		return self.normalize_angle(direction_angle)
 		 	
 	#return new state
         def new_state(self, nav_state, odo_state, bug_state):
@@ -197,15 +171,7 @@ class Bug_Algorithm:
 				print("trying to leave wall")
 
 			
-			#return_vector = self.vector_diff(bug_state.m_line_start , bug_state.m_line_end)
-			#new_angle = self.get_vector_angle([odo_state.x, odo_state.y], return_vector)
-		
-			#angle_to_m = new_angle
-
-
-			
 			angle_to_m = self.get_angle_on_m(odo_state, bug_state)
-			angle_to_m = self.normalize_angle(angle_to_m)
 			print "ANGLE TO MLINE %s" % (angle_to_m)	
 
 			#OUR angle too small

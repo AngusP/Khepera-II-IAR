@@ -139,17 +139,23 @@ class Navigation_Algorithm:
 	    #now, if have not yet done a 180 degree turn before
 	    elif not bug_state.algorithm_activated:
 		#check if that is the case now
-		achieved_a_180 = math.degrees(abs(odo_state.theta - bug_state.theta_start) % (2*math.pi)) >= 180
+		new_theta = math.degrees(abs(odo_state.theta - bug_state.theta_start) % (2*math.pi)) 
+		achieved_a_180 = new_theta >= 180
+
+		#print(new_theta)
 		if nav_state.system_state == constants.STATE_BUG_180 and achieved_a_180:
 			#if done turning at 180, then can proceed to the return algorithm
 			nav_state.system_state = constants.STATE_DRIVE_FORWARD
 			#reset boredom
 		        result.boredom_counter = 0
 			bug_state.algorithm_activated = True
+
+			#print("TURNING %s" % (achieved_a_180))
 		else:	
 		   #otherwise, continue turning
 		   result.speed_l = -constants.CONST_SPEED
                    result.speed_r = constants.CONST_SPEED 
+		   nav_state.system_state = constants.STATE_BUG_180
 		   return result
 
             ########################
@@ -196,23 +202,33 @@ class Navigation_Algorithm:
 
 		        # otherwise, continue rotationg for this loop iteration
 		        else:
-		            result.boredom_turn_counter += 1
+		            result.boredom_turn_counter += 1 
+			    #turn until done turning 
+			    return result
+		  
 
             ############################
             # IF STUCK
             ############################
 
-            elif self.is_stuck(result.dist):
+            if self.is_stuck(result.dist):
                 
                  #print("stuck")
 
                  # do not interrupt if already handle
                  if self.is_being_unstuck(result.system_state):
-                        #print("being unstuck")
-			print("")
+			return result
 
+		 #update m-line
+		 #bug_state.m_line_end  = [odo_state.x , odo_state.y]
+		 #bug_state.m_line_start= [0,0]
+ 
+		 #update last position on m-line
+		 #bug_state.last_m_x = odo_state.x
+   		 #bug_state.last_m_y = odo_state.y
+		
                  # determine direction of where better to turn to unstuck
-                 elif self.should_unstuck_right(result.dist, result.system_state):
+                 if self.should_unstuck_right(result.dist, result.system_state):
 
                       result.system_state = constants.STATE_STUCK_RIGHT
 		      result.speed_l = constants.CONST_SPEED
@@ -227,6 +243,7 @@ class Navigation_Algorithm:
 
                  # stop following the wall (as it could ahve potentially led to being stuck)
                  result.boredom_counter = 0
+		 return result
 
 	    
             ########################
@@ -234,14 +251,14 @@ class Navigation_Algorithm:
             ########################
 
             # if robot not stuck and we are driving away from a "boring" wall, continue doing so
-            elif result.system_state == constants.STATE_BOREDOM_DRIVE and not (bug_state.algorithm_activated):
+            if result.system_state == constants.STATE_BOREDOM_DRIVE and not (bug_state.algorithm_activated):
                  return result
 
             #####################
             ##WALL FOLLOWING LEFT
             #####################
 
-            elif self.should_follow_left_wall(result.dist, result.system_state):
+            if self.should_follow_left_wall(result.dist, result.system_state):
                 
                 #print("following left")
 	
