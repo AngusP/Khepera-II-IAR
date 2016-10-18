@@ -103,7 +103,7 @@ class Navigation_Algorithm:
 	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
 
 
-        def new_state(self, nav_state, odo_state, bug_state, comms):
+        def new_state(self, nav_state, odo_state, bug_state, comms, bug):
 	                
 	    result = Navigation_State()
 	    result = nav_state
@@ -136,16 +136,16 @@ class Navigation_Algorithm:
 		bug_state.algorithm_point = True
 		#do the 180 turn by recording initial turn
 		nav_state.system_state = constants.STATE_BUG_180
-		bug_state.theta_start  = odo_state.theta
 
 	    #now, if have not yet done a 180 degree turn before
 	    elif not bug_state.algorithm_activated:
 		#check if that is the case now
-		new_theta = math.degrees(abs(odo_state.theta - bug_state.theta_start) % (2*math.pi)) 
-		achieved_a_180 = new_theta >= 180
+	
+		angle = bug.get_angle_on_m(odo_state, bug_state)
+		pointing_at_origin = abs(angle) < 10
 
 		#print(new_theta)
-		if nav_state.system_state == constants.STATE_BUG_180 and achieved_a_180:
+		if nav_state.system_state == constants.STATE_BUG_180 and pointing_at_origin:
 			#if done turning at 180, then can proceed to the return algorithm
 			nav_state.system_state = constants.STATE_DRIVE_FORWARD
 			#reset boredom
@@ -154,9 +154,14 @@ class Navigation_Algorithm:
 
 			print("DONE TURNING %s" % (achieved_a_180))
 		else:	
-		   #otherwise, continue turning
-		   result.speed_l = -constants.CONST_SPEED
-                   result.speed_r = constants.CONST_SPEED 
+
+		   if angle > 10:
+			result.speed_l = -constants.CONST_SPEED
+                   	result.speed_r = constants.CONST_SPEED 
+		   elif angle < -10:
+			result.speed_r = -constants.CONST_SPEED
+                   	result.speed_l = constants.CONST_SPEED 
+
 		   nav_state.system_state = constants.STATE_BUG_180
 		   return result
 
