@@ -57,6 +57,7 @@ DIST_CUTOFF = 0.0
 
 
 M_DISTANCE = 50 # mm
-M_N_ANGLE = 5 # degrees
+M_N_ANGLE  = 5 # degrees
+ON_MLINE   = 30
 
 
