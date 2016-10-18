@@ -55,6 +55,14 @@ def main():
         # varaibles to not resend speeds during wall following
         speed_l = 0
         speed_r = 0
+
+        # List of dict for Redis -> ROS goal line render
+        mline_hm = [
+            {'x': bug_state.m_line_start[0],
+             'y': bug_state.m_line_start[1]},
+            {'x': bug_state.m_line_end[0],
+             'y': bug_state.m_line_end[1]}
+            ]
     
         # reset odometry for this robot run 
         comms.reset_odo()
@@ -85,6 +93,14 @@ def main():
             speed_r = nav_state.speed_r
 	    
             ds.push(odo_state, nav_state.dist)
+
+            if (mline_hm[1]['x'] != bug_state.m_line_end[0] or
+                mline_hm[1]['y'] != bug_state.m_line_end[1]):
+                # Update and push
+                mline_hm[1]['x'] = bug_state.m_line_end[0]
+                mline_hm[1]['y'] = bug_state.m_line_end[0]
+                ds.push_goal(mline_hm)
+            
 	    # do not attempt to instantly read sensors again
             time.sleep(constants.MEASUREMENT_PERIOD_S)
 		
