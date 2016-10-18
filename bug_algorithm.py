@@ -147,7 +147,7 @@ class Bug_Algorithm:
 		#if far away from M-line
 
 		far_in_open_space = dist_to_mline > constants.M_DISTANCE and nav_state.system_state == constants.STATE_DRIVE_FORWARD
-		far_on_wall = dist_to_mline > constants.M_DISTANCE*2 and nav_state.system_state == constants.STATE_DRIVE_FORWARD
+		far_on_wall = dist_to_mline > constants.M_DISTANCE*5 
 		if far_in_open_space or far_on_wall:
 			
 			#DROP IT and for a new one as driving forward and just lost it due to collision or something
