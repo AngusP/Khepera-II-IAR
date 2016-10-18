@@ -151,8 +151,6 @@ class Navigation_Algorithm:
 			#reset boredom
 		        result.boredom_counter = 0
 			bug_state.algorithm_activated = True
-
-			print("DONE TURNING %s" % (achieved_a_180))
 		else:	
 
 		   if angle > 10:
