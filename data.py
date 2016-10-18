@@ -37,7 +37,14 @@ except ImportError as e:
     ros = False
     pass
 
-
+# ROS Import check wrapper
+def requireros(func):
+    def check_and_call(*args, **kwargs):
+        if not ros:
+            raise ImportError("ROS (rospy) Not supported/found")
+        else:
+            return func(*args, **kwargs)
+    return check_and_call
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -236,6 +243,7 @@ class DataStore:
         plt.show()
 
 
+    @requireros
     def rospipe(self):
 
         print('''
@@ -252,9 +260,6 @@ class DataStore:
 
         print("Piping Redis ---> ROS")
         # Pipe data out of Redis into ROS
-
-        if not ros:
-            raise ImportError("ROS (rospy) Not supported/found")
 
         rg = ROSGenerator()
         
@@ -294,7 +299,8 @@ class DataStore:
                                            str(data) + " on channel " + str(item['channel']))
 
                     # Generate a new Quaternion based on the robot's pose
-                    quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
+                    quat = tf.transformations.quaternion_from_euler(0.0, 0.0, 
+                                                                    float(data['theta']))
 
                     # Generate new pose
                     pose = rg.gen_pose(data, quat)
@@ -330,7 +336,8 @@ class DataStore:
                         for key in required_keys:
                             if key not in raw_pose.keys():
                                 raise KeyError("Missing key " + str(key) + " from point " +
-                                               str(raw_pose) + " on channel " + str(item['channel']))
+                                               str(raw_pose) + " on channel " + 
+                                               str(item['channel']))
 
                         
                         this_pose = rg.gen_pose(raw_pose, quat)
@@ -342,7 +349,8 @@ class DataStore:
 
                 else:
                     # If we get an unexpected channel, complain loudly
-                    raise ValueError("Encountered unknown channel '" + str(item['channel']) + "'")
+                    raise ValueError("Encountered unknown channel '" + 
+                                     str(item['channel']) + "'")
 
 
             except (KeyError, ValueError) as e:
@@ -399,12 +407,12 @@ class DataStore:
         return self.r.save()
 
 
-
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
 # Assistant class, generates ROS Classes from data hashmap
+@requireros
 class ROSGenerator:
 
     def gen_pose(self, data, quat):
@@ -480,7 +488,8 @@ class ROSGenerator:
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
         for key in keys:
             if key not in data.keys():
-                raise KeyError("No range data -- Missing key " + str(key) + " " + str(data))
+                raise KeyError("No range data -- Missing key " + 
+                               str(key) + " " + str(data))
 
         pre_points = zip(keys, sensor_angles, sensor_offsets)
         points = []
@@ -559,7 +568,9 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 'ds:pre', ['delete','server=', 'plot', 'rospipe', 'replay'])
+        optlist, args = getopt.getopt(args, 
+                                      'ds:pre', 
+                                      ['delete','server=', 'plot', 'rospipe', 'replay'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-d or --delete   : Destroy all data held in Redis")
@@ -578,23 +589,6 @@ if __name__ == "__main__":
             server = str(arg)
 
     ds = DataStore(host=server)
-
-    # Random convenience vars
-    pos = {
-        'x': 0,
-        'y': 0,
-        't':0,
-        'theta':0.0,
-        'r0': 10,
-        'r1': 10,
-        'r2': 10,
-        'r3': 10,
-        'r4': 10,
-        'r5': 10,
-        'r6': 10,
-        'r7': 10
-    }
-    ran = [0,1,2,3,4,5,6,7]
 
     # Post-instantioation options
     for opt, arg in optlist:
