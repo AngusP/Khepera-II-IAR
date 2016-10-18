@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import math
 import time
 import yaml
+import pprint
 
 import constants
 
@@ -27,7 +28,7 @@ try:
     ros = True
     from std_msgs.msg import String
     from geometry_msgs.msg import PoseWithCovariance, PoseStamped, Point32
-    from nav_msgs.msg import Odometry
+    from nav_msgs.msg import Odometry, Path
     from sensor_msgs.msg import PointCloud, ChannelFloat32
     import tf
 except ImportError as e:
@@ -36,7 +37,14 @@ except ImportError as e:
     ros = False
     pass
 
-
+# ROS Import check wrapper
+def requireros(func):
+    def check_and_call(*args, **kwargs):
+        if not ros:
+            raise ImportError("ROS (rospy) Not supported/found")
+        else:
+            return func(*args, **kwargs)
+    return check_and_call
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -50,15 +58,22 @@ class DataStore:
         self.wt = whiptail.Whiptail()
         # Redis List and Channel name
         self.listname = "statestream"
+        self.goallist = "goalstream"
         # ROS Topics
         self.posetopic = self.listname + "pose"
         self.odomtopic = self.listname + "odom"
         self.disttopic = self.listname + "dist"
+        self.goaltopic = self.listname + "goal"
 
+        # Test Redis connection
         self.r.ping()
 
+        self.pp = pprint.PrettyPrinter(indent=4)
+
+
     def __del__(self):
-        self.save()
+        self._save()
+
 
     def keys(self):
         return self.r.keys()
@@ -108,6 +123,43 @@ class DataStore:
         # Also publish onto a channel
         self.r.publish(self.listname, mapname)
 
+
+    def push_goal(self, path):
+        # Expects a list of dicts
+        # e.g. [{'x': 0.0, 'y':100.0},{'x': 1502.5, 'y': 1337.0}]
+        
+        # Clear out old points
+        for key in self.r.lrange(self.goallist, 0, -1):
+            self.r.delete(key)
+        # Delete old list
+        self.r.delete(self.goallist)
+
+        pointnum = 0
+        for point in path:
+            pointname = "goal" + str(pointnum)
+            pointnum += 1
+            self.r.hmset(pointname, point)
+            self.r.lpush(self.goallist, pointname)
+
+        self.r.publish(self.goallist, self.goallist)
+
+
+    def sub(self):
+        # Mostly a test method, subscribe and print
+        sub = self.r.pubsub()
+        sub.subscribe([self.listname, self.goallist])
+
+        # Loop until stopped plotting the path
+        try:
+            for item in sub.listen():
+                if self.r.exitst(item['data']):
+                    data = self.r.hgetall(item['data'])
+                    item['data'] = data
+                self.pp.pprint(item)
+        except KeyboardInterrupt as e:
+            print("Stopping...")
+            pass
+
         
     def get(self, start=0, stop=-1):
         # Returns a list in-order over the range
@@ -132,11 +184,6 @@ class DataStore:
         return ret
 
     
-    def save(self):
-        # Copy DB to disk
-        return self.r.save()
-
-    
     def delete_before(self, time):
         # Remove data with a key from earlier than specified
 
@@ -152,8 +199,10 @@ class DataStore:
                 # delete the key (hashmap)
                 self.r.delete(key)
 
-    def plot(self):
-        self.static_plot()
+
+    def plot(self, start=0, stop=-1):
+        self.static_plot(start, stop)
+
 
     def live_plot(self):
         print("Deprecated, rospipe + rviz will work better")
@@ -194,24 +243,36 @@ class DataStore:
         plt.show()
 
 
+    @requireros
     def rospipe(self):
+
+        print('''
+    __    __    __      _______     _____     _____    
+   /  \  /  \  /  \    |  ____ \   / ___ \   / ____|   
+   \__/  \__/  \__/    | |    \ | | /   \ | | |        
+    __    __    __     | |    | | | |   | | | \____    
+   /  \  /  \  /  \    | \___/ /  | |   | | \_____ \   
+   \__/  \__/  \__/    |  __   \  | |   | |       \ |  
+    __    __    __     | |   \  | | |   | |       | |  
+   /  \  /  \  /  \    | |    | | | \___/ |  ____/  |  
+   \__/  \__/  \__/    |_|    |_|  \_____/  |______/   
+''')
+
         print("Piping Redis ---> ROS")
         # Pipe data out of Redis into ROS
-
-        if not ros:
-            raise ImportError("ROS (rospy) Not supported/found")
 
         rg = ROSGenerator()
         
         pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=10)
         odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=10)
         dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=10)
+        goal_pub = rospy.Publisher(self.goaltopic, Path, queue_size=10)
         tbr = tf.TransformBroadcaster()
         
         rospy.init_node('talker', anonymous=True)
 
         sub = self.r.pubsub()
-        sub.subscribe([self.listname])
+        sub.subscribe([self.listname, self.goallist])
 
         # Loop until stopped plotting the path
         for item in sub.listen():
@@ -221,46 +282,101 @@ class DataStore:
                 break
 
             if item['type'] == "subscribe":
-                rospy.loginfo("Subscribed successfully")
+                rospy.loginfo("Subscribed successfully to " + item['channel'])
                 continue
             
             try:
-                # Pull from redis:
-                data = self.r.hgetall(item['data'])
+                if item['channel'] == self.listname:
+                    # Stream of poses and distance data
+
+                    # Pull from redis:
+                    data = self.r.hgetall(item['data'])
+                    
+                    required_keys = ['x','y','theta','t']
+                    for key in required_keys:
+                        if key not in data.keys():
+                            raise KeyError("Missing key " + str(key) + " from hashmap " +
+                                           str(data) + " on channel " + str(item['channel']))
+
+                    # Generate a new Quaternion based on the robot's pose
+                    quat = tf.transformations.quaternion_from_euler(0.0, 0.0, 
+                                                                    float(data['theta']))
+
+                    # Generate new pose
+                    pose = rg.gen_pose(data, quat)
+                    pose_pub.publish(pose)
+
+                    # Publish Khepera transform
+                    tbr.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
+                                      quat, rospy.Time.now(), "khepera", "map")
                 
-                required_keys = ['x','y','theta','t']
-                for key in required_keys:
-                    if key not in data.keys():
-                        raise KeyError("Missing key " + str(key) + " from hashmap " + str(data))
+                    # Generate odometry data
+                    odom = rg.gen_odom(data, quat)
+                    odom_pub.publish(odom)
 
-                # Generate a new Quaternion based on the robot's pose
-                quat = tf.transformations.quaternion_from_euler(0.0, 0.0, float(data['theta']))
-            
-                # Generate new pose
-                pose = rg.gen_pose(data, quat)
-                pose_pub.publish(pose)
+                    # Generate pointcloud of distances
+                    dist = rg.gen_dist(data)
+                    dist_pub.publish(dist)
 
-                # Publish Khepera transform
-                tbr.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
-                                  quat, rospy.Time.now(), "khepera", "map")
+                    rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
+
+
+                elif item['channel'] == self.goallist:
+                    # Less frequent planning channel
                 
-                # Generate odometry data
-                odom = rg.gen_odom(data, quat)
-                odom_pub.publish(odom)
-                
-                # Generate pointcloud of distances
-                dist = rg.gen_dist(data)
-                dist_pub.publish(dist)
+                    # Pull co-ords from Redis
+                    data = self.r.lrange(self.goallist, 0, -1)
+                    path = rg.gen_path()
+                    quat = tf.transformations.quaternion_from_euler(0.0, 0.0, 0.0)
 
-                rospy.loginfo(" Redis --> ROS #" + str(round(float(data['t']), 4)))
+                    for datapoint in data:
+                        raw_pose = self.r.hgetall(datapoint)
+                        
+                        required_keys = ['x','y']
+                        for key in required_keys:
+                            if key not in raw_pose.keys():
+                                raise KeyError("Missing key " + str(key) + " from point " +
+                                               str(raw_pose) + " on channel " + 
+                                               str(item['channel']))
 
-            except KeyError as e:
+                        
+                        this_pose = rg.gen_pose(raw_pose, quat)
+                        path.poses.append(this_pose)
+                        
+                    goal_pub.publish(path)
+                    rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
+                        
+
+                else:
+                    # If we get an unexpected channel, complain loudly
+                    raise ValueError("Encountered unknown channel '" + 
+                                     str(item['channel']) + "'")
+
+
+            except (KeyError, ValueError) as e:
                 rospy.logwarn(str(e))
                 pass
 
 
     def replay(self, limit=-1):
         # Replay data already stored, by re-publishing to the Redis channel
+        print('''
+    ____________________________
+  /|............................|
+ | |:      KHEPERA REWIND      :|
+ | |:       "Redis & Co."      :|
+ | |:     ,-.   _____   ,-.    :|
+ | |:    ( `)) [_____] ( `))   :|
+ |v|:     `-`   ' ' '   `-`    :|
+ |||:     ,______________.     :|
+ |||...../::::o::::::o::::\.....|
+ |^|..../:::O::::::::::O:::\....|
+ |/`---/--------------------`---|
+ `.___/ /====/ /=//=/ /====/____/
+      `--------------------'
+
+  <<<------------------------###
+''')
         data = self.r.lrange(self.listname, 0, limit)
         data.reverse()
         # ... this might take a while
@@ -273,6 +389,8 @@ class DataStore:
         except KeyboardInterrupt as e:
             print(e)
 
+        print("Replay done.")
+
 
     def _purge(self):
         # Clear out all (literally all) data held in Redis
@@ -284,12 +402,17 @@ class DataStore:
             print("Did not purge Redis Store")
 
 
+    def _save(self):
+        # Copy DB to disk
+        return self.r.save()
+
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
 # Assistant class, generates ROS Classes from data hashmap
+@requireros
 class ROSGenerator:
 
     def gen_pose(self, data, quat):
@@ -365,7 +488,8 @@ class ROSGenerator:
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
         for key in keys:
             if key not in data.keys():
-                raise KeyError("No range data -- Missing key " + str(key) + " " + str(data))
+                raise KeyError("No range data -- Missing key " + 
+                               str(key) + " " + str(data))
 
         pre_points = zip(keys, sensor_angles, sensor_offsets)
         points = []
@@ -411,7 +535,18 @@ class ROSGenerator:
         dist.channels = [intensities_chan, intensity_chan]
         
         return dist
-        
+
+
+    def gen_path(self):
+        path = Path()
+        path.header.stamp = rospy.Time.now()
+        path.header.frame_id = "map"
+        return path
+
+    def gen_path_pose(self, data):
+        pass
+
+
     def _ir_to_dist(self, reading):
         '''
         From solved equation:
@@ -433,7 +568,9 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 'ds:pre', ['delete','server=', 'plot', 'rospipe', 'replay'])
+        optlist, args = getopt.getopt(args, 
+                                      'ds:pre', 
+                                      ['delete','server=', 'plot', 'rospipe', 'replay'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-d or --delete   : Destroy all data held in Redis")
@@ -452,23 +589,6 @@ if __name__ == "__main__":
             server = str(arg)
 
     ds = DataStore(host=server)
-
-    # Random convenience vars
-    pos = {
-        'x': 0,
-        'y': 0,
-        't':0,
-        'theta':0.0,
-        'r0': 10,
-        'r1': 10,
-        'r2': 10,
-        'r3': 10,
-        'r4': 10,
-        'r5': 10,
-        'r6': 10,
-        'r7': 10
-    }
-    ran = [0,1,2,3,4,5,6,7]
 
     # Post-instantioation options
     for opt, arg in optlist:
