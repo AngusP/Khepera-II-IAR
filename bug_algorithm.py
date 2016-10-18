@@ -164,16 +164,7 @@ class Bug_Algorithm:
 
 		#if veering off M-line (but still on it)
 		if True:
-
-			if new_distance < old_distance:
 		
-				#print("OLD dist %s vs new Dist %s " % ( old_distance , new_distance ))
-				bug_state.last_m_x = odo_state.x
-   				bug_state.last_m_y = odo_state.y
-				are_closer_than_before = True
-			
-			#print(are_closer_than_before)
-			
 			is_wall_following = False
 			#print "angle ON M-line %s" % (angle_to_m)
 			is_wall_following = nav_state.system_state == constants.STATE_RIGHT_FOLLOW and nav_state.system_state == constants.STATE_LEFT_FOLLOW
@@ -182,6 +173,11 @@ class Bug_Algorithm:
 
 				turn_less  = constants.CONST_SPEED * constants.TURN_LESS
 				turn_most  = constants.CONST_SPEED * constants.TURN_MORE
+
+				if on_mline and new_distance < old_distance:
+					bug_state.last_m_x = odo_state.x
+   					bug_state.last_m_y = odo_state.y
+					
 				#print("trying to correct trijectory")
 
 
@@ -189,7 +185,9 @@ class Bug_Algorithm:
 			elif new_distance < old_distance and is_wall_following and on_mline:
 
 				turn_less = -constants.CONST_SPEED 
-				turn_more = constants.CONST_SPEED 
+				turn_more = constants.CONST_SPEED
+				bug_state.last_m_x = odo_state.x
+   				bug_state.last_m_y = odo_state.y 
 				closer_on_mline = True
 				print("trying to leave wall")
 
