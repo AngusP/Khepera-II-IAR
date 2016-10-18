@@ -263,9 +263,9 @@ class DataStore:
 
         rg = ROSGenerator()
         
-        pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=10)
-        odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=10)
-        dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=10)
+        pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=100)
+        odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=100)
+        dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=100)
         goal_pub = rospy.Publisher(self.goaltopic, Path, queue_size=10)
         tbr = tf.TransformBroadcaster()
         
