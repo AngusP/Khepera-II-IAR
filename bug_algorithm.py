@@ -138,7 +138,7 @@ class Bug_Algorithm:
 		#distance to M-line (more accurately)
 		dist_to_mline = self.DistancePointLine(odo_state.x , odo_state.y, bug_state.m_line_start[0] , bug_state.m_line_start[1] , bug_state.m_line_end[0], bug_state.m_line_end[1])
 
-		on_mline =  dist_to_mline < constants.ON_MLINE or on_mline
+		on_mline =  dist_to_mline <= constants.ON_MLINE or on_mline
 		
 
 		#check if we reached the destination
@@ -172,7 +172,7 @@ class Bug_Algorithm:
 				turn_less  = constants.CONST_SPEED * constants.TURN_LESS
 				turn_most  = constants.CONST_SPEED * constants.TURN_MORE
 
-				if on_mline and new_distance < old_distance:
+				if on_mline and new_distance <= old_distance:
 					bug_state.last_m_x = odo_state.x
    					bug_state.last_m_y = odo_state.y
 					
@@ -180,7 +180,7 @@ class Bug_Algorithm:
 
 
 			# if can leave a wall closer on m-line
-			elif new_distance < old_distance and is_wall_following and on_mline:
+			elif new_distance <= old_distance and is_wall_following and on_mline:
 
 				turn_less = -constants.CONST_SPEED 
 				turn_more = constants.CONST_SPEED
