@@ -122,11 +122,13 @@ class Bug_Algorithm:
 		are_closer_than_before = False
 		#check if we are closer on the m_x line
 
-		current_pos = [odo_state.x, odo_state.y]
-		previous_pos = [bug_state.last_m_x , bug_state.last_m_y]
+		current_pos = [int(odo_state.x), int(odo_state.y)]
+		previous_pos = [int(bug_state.last_m_x) , int(bug_state.last_m_y)]
+		line_start = [ int(bug_state.m_line_start[0]) , int(bug_state.m_line_start[1]) ]
 
 		#if we are on the mline again
-		on_mline = self.is_on_mline(bug_state.m_line_start, previous_pos, current_pos)
+		
+		on_mline = self.is_on_mline(line_start, previous_pos, current_pos)
 		closer_on_mline = False
 
 		new_distance = self.vector_magnitude(current_pos)
@@ -197,7 +199,7 @@ class Bug_Algorithm:
 			#OUR angle too small
 			if angle_to_m > constants.M_N_ANGLE:		
 				
-				if True:
+				if closer_on_mline or not is_wall_following:
 					# check if there is a wall on the left
 					if nav_state.system_state is not constants.STATE_LEFT_FOLLOW:
 						# if there is none, turn left
@@ -207,7 +209,7 @@ class Bug_Algorithm:
 
 			#OUR angle too big
 			elif angle_to_m < -constants.M_N_ANGLE:
-				if True:
+				if closer_on_mline or not is_wall_following:
 					# check if there is a wall on the right
 					if nav_state.system_state is not constants.STATE_RIGHT_FOLLOW:
 						# if there is none, turn right

@@ -145,8 +145,6 @@ class Bug_Algorithm:
 		if new_distance < 40:
 			bug_state.done = True
 		
-		#IF IN FREE ROAM
-		#print(dist_to_mline)
 		#if far away from M-line
 		if dist_to_mline > constants.M_DISTANCE and nav_state.system_state == constants.STATE_DRIVE_FORWARD:
 			

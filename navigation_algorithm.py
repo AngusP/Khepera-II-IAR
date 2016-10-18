@@ -123,7 +123,7 @@ class Navigation_Algorithm:
 	    elif (not bug_state.algorithm_point):
 
 		comms.led(0,1)
-
+		print("beginning turn")
 		#record the line parameters
 		bug_state.m_line_end = [odo_state.x, odo_state.y]
 		bug_state.m_line_start = [0,0]
@@ -152,7 +152,7 @@ class Navigation_Algorithm:
 		        result.boredom_counter = 0
 			bug_state.algorithm_activated = True
 
-			#print("TURNING %s" % (achieved_a_180))
+			print("DONE TURNING %s" % (achieved_a_180))
 		else:	
 		   #otherwise, continue turning
 		   result.speed_l = -constants.CONST_SPEED
@@ -215,19 +215,20 @@ class Navigation_Algorithm:
 
             if self.is_stuck(result.dist):
                 
-                 #print("stuck")
+                 print("stuck")
 
                  # do not interrupt if already handle
                  if self.is_being_unstuck(result.system_state):
 			return result
 
-		 #update m-line
-		 bug_state.m_line_end  = [odo_state.x , odo_state.y]
-		 bug_state.m_line_start= [0,0]
- 
-		 #update last position on m-line
-		 bug_state.last_m_x = odo_state.x
-   		 bug_state.last_m_y = odo_state.y
+		 #if bug_state.algortitm_activated:
+		#	 #update m-line
+		#	 bug_state.m_line_end  = [odo_state.x , odo_state.y]
+		#	 bug_state.m_line_start= [0,0]
+	 
+		#	 #update last position on m-line
+		#	 bug_state.last_m_x = odo_state.x
+	   	#	 bug_state.last_m_y = odo_state.y
 		
                  # determine direction of where better to turn to unstuck
                  if self.should_unstuck_right(result.dist, result.system_state):

@@ -83,6 +83,7 @@ def main():
 		if bug_state.done:
 			print("DONE")
 			comms.drive(0, 0)
+			comms.blinkyblink()
 			break
 	
 	    #only send stuff over serial if new values
