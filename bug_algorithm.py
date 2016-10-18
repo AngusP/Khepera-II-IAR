@@ -119,7 +119,6 @@ class Bug_Algorithm:
             	# IF IN FREE SPACE, CAN FOLLOW M-LINE
             	#####################
 		
-		are_closer_than_before = False
 		#check if we are closer on the m_x line
 
 		current_pos = [int(odo_state.x), int(odo_state.y)]
@@ -146,7 +145,10 @@ class Bug_Algorithm:
 			bug_state.done = True
 		
 		#if far away from M-line
-		if dist_to_mline > constants.M_DISTANCE and nav_state.system_state == constants.STATE_DRIVE_FORWARD:
+
+		far_in_open_space = dist_to_mline > constants.M_DISTANCE and nav_state.system_state == constants.STATE_DRIVE_FORWARD
+		far_on_wall = dist_to_mline > constants.M_DISTANCE*2 and nav_state.system_state == constants.STATE_DRIVE_FORWARD
+		if far_in_open_space or far_on_wall:
 			
 			#DROP IT and for a new one as driving forward and just lost it due to collision or something
 			bug_state.m_line_end  = [odo_state.x , odo_state.y]
@@ -169,8 +171,8 @@ class Bug_Algorithm:
 			# stay on the straight line
 			if nav_state.system_state == constants.STATE_DRIVE_FORWARD:
 
-				turn_less  = constants.CONST_SPEED * constants.TURN_LESS
-				turn_most  = constants.CONST_SPEED * constants.TURN_MORE
+				turn_less = -constants.CONST_SPEED 
+				turn_more = constants.CONST_SPEED 
 
 				if on_mline and new_distance <= old_distance:
 					bug_state.last_m_x = odo_state.x
