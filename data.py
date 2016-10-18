@@ -65,7 +65,8 @@ class DataStore:
 
 
     def __del__(self):
-        self.save()
+        self._save()
+
 
     def keys(self):
         return self.r.keys()
@@ -119,6 +120,11 @@ class DataStore:
     def push_goal(self, path):
         # Expects a list of dicts
         # e.g. [{'x': 0.0, 'y':100.0},{'x': 1502.5, 'y': 1337.0}]
+        
+        # Clear out old points
+        for key in self.r.lrange(self.goallist, 0, -1):
+            self.r.delete(key)
+        # Delete old list
         self.r.delete(self.goallist)
 
         pointnum = 0
@@ -134,13 +140,14 @@ class DataStore:
     def sub(self):
         # Mostly a test method, subscribe and print
         sub = self.r.pubsub()
-        sub.subscribe([self.listname])
+        sub.subscribe([self.listname, self.goallist])
 
         # Loop until stopped plotting the path
         try:
             for item in sub.listen():
-                data = self.r.hgetall(item['data'])
-                item['data'] = data
+                if self.r.exitst(item['data']):
+                    data = self.r.hgetall(item['data'])
+                    item['data'] = data
                 self.pp.pprint(item)
         except KeyboardInterrupt as e:
             print("Stopping...")
@@ -170,11 +177,6 @@ class DataStore:
         return ret
 
     
-    def save(self):
-        # Copy DB to disk
-        return self.r.save()
-
-    
     def delete_before(self, time):
         # Remove data with a key from earlier than specified
 
@@ -190,8 +192,10 @@ class DataStore:
                 # delete the key (hashmap)
                 self.r.delete(key)
 
-    def plot(self):
-        self.static_plot()
+
+    def plot(self, start=0, stop=-1):
+        self.static_plot(start, stop)
+
 
     def live_plot(self):
         print("Deprecated, rospipe + rviz will work better")
@@ -233,6 +237,19 @@ class DataStore:
 
 
     def rospipe(self):
+
+        print('''
+    __    __    __      _______     _____     _____    
+   /  \  /  \  /  \    |  ____ \   / ___ \   / ____|   
+   \__/  \__/  \__/    | |    \ | | /   \ | | |        
+    __    __    __     | |    | | | |   | | | \____    
+   /  \  /  \  /  \    | \___/ /  | |   | | \_____ \   
+   \__/  \__/  \__/    |  __   \  | |   | |       \ |  
+    __    __    __     | |   \  | | |   | |       | |  
+   /  \  /  \  /  \    | |    | | | \___/ |  ____/  |  
+   \__/  \__/  \__/    |_|    |_|  \_____/  |______/   
+''')
+
         print("Piping Redis ---> ROS")
         # Pipe data out of Redis into ROS
 
@@ -335,6 +352,23 @@ class DataStore:
 
     def replay(self, limit=-1):
         # Replay data already stored, by re-publishing to the Redis channel
+        print('''
+    ____________________________
+  /|............................|
+ | |:      KHEPERA REWIND      :|
+ | |:       "Redis & Co."      :|
+ | |:     ,-.   _____   ,-.    :|
+ | |:    ( `)) [_____] ( `))   :|
+ |v|:     `-`   ' ' '   `-`    :|
+ |||:     ,______________.     :|
+ |||...../::::o::::::o::::\.....|
+ |^|..../:::O::::::::::O:::\....|
+ |/`---/--------------------`---|
+ `.___/ /====/ /=//=/ /====/____/
+      `--------------------'
+
+  <<<------------------------###
+''')
         data = self.r.lrange(self.listname, 0, limit)
         data.reverse()
         # ... this might take a while
@@ -347,6 +381,8 @@ class DataStore:
         except KeyboardInterrupt as e:
             print(e)
 
+        print("Replay done.")
+
 
     def _purge(self):
         # Clear out all (literally all) data held in Redis
@@ -356,6 +392,11 @@ class DataStore:
             print("!!! Flushed Redis Data Store !!!")
         else:
             print("Did not purge Redis Store")
+
+
+    def _save(self):
+        # Copy DB to disk
+        return self.r.save()
 
 
 
