@@ -56,13 +56,13 @@ class Bug_Algorithm:
 	#check if c is between a and b
 	def is_on_mline(self,a, b, c):
 	    crossproduct = (c[1] - a[1]) * (b[0] - a[0]) - (c[0] - a[0]) * (b[1] - a[1])
-	    if abs(crossproduct) != 0 : return False   # (or != 0 if using integers)
+	    if abs(crossproduct) > 20 : return False   # (or != 0 if using integers)
 	    
 	    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1])*(b[1] - a[1])
-	    if dotproduct < 0 : return False
+	    if dotproduct < -20 : return False
 
 	    squaredlengthba = (b[0] - a[0])*(b[0] - a[0]) + (b[1] - a[1])*(b[1] - a[1])
-	    if dotproduct > squaredlengthba: return False
+	    if dotproduct > squaredlengthba + 20: return False
 
 	    return True	
 
