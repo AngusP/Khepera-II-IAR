@@ -98,7 +98,7 @@ def main():
                 mline_hm[1]['y'] != bug_state.m_line_end[1]):
                 # Update and push
                 mline_hm[1]['x'] = bug_state.m_line_end[0]
-                mline_hm[1]['y'] = bug_state.m_line_end[0]
+                mline_hm[1]['y'] = bug_state.m_line_end[1]
                 ds.push_goal(mline_hm)
             
 	    # do not attempt to instantly read sensors again
