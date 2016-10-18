@@ -135,8 +135,10 @@ class Bug_Algorithm:
 		old_distance =  self.vector_magnitude(previous_pos)
 
 
-		#distance to M-line
+		#distance to M-line (more accurately)
 		dist_to_mline = self.DistancePointLine(odo_state.x , odo_state.y, bug_state.m_line_start[0] , bug_state.m_line_start[1] , bug_state.m_line_end[0], bug_state.m_line_end[1])
+
+		on_mline =  dist_to_mline < constants.ON_MLINE or on_mline
 		
 
 		#check if we reached the destination
