@@ -503,7 +503,7 @@ class ROSGenerator:
             #print(str(point[0]) + " at " + str(distance))
 
             # Don't render 'infinite' distance
-            if distance > 70.0:
+            if distance > 60.0:
                 continue
             
             pt = Point32()
