@@ -90,13 +90,19 @@
 
 
 \begin{abstract}
-  We present an implementation of the Bug2 \cite{principlesrobot} Algorithm implemented 
-  on top  of reactive obstacle collision avoidance and edge following developed for Task1.
-  The existing architecture of storing timestamped poses in a Redis \cite{Redis} key/value 
+  We present an implementation of an algorithm similar to \textit{Bug2}\cite{principlesrobot} 
+  on top of reactive obstacle collision avoidance and edge following developed for \textit{Task1}.
+  The existing architecture of storing timestamped poses in a Redis\cite{Redis} key/value 
   \& PubSub server is extended to include Goal state publishing and real-time visualisation 
-  using a Redis to ROS \cite{ROS} pipe, enabling topics to be displayed in Rviz. 
-  After-the-fact plotting is provided with MatPlotLib, and the implementation can run 
-  completely independently of ROS.
+  using a Redis to ROS\cite{ROS} pipe, enabling odometry, sensory information and goals
+  to be displayed in Rviz. After-the-fact plotting is provided with MatPlotLib independent
+  of ROS.
+  
+  Ideally the robot will be able to navigate to within 10cm of the origin (it's start point) from 
+  an abitary location in multiple environments, including in a dynamic environment, say where other 
+  actors (e.g. Humans) present a transient obstacle. In our testing, the robot did this successfully
+  in ${12/15}$ tests, where the environment was designed to evoke edge-case behaviour considered
+  hard for the algorithm.
 \end{abstract}
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -108,10 +114,11 @@ The second IAR assignment entails extending the existing systems from Task 1 wit
 to maintain an estimate of the robot's location, enabling rendering of it's movement both 
 in real time and after completion. The task also calls for `Return to home' ability, either 
 ``by retracing its outward route or more directly''. As an extention, basic mapping (without
-filtering to correct for odometry dead-reckoning drift) of the world. We are using Rviz, a 
-popular graphical tool for ROS to live-render the Khepera Robot's position, odometry trail
-and obstacles perceived by the IR range sensors that were within a range threshold of around 
-6cm.
+filtering to correct for odometry dead-reckoning drift) of the world is desireable. We utilise 
+Rviz, a popular graphical tool for ROS to live-render the Khepera Robot's pose, odometry trail,
+obstacles perceived by the IR range sensors and goal (a plan-line to the origin).
+
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 

@@ -72,7 +72,7 @@ class DataStore:
 
 
     def __del__(self):
-        self._save()
+        self.save()
 
 
     def keys(self):
@@ -152,7 +152,7 @@ class DataStore:
         # Loop until stopped plotting the path
         try:
             for item in sub.listen():
-                if self.r.exitst(item['data']):
+                if self.r.exists(item['data']):
                     data = self.r.hgetall(item['data'])
                     item['data'] = data
                 self.pp.pprint(item)
@@ -402,7 +402,7 @@ class DataStore:
             print("Did not purge Redis Store")
 
 
-    def _save(self):
+    def save(self):
         # Copy DB to disk
         return self.r.save()
 
