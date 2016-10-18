@@ -178,8 +178,8 @@ class Bug_Algorithm:
 			# stay on the straight line
 			if nav_state.system_state == constants.STATE_DRIVE_FORWARD:
 
-				turn_less = -constants.CONST_SPEED 
-				turn_more = constants.CONST_SPEED
+				turn_less  = constants.CONST_SPEED * constants.TURN_LESS
+				turn_most  = constants.CONST_SPEED * constants.TURN_MORE
 				#print("trying to correct trijectory")
 
 
