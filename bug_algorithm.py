@@ -146,7 +146,7 @@ class Bug_Algorithm:
 		
 		#if far away from M-line
 
-		far_in_open_space = dist_to_mline > constants.M_DISTANCE * 8.0 and nav_state.system_state == constants.STATE_DRIVE_FORWARD
+		far_in_open_space = dist_to_mline > constants.M_DISTANCE * 4.0 and nav_state.system_state == constants.STATE_DRIVE_FORWARD
 		far_on_wall = dist_to_mline > constants.M_DISTANCE*10.0
 		if far_in_open_space or far_on_wall:
 			
