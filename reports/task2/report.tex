@@ -149,7 +149,7 @@ all angles are measured in relation to that. We also need to account for odometr
 time due to wheel slippage, non-ideal encoders as well as approximations used in calculations etc.
 
 Moreover, we assume that the wheels have equal diameter and therefore that the data given in the 
-Khepera 2 User Manual\cite{khepera_manual} is correct and an increment of 12 encoder ticks 
+Khepera 2 User Manual \cite{khepera_manual} is correct and an increment of 12 encoder ticks 
 means a wheel has driven 1mm in that direction. 
 
 The advantage of the Khepera is that it has very thin wheels, meaning almost a single point of contact
@@ -159,12 +159,12 @@ to the floor, which make odometry much more accurate.
 
 Before settling on a method to use, we researched several papers and websites for inspiration or 
 already fully conceptualized solutions or even a fully developed and tested approach. The first one
-we found used a fourth order Runge-Kutta numerical integrator\cite{runge_kutta} and looked like 
+we found used a fourth order Runge-Kutta numerical integrator \cite{runge_kutta} and looked like 
 it would compensate for non-ideal encoders. However, upon implementation, and  testing if it correctly 
 detects the robot going in a straight line (equal motor speeds) and said algorithm absolutely fialing,
 it was abandoned. 
 
-Hence, a very simple yet mathematically sound approach\cite{odo_used} was adapted 
+Hence, a very simple yet mathematically sound approach \cite{odo_used} was adapted 
 
 
 
@@ -172,8 +172,8 @@ Hence, a very simple yet mathematically sound approach\cite{odo_used} was adapte
 
 The method chosen for calculating pose\cite{odo_used} use simple trigonometry and differential drive on 
 the wheels to perform its task. Please see the relevant document for deriviation of the formulas. The position for 
-(X,Y,$\Theta$) are in in relation to initial position, where the forward-facing direction is the positive half of the
-X-axis and initial X,Y are ($0$,$0$) and therefore further angles are in that frame of reference.
+${(X,Y,\Theta)}$ are in in relation to initial position, where the forward-facing direction is the positive half of the
+X-axis and initial X,Y are ${(0,0)}$ and therefore further angles are in that frame of reference.
 
 \begin{enumerate}
 
@@ -218,10 +218,42 @@ into corresponding state data structures (please see code). For more detailed te
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
+
 \section{Plotting}
 \label{Plotting}
 
-TODO ...........
+At each epoch in the control loop, a Pose and sensor-activation array is published to a Redis channel.
+If the goal has changed, it is also published to a separate channel. 
+In the case of \textit{Bug2} this goal line will be the so-called \textit{m-line}, representing a 
+straight path the return algorithm will attempt to take. As the Redis instance is network-accessible 
+and running as it's own process, this prevents any rendering or plotting activity from stalling or 
+slowing the control loop. This also keeps loop run-time consistent, and allows the rendering to
+be done on a separate computer.
+
+In the case of using RViz to render our data, \texttt{data.py} contains code for 
+subscribing to all the Redis channels the control loop will publish to and exposing 
+ROS Topics for the same data that can be picked up by RViz or any other ROS compatible 
+program.
+
+The data deveolved from the control loop is raw sensor data, that requires both conversion to
+actaul distance data and translation from the Khepera's frame of reference to the global frame.
+The activation to distance conversion was done using an equation from an equation solver and 10
+samples of \textit{distance, activation} pairs.
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=30em]{../assets/plots/sensor-equation.png}
+  \end{center}
+  \begin{equation}
+    S = 1.074519 + 
+    \frac{9.502961}
+         {(1 + \frac{\alpha}{70.42612}^{69.9039})^{0.02119919}}
+  \end{equation}
+  \caption{Solved equation translation betweek $S$, the distance, and $\alpha$, 
+    the raw activation data of the sensor.}
+\end{figure}
+
+The reference pane transformation is performed by a ${3x3}$ matrix 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -229,7 +261,7 @@ TODO ...........
 \label{Return Algorithm}
 
 Since Task 2 only mentions odometry and mapping is only mentioned in Task 3, we assumed that we should
-be able to return to the start position of the robot ($0$,$0$) (the goal) with using only IR sensors for avoiding obstacles
+be able to return to the start position of the robot ${(0,0)}$ (the goal) with using only IR sensors for avoiding obstacles
 and odometry for pose calculations. 
 
 \subsection{Research}
