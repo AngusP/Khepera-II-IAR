@@ -46,6 +46,9 @@
 \vspace{1em}\\
 }{\par\noindent}
 
+
+\usepackage[superscript]{cite}
+
 % LISTINGS
 \usepackage{listings}
 \usepackage{color}
@@ -92,16 +95,17 @@
 
 
 \begin{abstract}
-  We present an implementation of an algorithm similar to \textit{Bug2}\cite{bug_algorithm} 
+  % TODO : Maybe do more experiments?
+  We present an implementation of an algorithm similar to \textit{Bug2} \cite{principlesrobot} 
   built atop reactive obstacle collision avoidance and edge following behaviour developed for 
-  \textit{Task1}. The existing architecture is extended to include storing timestamped poses 
-  in a Redis\cite{Redis} key/value \& pubsub server, goal state publishing and real-time visualisation 
-  using a Redis to ROS\cite{ROS} pipe, odometry, sensory information and goals
-  are displayed graphically in Rviz. After-the-fact plotting is provided with MatPlotLib independent
-  of ROS.
+  \textit{Task1}. The existing architecture is extended to include storing and publishing 
+  timestamped poses and goal states in a Redis \cite{Redis} server.
+  Real-time visualisation using a Redis to ROS \cite{ROS} pipe provides a graphical display 
+  of odometry, sensory information and goals in Rviz. After-the-fact plotting is provided 
+  with MatPlotLib independent of ROS.
 
   In our testing, the robot was able to navigate to within 10cm of the origin (it's start point) 
-  from an abitary location in multiple environments successfully in ${12/15}$ experiments, where each 
+  from an abitary location in multiple environments successfully in 12/15 experiments, where each 
   environment was designed to evoke edge-case behaviour considered hard for the algorithm. The 
   algorithm performs comparably in a static world and a dynamic one in which other actors 
   (e.g. Humans) present a transient obstacle. 
@@ -114,16 +118,21 @@
 
 The second IAR assignment entails extending the existing systems from Task 1 with Odometry, 
 to maintain an estimate of the robot's location, enabling rendering of it's movement both 
-in real time and after completion. The task also calls for `Return to home' ability, either 
-``by retracing its outward route or more directly''. As an extention, basic mapping (without
-filtering to correct for odometry dead-reckoning drift) of the world is desireable. We utilise 
-Rviz, a popular graphical tool for ROS to live-render the Khepera Robot's pose, odometry trail,
-obstacles perceived by the IR range sensors and goal (a plan-line to the origin).
+in real time and after reaching the goal. The task also calls for `return to home' ability, 
+``either by retracing its outward route or more directly''. As an extention, basic mapping 
+of the world is desireable (without localisation correction for odometry dead-reckoning drift). 
 
+The navigational behaviour we have developed is bolted-on to the simpler reactive wall-following
+and collision avoidance code we have from \textit{Task1}, in a hybrid-subsumtive sense where the
+higher-level return navigation generally informs the Robot's behaviour, but if proximity thresholds
+are violated the lower level reaction will peturb the trajectory away from an obstacle until the
+error clears.
 
-\section{Plotting}
+We use Rviz for real-time plotting, a popular graphical tool for ROS to live-render the Khepera 
+Robot's pose, odometry trail, obstacles perceived by the IR range sensors and goal (a plan-line 
+to the origin). Rviz is plotting standard ROS messages we publish to `topics', such as Poses,
+Paths and Point Clouds.
 
-TODO ...........
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -154,6 +163,7 @@ detects the robot going in a straight line (equal motor speeds) and said algorit
 it was abandoned. 
 
 Hence, a very simple yet mathematically sound approach\cite{odo_used} was adapted 
+
 
 
 \subsection{Method Chosen}
@@ -196,6 +206,12 @@ Hence, the actual $5$ cm wheelbase is $5.6$ cm in the code.
 Hence, odometry development was finished, the code was modularly isolated from the navigation algorithm 
 into corresponding state data structures (please see code). For more detailed testign see \textit{Testing Odometry}
 
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+\section{Plotting}
+
+TODO ...........
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -279,8 +295,7 @@ TODO talk about how Part 1 fucked us over
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\newpage
-\section{Results}
+\section{Experimental Results}
 
 
 \section{Discussion \& Possible Improvements}
@@ -288,11 +303,11 @@ TODO talk about how Part 1 fucked us over
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-
-\begin{thebibliography}{2}
+\newpage
+\begin{thebibliography}{8}
 
 \bibitem{principlesrobot}
-\par{Principles of Robot Motion: Theory, Algorithms, and Implementation}\\
+\par{Principles of Robot Motion: Theory, Algorithms, and Implementation \S2.1}\\
 \textit{Howie Choset}
 
 \bibitem{Redis}
@@ -323,11 +338,6 @@ TODO talk about how Part 1 fucked us over
 \bibitem{khepera_manual} 
 \par{Khepera 2 user Manual containing all the fundamental information about the Khepera 2 robot, including information abotu encoders and their value meanings} \\
 \textit{http://ftp.k-team.com/khepera/documentation/Kh2UserManual.pdf}
-
-\bibitem{bug_algorithm} 
-\par{Carnegie Mellon University Robotic Motion Planning: Bug Algorithms paper / lecture that explores Bug algorithms, including their waknesses, strengths and comparing them with one another. Hence, incrementally building a robust navigation algorithm that does not need any mapping and uses only direction to goal (global position of robot and goal), odometry and a pinch of reactive control} \\
-\textit{https://www.cs.cmu.edu/~motionplanning/lecture/Chap2-Bug-Alg\_howie.pdf}
-
 
 
 
