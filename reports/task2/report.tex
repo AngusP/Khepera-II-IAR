@@ -194,6 +194,12 @@ will be shown in subsequent sections. The encoders are incremental and are able 
 detect both forward and backward movement of the wheel, hence, the above method works 
 without any tricks.
 
+\subsection{Method Chosen}
+
+The odometry is an independent module from the remaining part of the system as 
+all it uses is encoder data and produces the new position value, it is not directly
+involved in any decision making
+
 \subsection{Calibration}
 
 TODO ... take a pic of a fuckign square box.......
@@ -260,6 +266,34 @@ The algorithm is:
 	\item Leave the obstacle and continue toward the goal
 
 \end{enumerate}
+
+\subsection{Integration}
+
+The algorithm is activated after $\approx 30$ seconds of exploration\cite{task1_report} and after
+activation is the leading algorithm unless on of the followign are true for that control loop iteration:
+
+\begin{enumerate}	
+
+	\item The reactive control (getting "unstuck"\cite{task1_report})activates - reactive avoidance algorithm is in control
+	\item There is a miscalculation for the new speeds and they robot may try to drive towards the wall it is following - exploration algorithm is in control
+
+\end{enumerate}
+
+The second point can occur if M-line recomputation occurs as described in \textit{M-line Replanning}
+
+Below is a diagram showing how the controlling $3$ algorithm (ractive avoidance, exploration and return algorithm)
+is chosen at every iteration of the loop (starting from the start marker). Before the 30 second mark robot
+performs exactly as for Task 1, after that the "boredom"\cite{task1_report} is disabled. Please note
+that unlike in the report for Task 1, here the collistion voidance is regarded as a separate algorithm from the
+wall following, forward driving and "boredom" ("exploration algorithm") one
+
+The following is a representation of the algorithm in a state diagram form:
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=30em]{../assets/control-choice-diagram.png}
+    \caption{Control algorithm choice in a state diagram form.}
+  \end{center}
+\end{figure} 
 
 \subsection{Needed Alterations}
 
@@ -368,7 +402,7 @@ Altering the two constants for M-line recomputing is what was also done durting 
 \textit{http://ftp.k-team.com/khepera/documentation/Kh2UserManual.pdf}
 
 
-\bibitem{taske1_report} 
+\bibitem{task1_report} 
 \par{Our Task1 solution and report} \\
 \textit{Angus Pearson, Jevgenij Zubovskij}
 
