@@ -149,7 +149,7 @@ all angles are measured in relation to that. We also need to account for odometr
 time due to wheel slippage, non-ideal encoders as well as approximations used in calculations etc.
 
 Moreover, we assume that the wheels have equal diameter and therefore that the data given in the 
-Khepera 2 User Manual\cite{khepera_manual} is correct and an increment of 12 encoder ticks 
+Khepera 2 User Manual \cite{khepera_manual} is correct and an increment of 12 encoder ticks 
 means a wheel has driven 1mm in that direction. 
 
 The advantage of the Khepera is that it has very thin wheels, meaning almost a single point of contact
@@ -159,12 +159,12 @@ to the floor, which make odometry much more accurate.
 
 Before settling on a method to use, we researched several papers and websites for inspiration or 
 already fully conceptualized solutions or even a fully developed and tested approach. The first one
-we found used a fourth order Runge-Kutta numerical integrator\cite{runge_kutta} and looked like 
+we found used a fourth order Runge-Kutta numerical integrator \cite{runge_kutta} and looked like 
 it would compensate for non-ideal encoders. However, upon implementation, and  testing if it correctly 
 detects the robot going in a straight line (equal motor speeds) and said algorithm absolutely fialing,
 it was abandoned. 
 
-Hence, a very simple yet mathematically sound approach\cite{odo_used} was adapted 
+Hence, a very simple yet mathematically sound approach \cite{odo_used} was adapted 
 
 
 
@@ -212,10 +212,30 @@ into corresponding state data structures (please see code). For more detailed te
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
+
 \section{Plotting}
 \label{Plotting}
 
-TODO ...........
+The control logic for the robot generates an estimated Pose at each iteration, realtive to the 
+Robot's starting location (i.e. the origin). In addition to poses, which can be chained to 
+form an odometry trail, it is useful to plot a Goal Line, which is the straight line the 
+Return Algorithm plans to take to reach the origin. For illustrative purposes, we also render
+a Point Cloud generated from the Khepera's eight IR sensors, transformed from activations
+to distances in the Robot's frame of reference.
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=32em]{../assets/plots/sensor-equation.png}
+  \end{center}
+  \begin{equation}
+    S = 1.074519 + 
+    \frac{9.502961}
+         {(1 + \frac{\alpha}{70.42612}^{69.9039})^{0.02119919}}
+  \end{equation}
+  \caption{Solved equation translation betweek $S$, the distance, and $\alpha$, 
+    the raw activation data of the sensor.}
+\end{figure}
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
