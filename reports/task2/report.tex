@@ -91,6 +91,7 @@
 
 
 \begin{abstract}
+  % TODO : Maybe do more experiments?
   We present an implementation of an algorithm similar to \textit{Bug2}\cite{bug_algorithm} 
   built atop reactive obstacle collision avoidance and edge following behaviour developed for 
   \textit{Task1}. The existing architecture is extended to include storing timestamped poses 
@@ -120,10 +121,6 @@ Rviz, a popular graphical tool for ROS to live-render the Khepera Robot's pose, 
 obstacles perceived by the IR range sensors and goal (a plan-line to the origin).
 
 
-\section{Plotting}
-
-TODO ...........
-
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
@@ -132,15 +129,15 @@ TODO ...........
 
 \subsection{Research}
 
-Several methods of odometry were researched, implemented and tested. Firstly, have found several
-ways of calculating the pose (X,Y,$\Theta$). The first one we found was the one we ended up using
+Several methods of odometry were researched and evaluated. Firstly, several methods of
+ calculating the pose ${(X,Y,\Theta)}$. The first one we found was the one we ended up using
 and it will be described in detail in the next section. However, we did not wish to rely on such 
 a simplistic approach alone due to odometry drifting with time due to wheel slippage, non-ideal encoders etc.
 
 Hence, we tried researching on how to compose an error function for odometry, or possibly adapt an already
 developed approach. We found waht seemed like a much better integrator for pose estimation as it was even 
 recommended to be used by students. The algorithm was very similar to the one we eventually adapted, it 
-used a fourth order Runge-Kutta numerical integrator\textit{}\cite{runge_kutta}. However, upon implementation, and
+used a fourth order Runge-Kutta numerical integrator\cite{runge_kutta}. However, upon implementation, and
 testing if it correctly detects the robot going in a straight line (equal motor speeds) and said algorithm
 absolutely fialing, it was abandoned. 
 
@@ -148,13 +145,13 @@ Hence, we decided to use the simplistic algorithm but find an error function for
 Dr. Webb about if that should be done and receivign an answer it should not, the way to do odometry was decided.
 
 lastly, it should be noted that all the odometry methods use encoder values to estimate pose and we assume
-that the data given in the Khepera 2 User Manual\textit{}\cite{khepera_manual} redgarding each milimiter distance being 
-equivalent to $12$ encoder ticks.
+that the data given in the Khepera 2 User Manual\cite{khepera_manual} redgarding each milimiter distance 
+being equivalent to $12$ encoder ticks.
 
 
 \subsection{Method Chosen}
 
-The method chosen for calculating pose\textit{}\cite{odo_used} use simple trigonometry and differential drive on 
+The method chosen for calculating pose\cite{odo_used} use simple trigonometry and differential drive on 
 the wheels to perform its task. Please see the relevant document for deriviation of the formulas. The position for 
 (X,Y,$\Theta$) are in in relation to initial position, where the forward-facing direction is the positive half of the
 X-axis and initial X,Y are ($0$,$0$) and therefore further angles are in that frame of reference.
@@ -177,6 +174,12 @@ forward and backward movement of the wheel, hence, the above method works withou
 
 \subsection{Method Chosen}
 
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+\section{Plotting}
+
+TODO ...........
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -206,8 +209,7 @@ forward and backward movement of the wheel, hence, the above method works withou
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\newpage
-\section{Results}
+\section{Experimental Results}
 
 
 \section{Discussion \& Possible Improvements}
@@ -215,8 +217,8 @@ forward and backward movement of the wheel, hence, the above method works withou
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-
-\begin{thebibliography}{2}
+\newpage
+\begin{thebibliography}{9}
 
 \bibitem{principlesrobot}
 \par{Principles of Robot Motion: Theory, Algorithms, and Implementation}\\
