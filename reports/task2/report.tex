@@ -9,6 +9,7 @@
 \usepackage{fontspec}
 \usepackage{caption}
 \usepackage{mathtools}
+\usepackage{gensymb}
 
 % DOCUMENT LAYOUT
 \usepackage{geometry}
@@ -130,31 +131,34 @@ TODO ...........
 \section{Odometry}
 
 
+The goal of odometry was to find the global pose of the robot (X,Y,$\Theta$). It was decided
+to use the strarting position of the robot as the origin of the coordinate system ($0$, $0$) 
+and the forward-facing direction of the robot as the positive direction of the X-axis and
+all angles are measured in relation to that. We also need to account for odometry drifting with
+time due to wheel slippage, non-ideal encoders as well as approximations used in calculations etc.
+
+Moreover, we assume that the wheels have equal diameter and therefore that the data given in the 
+Khepera 2 User Manual\cite{khepera_manual} is correct and an increment of $12$ encoder ticks 
+means a wheel has driven $1$ mm in that direction. 
+
+The advantage of the Khepera is that it has very thin wheels, meaning almost a single point of contact
+to the floor, which make odometry much more accurate.
+
 \subsection{Research}
 
-Several methods of odometry were researched, implemented and tested. Firstly, have found several
-ways of calculating the pose (X,Y,$\Theta$). The first one we found was the one we ended up using
-and it will be described in detail in the next section. However, we did not wish to rely on such 
-a simplistic approach alone due to odometry drifting with time due to wheel slippage, non-ideal encoders etc.
+Before settling on a method to use, we researched several papers and websites for inspiration or 
+already fully conceptualized solutions or even a fully developed and tested approach. The first one
+we found used a fourth order Runge-Kutta numerical integrator\cite{runge_kutta} and looked like 
+it would compensate for non-ideal encoders. However, upon implementation, and  testing if it correctly 
+detects the robot going in a straight line (equal motor speeds) and said algorithm absolutely fialing,
+it was abandoned. 
 
-Hence, we tried researching on how to compose an error function for odometry, or possibly adapt an already
-developed approach. We found waht seemed like a much better integrator for pose estimation as it was even 
-recommended to be used by students. The algorithm was very similar to the one we eventually adapted, it 
-used a fourth order Runge-Kutta numerical integrator\textit{}\cite{runge_kutta}. However, upon implementation, and
-testing if it correctly detects the robot going in a straight line (equal motor speeds) and said algorithm
-absolutely fialing, it was abandoned. 
-
-Hence, we decided to use the simplistic algorithm but find an error function for it. However, upon inquiring
-Dr. Webb about if that should be done and receivign an answer it should not, the way to do odometry was decided.
-
-lastly, it should be noted that all the odometry methods use encoder values to estimate pose and we assume
-that the data given in the Khepera 2 User Manual\textit{}\cite{khepera_manual} redgarding each milimiter distance being 
-equivalent to $12$ encoder ticks.
+Hence, a very simple yet mathematically sound approach\cite{odo_used} was adapted 
 
 
 \subsection{Method Chosen}
 
-The method chosen for calculating pose\textit{}\cite{odo_used} use simple trigonometry and differential drive on 
+The method chosen for calculating pose\cite{odo_used} use simple trigonometry and differential drive on 
 the wheels to perform its task. Please see the relevant document for deriviation of the formulas. The position for 
 (X,Y,$\Theta$) are in in relation to initial position, where the forward-facing direction is the positive half of the
 X-axis and initial X,Y are ($0$,$0$) and therefore further angles are in that frame of reference.
@@ -163,7 +167,8 @@ X-axis and initial X,Y are ($0$,$0$) and therefore further angles are in that fr
 
 	\item Distance driven by each wheel $\Delta s_{wheel} = \frac {\Delta ticks_{wheel} } {12 ^{ticks}/_{mm}} $
 	\item Total distance driven $ \Delta s = \frac{\Delta s_{r} + \Delta s_{l} }{2}$
-	\item Direction in which it was driven (and new orientation) $\Theta s = \frac{ \Delta s_{r} - \Delta s_{l} }{2L}$
+	\item Direction in which it was driven (and new orientation) $\Theta s = \frac{ \Delta s_{r} - \Delta s_{l} }{2L}$ where L is the wheel base 
+	(distance between points of contact of the two wheels to the floor)
 	\item X position update $X_{n+1} = X_{n} + \Delta s \cos (\Theta)$
 	\item Y position update $Y_{n+1} = Y_{n} + \Delta s \sin (\Theta)$
 
@@ -171,21 +176,89 @@ X-axis and initial X,Y are ($0$,$0$) and therefore further angles are in that fr
 \end{enumerate}
 
 
-The distance driven by each wheel is not as per document we mainly used as we know how many (encoder) ticks are per milimeter.
-The method proved very sucessful as will be shown in subsequent sections. The encoders are incremental and are able to detect both
-forward and backward movement of the wheel, hence, the above method works without any tricks.
+The distance driven by each wheel is not as per document we mainly used as we know 
+how many (encoder) ticks are per milimeter. The method proved very sucessful as 
+will be shown in subsequent sections. The encoders are incremental and are able to 
+detect both forward and backward movement of the wheel, hence, the above method works 
+without any tricks.
 
-\subsection{Method Chosen}
+\subsection{Calibration}
+
+TODO ... take a pic of a fuckign square box.......
+
+The odometry was initially tested in a square box to see if it detects $90$\degree turns correctly 
+(while following the walls of the box) as well as distances. Initially it did not, however, we 
+found multiple mobile robot odometry calibration articles and used one of them\cite{odo_calibration}
+ to calibrate our Khepera. As shown, we reduced the wheelbase if the angle was shown to be too small 
+and increased if it was too large until we saw that the odometry detected the  $90$\degree turns correctly. 
+Hence, the actual $5$ cm wheelbase is $5.6$ cm in the code.
+
+Hence, odometry development was finished, the code was modularly isolated from the navigation algorithm 
+into corresponding state data structures (please see code). For more detailed testign see \textit{Testing Odometry}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Return Algorithm}
 
+Since Task 2 only mentions odometry and mapping is only mentioned in Task 3, we assumed that we should
+be able to return to the start position of the robot ($0$,$0$) (the goal) with using only IR sensors for avoiding obstacles
+and odometry for pose calculations. 
+
+\subsection{Research}
+
+Through researhing for algorithms that would only use the end (and knowing the current) position for navigation, 
+found the so called Bug algorithms as the are insect inspired. Bug 2 is the robuts and 
+(on average) the most efficient out of the three mentioned bug algorithms. 
+Hence, it was chosen to be implemented.
+
+
+\subsection{Method Chosen}
+
+TODO .... insert picture from document
+
+
+The Bug 2 algorithms is quite easy conceptually. The assumptions it needs to work properly can be simplified to:
+
+\begin{enumerate}
+
+	\item Known direction to goal and robot can measure distance between points
+	\item Be in a bounded workspace with a finite number of finitie size objects
+
+\end{enumerate}
+
+Hence, we satisfy these assumptions by having odometry and a global frame of reference as well 
+as a square box arena with physical obstacles.
+
+The algorithm is:
+
+\begin{enumerate}
+
+	\item Head toward goal on the m-line
+	\item if an obstacle is in the way, follow it until you encounter the m-line again closer to the goal
+	\item Leave the obstacle and continue toward the goal
+
+\end{enumerate}
+
+\subsection{Needed Alterations}
+
+\subsubsection{Needed Alterations}
+However, it had to be altered due to problems taht arose during testing (please see 
+\textit{Testing Return Algorithm} ). Firstly, due to not beign able to sample odometry more often than 
+every $20$ ms\cite{khepera_manual} due to sequential reads of IR being in the same loop. Hence,
+all odometry-related calculations have non-strict thresholds allowing for errors up to several 
+centimeters. Secondly, the encoders are non-ideal and quite old, hence reading might be a bit off.
+Moreover, the odometry formulas are approximations. 
+
+
+
+Lastly, the wall following developed for Part 1
+was not sticky enough,
+
+TODO talk about how Part 1 fucked us over
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
-
-
 
 \section{Testing Plotting}
 
@@ -234,13 +307,13 @@ forward and backward movement of the wheel, hence, the above method works withou
 \par{Fourth order Runge - Kutta algorithm for pose estimation} \\
 \textit{https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab\%203.html }
 
-\bibitem{error_function} 
-\par{University of Tennessee lecture on Localization and Mapping, includes odometry estimation and error function} \\
-\textit{http://web.eecs.utk.edu/\~leparker/Courses/CS594-fall08/Lectures/Nov-13-Localization-Mapping-I.pdf}
-
 \bibitem{odo_used} 
-\par{Princeton University lecture on Autonomous Robot Navigation with odometry formulas and their deriviation from geometry and trigonometry} \\
+\par{Princeton University lecture on Autonomous Robot Navigation with odometry formulas and their deriviation from geometry and trigonometry. These formulas are devised specifically for differential drive robots} \\
 \textit{https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf }
+
+\bibitem{odo_calibration} 
+\par{The Technic Gear website article dealign with differential drive robot odometry calculations} \\
+\textit{http://thetechnicgear.com/2014/06/howto-calibrate-differential-drive-robot/}
 
 \bibitem{khepera_paper} 
 \par{A paper on Experimental Odometry Calibration of the Mobile Robot Khepera II Based on the Least-Squares Technique from which we took inspiration on calibration and confirmation we are doing odometry in the right fashion} \\
@@ -254,6 +327,10 @@ forward and backward movement of the wheel, hence, the above method works withou
 \bibitem{bug_algorithm} 
 \par{Carnegie Mellon University Robotic Motion Planning: Bug Algorithms paper / lecture that explores Bug algorithms, including their waknesses, strengths and comparing them with one another. Hence, incrementally building a robust navigation algorithm that does not need any mapping and uses only direction to goal (global position of robot and goal), odometry and a pinch of reactive control} \\
 \textit{https://www.cs.cmu.edu/~motionplanning/lecture/Chap2-Bug-Alg\_howie.pdf}
+
+
+
+
 
 
 
