@@ -8,6 +8,7 @@
 \documentclass[11pt, a4paper]{article}
 \usepackage{fontspec}
 \usepackage{caption}
+\usepackage{mathtools}
 
 % DOCUMENT LAYOUT
 \usepackage{geometry}
@@ -90,7 +91,7 @@
 
 
 \begin{abstract}
-  We present an implementation of an algorithm similar to \textit{Bug2}\cite{principlesrobot} 
+  We present an implementation of an algorithm similar to \textit{Bug2}\cite{bug_algorithm} 
   built atop reactive obstacle collision avoidance and edge following behaviour developed for 
   \textit{Task1}. The existing architecture is extended to include storing timestamped poses 
   in a Redis\cite{Redis} key/value \& pubsub server, goal state publishing and real-time visualisation 
@@ -119,36 +120,87 @@ Rviz, a popular graphical tool for ROS to live-render the Khepera Robot's pose, 
 obstacles perceived by the IR range sensors and goal (a plan-line to the origin).
 
 
+\section{Plotting}
+
+TODO ...........
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
-\section{Sect}
-
-\subsection{Stuff}
+\section{Odometry}
 
 
+\subsection{Research}
+
+Several methods of odometry were researched, implemented and tested. Firstly, have found several
+ways of calculating the pose (X,Y,$\Theta$). The first one we found was the one we ended up using
+and it will be described in detail in the next section. However, we did not wish to rely on such 
+a simplistic approach alone due to odometry drifting with time due to wheel slippage, non-ideal encoders etc.
+
+Hence, we tried researching on how to compose an error function for odometry, or possibly adapt an already
+developed approach. We found waht seemed like a much better integrator for pose estimation as it was even 
+recommended to be used by students. The algorithm was very similar to the one we eventually adapted, it 
+used a fourth order Runge-Kutta numerical integrator\textit{}\cite{runge_kutta}. However, upon implementation, and
+testing if it correctly detects the robot going in a straight line (equal motor speeds) and said algorithm
+absolutely fialing, it was abandoned. 
+
+Hence, we decided to use the simplistic algorithm but find an error function for it. However, upon inquiring
+Dr. Webb about if that should be done and receivign an answer it should not, the way to do odometry was decided.
+
+lastly, it should be noted that all the odometry methods use encoder values to estimate pose and we assume
+that the data given in the Khepera 2 User Manual\textit{}\cite{khepera_manual} redgarding each milimiter distance being 
+equivalent to $12$ encoder ticks.
 
 
-\subsection{Force-Vector Control}
+\subsection{Method Chosen}
 
+The method chosen for calculating pose\textit{}\cite{odo_used} use simple trigonometry and differential drive on 
+the wheels to perform its task. Please see the relevant document for deriviation of the formulas. The position for 
+(X,Y,$\Theta$) are in in relation to initial position, where the forward-facing direction is the positive half of the
+X-axis and initial X,Y are ($0$,$0$) and therefore further angles are in that frame of reference.
+
+\begin{enumerate}
+
+	\item Distance driven by each wheel $\Delta s_{wheel} = \frac {\Delta ticks_{wheel} } {12 ^{ticks}/_{mm}} $
+	\item Total distance driven $ \Delta s = \frac{\Delta s_{r} + \Delta s_{l} }{2}$
+	\item Direction in which it was driven (and new orientation) $\Theta s = \frac{ \Delta s_{r} - \Delta s_{l} }{2L}$
+	\item X position update $X_{n+1} = X_{n} + \Delta s \cos (\Theta)$
+	\item Y position update $Y_{n+1} = Y_{n} + \Delta s \sin (\Theta)$
+
+
+\end{enumerate}
+
+
+The distance driven by each wheel is not as per document we mainly used as we know how many (encoder) ticks are per milimeter.
+The method proved very sucessful as will be shown in subsequent sections. The encoders are incremental and are able to detect both
+forward and backward movement of the wheel, hence, the above method works without any tricks.
+
+\subsection{Method Chosen}
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+\section{Return Algorithm}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
-\section{Developing Object-Following Behaviour}
+
+\section{Testing Plotting}
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+\section{Testing Odometry}
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
-\subsection{Sensor Use}
-
-
-\subsection{Boredom, a useful concept}
-
-
-\section{Algorithm}
-
+\section{Testing Return Algorithm}
 
 
 
@@ -177,6 +229,34 @@ obstacles perceived by the IR range sensors and goal (a plan-line to the origin)
 \bibitem{ROS}
 \par{The Robot Operating System (ROS) is a flexible framework for writing robot software. It is a collection of tools, libraries, and conventions that aim to simplify the task of creating complex and robust robot behavior across a wide variety of robotic platforms.}\\
 \textit{http://www.ros.org/}
+
+\bibitem{runge_kutta} 
+\par{Fourth order Runge - Kutta algorithm for pose estimation} \\
+\textit{https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab\%203.html }
+
+\bibitem{error_function} 
+\par{University of Tennessee lecture on Localization and Mapping, includes odometry estimation and error function} \\
+\textit{http://web.eecs.utk.edu/\~leparker/Courses/CS594-fall08/Lectures/Nov-13-Localization-Mapping-I.pdf}
+
+\bibitem{odo_used} 
+\par{Princeton University lecture on Autonomous Robot Navigation with odometry formulas and their deriviation from geometry and trigonometry} \\
+\textit{https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf }
+
+\bibitem{khepera_paper} 
+\par{A paper on Experimental Odometry Calibration of the Mobile Robot Khepera II Based on the Least-Squares Technique from which we took inspiration on calibration and confirmation we are doing odometry in the right fashion} \\
+\textit{http://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=1570321}
+
+
+\bibitem{khepera_manual} 
+\par{Khepera 2 user Manual containing all the fundamental information about the Khepera 2 robot, including information abotu encoders and their value meanings} \\
+\textit{http://ftp.k-team.com/khepera/documentation/Kh2UserManual.pdf}
+
+\bibitem{bug_algorithm} 
+\par{Carnegie Mellon University Robotic Motion Planning: Bug Algorithms paper / lecture that explores Bug algorithms, including their waknesses, strengths and comparing them with one another. Hence, incrementally building a robust navigation algorithm that does not need any mapping and uses only direction to goal (global position of robot and goal), odometry and a pinch of reactive control} \\
+\textit{https://www.cs.cmu.edu/~motionplanning/lecture/Chap2-Bug-Alg\_howie.pdf}
+
+
+
 
 \end{thebibliography}
 
