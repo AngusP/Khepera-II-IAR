@@ -96,6 +96,9 @@
 
 \begin{abstract}
   % TODO : Maybe do more experiments?
+
+  %ANGUS - atop, I drew a diaram where  I call it hybryd subsumptions etc, need t odiscuss
+  %TODO define our arhcitecture name
   We present an implementation of an algorithm similar to \textit{Bug2} \cite{principlesrobot} 
   built atop reactive obstacle collision avoidance and edge following behaviour developed for 
   \textit{Task1} with the \textit{Khepera} robot. The existing architecture is extended to
@@ -103,7 +106,8 @@
   Real-time visualisation using a Redis to ROS \cite{ROS} pipe provides a graphical display 
   of odometry, sensory information and goals in Rviz. After-the-fact plotting is provided 
   with MatPlotLib independent of ROS.
-
+	
+  %TODO update numbers everywhere
   In our testing, the robot was able to navigate to within 10cm of the origin (it's start point) 
   from an abitary location in multiple environments successfully in 12/15 experiments, where each 
   environment was designed to evoke edge-case behaviour considered hard for the algorithm. The 
@@ -233,6 +237,9 @@ The following is a representation of the algorithm in a state diagram form:
 
 At each epoch in the control loop, a Pose and sensor-activation array is published to a Redis channel.
 If the goal has changed, it is also published to a separate channel. 
+
+%TODO remove repeated M-line description
+
 In the case of \textit{Bug2} this goal line will be the so-called \textit{m-line}, representing a 
 straight path the return algorithm will attempt to take. As the Redis instance is network-accessible 
 and running as it's own process, this prevents any rendering or plotting activity from stalling or 
@@ -244,8 +251,8 @@ subscribing to all the Redis channels the control loop will publish to and expos
 ROS Topics for the same data that can be picked up by RViz or any other ROS compatible 
 program.
 
-The data deveolved from the control loop is raw sensor data, that requires both conversion to
-actaul distance data and translation from the Khepera's frame of reference to the global frame.
+The data received from the control loop is raw sensor data, that requires both conversion to
+actual distance data and translation from the Khepera's frame of reference to the global frame.
 The activation to distance conversion was done using an equation from an equation solver and 10
 samples of \textit{distance, activation} pairs.
 
@@ -307,7 +314,7 @@ and odometry for pose calculations.
 
 \subsection{Research}
 
-Through researhing for algorithms that would only use the end (and knowing the current) position for navigation, 
+Through researching for algorithms that would only use the end (and knowing the current) position for navigation, 
 found the so called Bug algorithms as the are insect inspired. Bug 2 is the robuts and 
 (on average) the most efficient out of the three mentioned bug algorithms. 
 Hence, it was chosen to be implemented.
