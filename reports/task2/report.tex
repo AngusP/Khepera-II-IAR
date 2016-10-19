@@ -264,6 +264,9 @@ Since Task 2 only mentions odometry and mapping is only mentioned in Task 3, we 
 be able to return to the start position of the robot ${(0,0)}$ (the goal) with using only IR sensors for avoiding obstacles
 and odometry for pose calculations. 
 
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 \subsection{Research}
 
 Through researhing for algorithms that would only use the end (and knowing the current) position for navigation, 
@@ -272,7 +275,11 @@ found the so called Bug algorithms as the are insect inspired. Bug 2 is the robu
 Hence, it was chosen to be implemented.
 
 
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
 \subsection{Method Chosen}
+
 
 TODO .... insert picture from document
 
@@ -298,6 +305,9 @@ The algorithm is:
 	\item Leave the obstacle and continue toward the goal
 
 \end{enumerate}
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \subsection{Integration}
 
@@ -327,12 +337,18 @@ The following is a representation of the algorithm in a state diagram form:
   \end{center}
 \end{figure} 
 
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 \subsection{Needed Alterations}
 
 However, the implementation is much less trivial than the higher level description. It it had 
 to be altered due to problems that became evident during testing (please see \textit{Testing Return Algorithm}).
 
 \subsubsection{Thresholding}
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 
 the first problem is that due to imperfect encoders, wheel slippage, odometry drift as well as not
 beign able to sample odometry more often than every $20$ ms\cite{khepera_manual} (due to sequential 
@@ -341,6 +357,9 @@ reads of IR being in the same loop. Moreover, one must remember odometry fomulas
 Hence, all odometry and position-related calculations can not be strict equalities to compensate 
 for the error the above introduces. Hence, all values are considered "on-point" as long as the 
 fall within $\pm$ threshold of ideal value. Some thresholds are several centimeters.
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \subsubsection{M-line Replanning}
 
@@ -362,37 +381,56 @@ times larger than the one for recom[uting in free space. Hence, even if robot ge
 there should be very few edge cases wher it will get trapped and continue reocmputing the M-line, getting itself stuck again.
 Altering the two constants for M-line recomputing is what was also done durting testing to minimize said edge cases.
 
-
-%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
-
-\section{Testing Plotting}
-\label{Testing Plotting}
-
-
-%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
-
-
-\section{Testing Odometry}
-\label{Testing Odometry}
-
-
-%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
-
-
-
-\section{Testing Return Algorithm}
-\label{Testing Return Algorithm}
-
-
-
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Experimental Results}
 \label{Results}
 
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 
 \section{Discussion \& Possible Improvements}
+\label{Results}
+
+
+%TODO say what is long and waht is short
+Various system implementation methods were reasrched, best ones chosen, implemented and 
+tested in both sprase and dense environment for both short and long periods of time. It
+should be noted that this time was proportional to the exploration time set.
+
+The more the robot drove around, the more the odometry drift increased and the further it got from the 
+start point, while thinking it stopped at the spot it started at. It was also noted that the more 
+turns the robot had to do the more the drift became. However, the path that was taken by the robot,
+the angles of the turns and distances were identified very accurately. Hence, even though it worked very 
+well in highly dense environments, the above errors were virtually unnoticeable in sparse environments.
+
+The plotting worked wonders and not only allowed us to properly test our odometry as well as return algorithm,
+but also visualize the environment in a highly comprehensible and inforamtive way. Moreover, it uses a separate
+data server, which means if the main program crashes the data is not lost. Furthermore, we have derived a 
+distance formula for the distance to the obstacle based on the IR values. Lastly, the way it was developed 
+allows an easy transition towards SLAM (hint hint).
+
+Lastly, the subsumptious hybrid architecture that was developed between the three algorithms (as described
+before) worked very well and allowed the robot to properly switch between behaviors. The reutrn algorithm's precision
+depends on positioning errors, hence, it's errors also come from odometry. However, it worked with a
+very high sucess rate, getting stuck in only edge cases where it would be trapped in a very deep pocket which
+protruded almost towards the goal and had very logn walls until the robot could escape. Hence, that is the only case
+when we had a failure rate and it was $50\%$.
+
 \label{Discussion}
+
+Attempts to correct the algorithmic flaws were made as per above and the %TODO insert ref to algo section
+and could yield better results if wall sticking is fixed to where the approach was used
+would not be needed, leaving the algorithm as closely unchanged to Bug 2.
+
+Lastly, another improvement would be more accurate encoders which are not magnetic as before repairs
+our robot was swirving to the side and the encoders were not detecting that, therefore we might predict
+that the main source of drift is said poor detection and the approximations that are used for formulas
+to compute the pose.
+
+
+However, we would consider it a sucessful odometric, plotting and returning hybrid subsumptious 
+mobile autonomous system. 
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -428,11 +466,9 @@ Altering the two constants for M-line recomputing is what was also done durting 
 \par{A paper on Experimental Odometry Calibration of the Mobile Robot Khepera II Based on the Least-Squares Technique from which we took inspiration on calibration and confirmation we are doing odometry in the right fashion} \\
 \textit{http://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=1570321}
 
-
 \bibitem{khepera_manual} 
 \par{Khepera 2 user Manual containing all the fundamental information about the Khepera 2 robot, including information abotu encoders and their value meanings} \\
 \textit{http://ftp.k-team.com/khepera/documentation/Kh2UserManual.pdf}
-
 
 \bibitem{task1_report} 
 \par{Our Task1 solution and report} \\
