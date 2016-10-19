@@ -263,20 +263,38 @@ The algorithm is:
 
 \subsection{Needed Alterations}
 
-\subsubsection{Needed Alterations}
-However, it had to be altered due to problems taht arose during testing (please see 
-\textit{Testing Return Algorithm} ). Firstly, due to not beign able to sample odometry more often than 
-every $20$ ms\cite{khepera_manual} due to sequential reads of IR being in the same loop. Hence,
-all odometry-related calculations have non-strict thresholds allowing for errors up to several 
-centimeters. Secondly, the encoders are non-ideal and quite old, hence reading might be a bit off.
-Moreover, the odometry formulas are approximations. 
+However, the implementation is much less trivial than the higher level description. It it had 
+to be altered due to problems that became evident during testing (please see \textit{Testing Return Algorithm}).
+
+\subsubsection{Thresholding}
+
+the first problem is that due to imperfect encoders, wheel slippage, odometry drift as well as not
+beign able to sample odometry more often than every $20$ ms\cite{khepera_manual} (due to sequential 
+reads of IR being in the same loop. Moreover, one must remember odometry fomulas used are only approximations.
+
+Hence, all odometry and position-related calculations can not be strict equalities to compensate 
+for the error the above introduces. Hence, all values are considered "on-point" as long as the 
+fall within $\pm$ threshold of ideal value. Some thresholds are several centimeters.
+
+\subsubsection{M-line Replanning}
 
 
+Testing also revealed that about $1/15$ times the claculations of the approach angle to the goal would 
+fail and be 180 \degree more than the real value. Many attampts were made to trace down the bug, however,
+none were successful. Hence, we made an alteration to the Bug 2, so if it is in free space (not following 
+walls or beign "unstuck"\cite{task1_report} and it goes away from the last detected m-line segment for more
+than a threshold value, we recompute the approach vector to the goal.
 
-Lastly, the wall following developed for Part 1
-was not sticky enough,
+This revealed another bug that was left over from task 1 as in the wall following was state-based and sometimes
+a spike in sensor readings made it seem that the tobot left the wall and was in free space, recomputing the M-line
+wrongly even if it continued to follow the wall. 
 
-TODO talk about how Part 1 fucked us over
+
+This was countered by introducing another distance check into the Bug algorithm, to check if we could still 
+theoretically follow the wall, in which case the threshold at which we would recompute the M-line was several 
+times larger than the one for recom[uting in free space. Hence, even if robot gets stuck in a particular scenarion, 
+there should be very few edge cases wher it will get trapped and continue reocmputing the M-line, getting itself stuck again.
+Altering the two constants for M-line recomputing is what was also done durting testing to minimize said edge cases.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -350,6 +368,9 @@ TODO talk about how Part 1 fucked us over
 \textit{http://ftp.k-team.com/khepera/documentation/Kh2UserManual.pdf}
 
 
+\bibitem{taske1_report} 
+\par{Our Task1 solution and report} \\
+\textit{Angus Pearson, Jevgenij Zubovskij}
 
 
 
