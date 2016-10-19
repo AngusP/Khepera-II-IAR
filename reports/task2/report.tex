@@ -212,7 +212,7 @@ into corresponding state data structures (please see code). For more detailed te
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-
+\newpage
 \section{Plotting}
 \label{Plotting}
 
@@ -247,23 +247,35 @@ samples of \textit{distance, activation} pairs.
     the raw activation data of the sensor.}
 \end{figure}
 
-The reference pane transformation is performed by a ${3x3}$ matrix, rotating and translating
+The reference pane transformation is performed by a ${3\times3}$ matrix, rotating and translating
 onto the global reference pane.
 
 \subsection{mapping}
 
 A simple map is evolved as the Robot explores it's environment. We can derive solids in the environment
 from the distance sensor readings, by discarding distances above a given threshold but persisting a
-\textint{voxel} for any readings that are closer than this threshold.
+\textit{voxel} for any readings that are closer than this threshold.
 
 \begin{figure}[h]
   \begin{center}
     \includegraphics[width=30em]{../assets/khepera-wall.png}
   \end{center}
+  \caption{\textbf{Left:} Illustration showing voxels colourised by proximity (red closer) and their
+    relation to the Khepera robot. \textbf{Right:} Part of the map evolved, showing voxels and a
+    red odometry trail of poses}
+\end{figure}
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=38em]{../assets/merged_top_fig.png}
+  \end{center}
+  \caption{Top-down hybrid Rviz plot and photograph, showing \textbf{left} a long duration (~1m)
+    exploration, and \textbf{right} multiple explorations and returns in the same environment, where a
+    different route was taken each time.}
 \end{figure}
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
-
+\newpage
 \section{Return Algorithm}
 \label{Return Algorithm}
 
