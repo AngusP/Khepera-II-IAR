@@ -172,8 +172,8 @@ Hence, a very simple yet mathematically sound approach \cite{odo_used} was adapt
 
 The method chosen for calculating pose\cite{odo_used} use simple trigonometry and differential drive on 
 the wheels to perform its task. Please see the relevant document for deriviation of the formulas. The position for 
-(X,Y,$\Theta$) are in in relation to initial position, where the forward-facing direction is the positive half of the
-X-axis and initial X,Y are ($0$,$0$) and therefore further angles are in that frame of reference.
+${(X,Y,\Theta)}$ are in in relation to initial position, where the forward-facing direction is the positive half of the
+X-axis and initial X,Y are ${(0,0)}$ and therefore further angles are in that frame of reference.
 
 \begin{enumerate}
 
@@ -216,16 +216,27 @@ into corresponding state data structures (please see code). For more detailed te
 \section{Plotting}
 \label{Plotting}
 
-The control logic for the robot generates an estimated Pose at each iteration, realtive to the 
-Robot's starting location (i.e. the origin). In addition to poses, which can be chained to 
-form an odometry trail, it is useful to plot a Goal Line, which is the straight line the 
-Return Algorithm plans to take to reach the origin. For illustrative purposes, we also render
-a Point Cloud generated from the Khepera's eight IR sensors, transformed from activations
-to distances in the Robot's frame of reference.
+At each epoch in the control loop, a Pose and sensor-activation array is published to a Redis channel.
+If the goal has changed, it is also published to a separate channel. 
+In the case of \textit{Bug2} this goal line will be the so-called \textit{m-line}, representing a 
+straight path the return algorithm will attempt to take. As the Redis instance is network-accessible 
+and running as it's own process, this prevents any rendering or plotting activity from stalling or 
+slowing the control loop. This also keeps loop run-time consistent, and allows the rendering to
+be done on a separate computer.
+
+In the case of using RViz to render our data, \texttt{data.py} contains code for 
+subscribing to all the Redis channels the control loop will publish to and exposing 
+ROS Topics for the same data that can be picked up by RViz or any other ROS compatible 
+program.
+
+The data deveolved from the control loop is raw sensor data, that requires both conversion to
+actaul distance data and translation from the Khepera's frame of reference to the global frame.
+The activation to distance conversion was done using an equation from an equation solver and 10
+samples of \textit{distance, activation} pairs.
 
 \begin{figure}[h]
   \begin{center}
-    \includegraphics[width=32em]{../assets/plots/sensor-equation.png}
+    \includegraphics[width=30em]{../assets/plots/sensor-equation.png}
   \end{center}
   \begin{equation}
     S = 1.074519 + 
@@ -236,6 +247,7 @@ to distances in the Robot's frame of reference.
     the raw activation data of the sensor.}
 \end{figure}
 
+The reference pane transformation is performed by a ${3x3}$ matrix 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -243,7 +255,7 @@ to distances in the Robot's frame of reference.
 \label{Return Algorithm}
 
 Since Task 2 only mentions odometry and mapping is only mentioned in Task 3, we assumed that we should
-be able to return to the start position of the robot ($0$,$0$) (the goal) with using only IR sensors for avoiding obstacles
+be able to return to the start position of the robot ${(0,0)}$ (the goal) with using only IR sensors for avoiding obstacles
 and odometry for pose calculations. 
 
 \subsection{Research}
