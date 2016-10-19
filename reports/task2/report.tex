@@ -45,6 +45,9 @@
 \vspace{1em}\\
 }{\par\noindent}
 
+
+\usepackage[superscript]{cite}
+
 % LISTINGS
 \usepackage{listings}
 \usepackage{color}
@@ -92,16 +95,16 @@
 
 \begin{abstract}
   % TODO : Maybe do more experiments?
-  We present an implementation of an algorithm similar to \textit{Bug2}\cite{bug_algorithm} 
+  We present an implementation of an algorithm similar to \textit{Bug2} \cite{principlesrobot} 
   built atop reactive obstacle collision avoidance and edge following behaviour developed for 
-  \textit{Task1}. The existing architecture is extended to include storing timestamped poses 
-  in a Redis\cite{Redis} key/value \& pubsub server, goal state publishing and real-time visualisation 
-  using a Redis to ROS\cite{ROS} pipe, odometry, sensory information and goals
-  are displayed graphically in Rviz. After-the-fact plotting is provided with MatPlotLib independent
-  of ROS.
+  \textit{Task1}. The existing architecture is extended to include storing and publishing 
+  timestamped poses and goal states in a Redis \cite{Redis} server.
+  Real-time visualisation using a Redis to ROS \cite{ROS} pipe provides a graphical display 
+  of odometry, sensory information and goals in Rviz. After-the-fact plotting is provided 
+  with MatPlotLib independent of ROS.
 
   In our testing, the robot was able to navigate to within 10cm of the origin (it's start point) 
-  from an abitary location in multiple environments successfully in ${12/15}$ experiments, where each 
+  from an abitary location in multiple environments successfully in 12/15 experiments, where each 
   environment was designed to evoke edge-case behaviour considered hard for the algorithm. The 
   algorithm performs comparably in a static world and a dynamic one in which other actors 
   (e.g. Humans) present a transient obstacle. 
@@ -114,11 +117,13 @@
 
 The second IAR assignment entails extending the existing systems from Task 1 with Odometry, 
 to maintain an estimate of the robot's location, enabling rendering of it's movement both 
-in real time and after completion. The task also calls for `Return to home' ability, either 
-``by retracing its outward route or more directly''. As an extention, basic mapping (without
-filtering to correct for odometry dead-reckoning drift) of the world is desireable. We utilise 
-Rviz, a popular graphical tool for ROS to live-render the Khepera Robot's pose, odometry trail,
-obstacles perceived by the IR range sensors and goal (a plan-line to the origin).
+in real time and after reaching the goal. The task also calls for `return to home' ability, 
+``either by retracing its outward route or more directly''. As an extention, basic mapping 
+of the world is desireable (without localisation correction for odometry dead-reckoning drift). 
+We use Rviz for real-time plotting, a popular graphical tool for ROS to live-render the Khepera 
+Robot's pose, odometry trail, obstacles perceived by the IR range sensors and goal (a plan-line 
+to the origin). Rviz is plotting standard ROS messages we publish to `topics', such as Poses,
+Paths and Point Clouds.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -218,7 +223,7 @@ TODO ...........
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \newpage
-\begin{thebibliography}{9}
+\begin{thebibliography}{8}
 
 \bibitem{principlesrobot}
 \par{Principles of Robot Motion: Theory, Algorithms, and Implementation}\\
@@ -252,11 +257,6 @@ TODO ...........
 \bibitem{khepera_manual} 
 \par{Khepera 2 user Manual containing all the fundamental information about the Khepera 2 robot, including information abotu encoders and their value meanings} \\
 \textit{http://ftp.k-team.com/khepera/documentation/Kh2UserManual.pdf}
-
-\bibitem{bug_algorithm} 
-\par{Carnegie Mellon University Robotic Motion Planning: Bug Algorithms paper / lecture that explores Bug algorithms, including their waknesses, strengths and comparing them with one another. Hence, incrementally building a robust navigation algorithm that does not need any mapping and uses only direction to goal (global position of robot and goal), odometry and a pinch of reactive control} \\
-\textit{https://www.cs.cmu.edu/~motionplanning/lecture/Chap2-Bug-Alg\_howie.pdf}
-
 
 
 
