@@ -39,7 +39,7 @@
 \usepackage[normalem]{ulem}
 \sectionfont{\mdseries\upshape\Large}
 \subsectionfont{\mdseries\scshape\normalsize}
-\subsubsectionfont{\mdseries\upshape\large}
+\subsubsectionfont{\mdseries\upshape\normalsize}
 
 \renewenvironment{abstract}{%
 {\mdseries\scshape\Large\abstractname}
@@ -73,7 +73,7 @@
   showstringspaces=false,                   % underline spaces within strings only
   showtabs=false,                           % show tabs within strings adding particular underscores
   stepnumber=2,                             % the step between two line-numbers. If it's 1, each line will be numbered
-  tabsize=2, 	                            % sets default tabsize to 2 spaces
+  tabsize=4, 	                            % sets default tabsize to 2 spaces
   title=\lstname                            % show the filename of files included with \lstinputlisting
 }
 
@@ -115,6 +115,7 @@
 
 
 \section{Introduction}
+\label{Introduction}
 
 The second IAR assignment entails extending the existing systems from Task 1 with Odometry, 
 to maintain an estimate of the robot's location, enabling rendering of it's movement both 
@@ -138,17 +139,18 @@ Paths and Point Clouds.
 
 
 \section{Odometry}
+\label{Odometry}
 
 
-The goal of odometry was to find the global pose of the robot (X,Y,$\Theta$). It was decided
-to use the strarting position of the robot as the origin of the coordinate system ($0$, $0$) 
+The goal of odometry was to find the global pose of the robot ${(X,Y,\Theta)}$. It was decided
+to use the strarting position of the robot as the origin of the coordinate system ${(0, 0)}$ 
 and the forward-facing direction of the robot as the positive direction of the X-axis and
 all angles are measured in relation to that. We also need to account for odometry drifting with
 time due to wheel slippage, non-ideal encoders as well as approximations used in calculations etc.
 
 Moreover, we assume that the wheels have equal diameter and therefore that the data given in the 
-Khepera 2 User Manual\cite{khepera_manual} is correct and an increment of $12$ encoder ticks 
-means a wheel has driven $1$ mm in that direction. 
+Khepera 2 User Manual\cite{khepera_manual} is correct and an increment of 12 encoder ticks 
+means a wheel has driven 1mm in that direction. 
 
 The advantage of the Khepera is that it has very thin wheels, meaning almost a single point of contact
 to the floor, which make odometry much more accurate.
@@ -204,18 +206,21 @@ and increased if it was too large until we saw that the odometry detected the  $
 Hence, the actual $5$ cm wheelbase is $5.6$ cm in the code.
 
 Hence, odometry development was finished, the code was modularly isolated from the navigation algorithm 
-into corresponding state data structures (please see code). For more detailed testign see \textit{Testing Odometry}
+into corresponding state data structures (please see code). For more detailed testign see 
+\textit{\S\ref{Testing Odometry} Testing Odometry}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Plotting}
+\label{Plotting}
 
 TODO ...........
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Return Algorithm}
+\label{Return Algorithm}
 
 Since Task 2 only mentions odometry and mapping is only mentioned in Task 3, we assumed that we should
 be able to return to the start position of the robot ($0$,$0$) (the goal) with using only IR sensors for avoiding obstacles
@@ -277,12 +282,14 @@ TODO talk about how Part 1 fucked us over
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Testing Plotting}
+\label{Testing Plotting}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 \section{Testing Odometry}
+\label{Testing Odometry}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -290,15 +297,18 @@ TODO talk about how Part 1 fucked us over
 
 
 \section{Testing Return Algorithm}
+\label{Testing Return Algorithm}
 
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Experimental Results}
+\label{Results}
 
 
 \section{Discussion \& Possible Improvements}
+\label{Discussion}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
