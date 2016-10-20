@@ -173,10 +173,11 @@ ${(x,y,\Theta)}$ are in the global reference pane, relative to initial position.
 
 \begin{enumerate}
 
-	\item Distance driven by each wheel ${\Delta s_{wheel} = \frac {\Delta ticks_{wheel} } {12 ^{ticks}/_{mm}}}$
+	\item Distance driven by each wheel 
+          ${\Delta s_{wheel} = \frac {\Delta ticks_{wheel} } {12 ^{ticks}/_{mm}}}$
 	\item Total distance driven ${\Delta s = \frac{\Delta s_{r} + \Delta s_{l} }{2}}$
-	\item Direction in which it was driven (and new orientation) ${\Delta\Theta = \frac{ \Delta s_{r} - \Delta s_{l} }{B}}$ where $B$ is the wheel base 
-	(distance between points of contact of the two wheels on the floor)
+	\item Change in heading ${\Delta\Theta = \frac{ \Delta s_{r} - \Delta s_{l} }{B}}$ 
+          where $B$ is the wheel base (distance between points of contact of the two wheels on the floor)
 	\item $x$ position update ${x_{n+1} = x_{n} + \Delta s \cos (\Theta_n + \frac{\Delta\Theta}{2})}$
 	\item $y$ position update ${y_{n+1} = y_{n} + \Delta s \sin (\Theta_n + \frac{\Delta\Theta}{2})}$
         \item Lastly update ${\Theta_{n+1} = \Theta_{n} + \Delta\Theta}$
@@ -263,7 +264,7 @@ These assumptions are satisfied by the environment for the task.
   \begin{center}
     \includegraphics[width=20em]{../assets/bug-algorithm-diagram.png}
     \caption{Example Bug 2 operation diagram.
-      The straight line between them is the \textit{m-line}}
+      The straight line between the Start and Goal is the \textit{m-line}}
   \end{center}
 \end{figure}
 
@@ -277,7 +278,7 @@ activation is the dominant algorithm unless one of the following is true for tha
 
 \begin{enumerate}	
 
-	\item The reactive control (getting ``unstuck''\cite{task1_report}) activates - reactive avoidance algorithm is in control
+	\item The reactive control (getting unstuck \cite{task1_report}) activates - reactive avoidance algorithm is in control
 	\item There is a miscalculation for the new speeds and they robot may try to drive towards the wall it is following - exploration (navigation) algorithm is in control
 
 \end{enumerate}
@@ -528,14 +529,16 @@ mobile autonomous system\texttrademark.
 \subsection{Code Listings}
 \lstinputlisting[language=python]{../../main.py}
 \lstinputlisting[language=python]{../../data.py}
+\lstinputlisting[language=python]{../../comms.py}
 \lstinputlisting[language=python]{../../state.py}
-\lstinputlisting[language=python]{../../navigation_state.py}
 \lstinputlisting[language=python]{../../bug_state.py}
 \lstinputlisting[language=python]{../../bug_algorithm.py}
+\lstinputlisting[language=python]{../../navigation_state.py}
 \lstinputlisting[language=python]{../../navigation_algorithm.py}
 \lstinputlisting[language=python]{../../odometry_algorithm.py}
 \lstinputlisting[language=python]{../../odometry_state.py}
 \lstinputlisting[language=python]{../../constants.py}
+\lstinputlisting{../../requirements.txt}
 \end{appendices}
 
 
