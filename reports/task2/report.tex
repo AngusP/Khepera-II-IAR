@@ -10,6 +10,7 @@
 \usepackage{caption}
 \usepackage{mathtools}
 \usepackage{gensymb}
+\usepackage{float}
 
 % DOCUMENT LAYOUT
 \usepackage{geometry}
@@ -97,12 +98,13 @@
 \begin{abstract}
   % TODO : Maybe do more experiments?
 
-  %ANGUS - atop, I drew a diaram where  I call it hybryd subsumptions etc, need t odiscuss
+  %ANGUS - atop %JEVGENIJ atop is a word
+  %I drew a diaram where  I call it hybryd subsumptions etc, need t odiscuss
   %TODO define our arhcitecture name
   We present an implementation of an algorithm similar to \textit{Bug2} \cite{principlesrobot} 
   built atop reactive obstacle collision avoidance and edge following behaviour developed for 
   \textit{Task1} with the \textit{Khepera} robot. The existing architecture is extended to
-  include storing and publishing timestamped poses and goal states in a Redis \cite{Redis} server.
+  include storing and publishing timestamped poses and goal state to a Redis \cite{Redis} server.
   Real-time visualisation using a Redis to ROS \cite{ROS} pipe provides a graphical display 
   of odometry, sensory information and goals in Rviz. After-the-fact plotting is provided 
   with MatPlotLib independent of ROS.
@@ -111,7 +113,7 @@
   In our testing, the robot was able to navigate to within 10cm of the origin (it's start point) 
   from an abitary location in multiple environments successfully in 12/15 experiments, where each 
   environment was designed to evoke edge-case behaviour considered hard for the algorithm. The 
-  algorithm performs comparably in a static world and a dynamic one in which other actors 
+  algorithm performs similarly in both a static world and dynamic one in which other actors 
   (e.g. Humans) present a transient obstacle. 
 \end{abstract}
 
@@ -122,16 +124,15 @@
 \label{Introduction}
 
 The second IAR assignment entails extending the existing systems from Task 1 with Odometry, 
-to maintain an estimate of the robot's location, enabling rendering of it's movement both 
-in real time and after reaching the goal. The task also calls for `return to home' ability, 
+to maintain an estimate of the robot's location. The task also calls for `return to home' ability, 
 ``either by retracing its outward route or more directly''. As an extention, basic mapping 
-of the world is desireable (without localisation correction for odometry dead-reckoning drift). 
+of the world is developed (without localisation correction for odometry dead-reckoning drift). 
 
-The navigational behaviour we have developed is bolted-on to the simpler reactive wall-following
-and collision avoidance code we have from \textit{Task1}, in a hybrid-subsumtive sense where the
+This new navigational behaviour is bolted-on to the simpler reactive wall-following
+and collision avoidance code from \textit{Task1}, in a hybrid-subsumtive sense where the
 higher-level return navigation generally informs the Robot's behaviour, but if proximity thresholds
 are violated the lower level reaction will peturb the trajectory away from an obstacle until the
-error clears.
+proximity error clears.
 
 We use Rviz for real-time plotting, a popular graphical tool for ROS to live-render the Khepera 
 Robot's pose, odometry trail, obstacles perceived by the IR range sensors and goal (a plan-line 
@@ -220,8 +221,7 @@ into corresponding state data structures (please see code). For more detailed te
 Below is a diagram of a simple test showing how we tested when the right angled turn in reality is 
 refelcted correctly in odometry.
 
-The following is a representation of the algorithm in a state diagram form:
-\begin{figure}[h]
+\begin{figure}[H]
   \begin{center}
     \includegraphics[width=30em]{../assets/right-angle-calibration.png}
     \caption{The robot starts in the centre of an empty squre box, heads towards the wall, turns to follow the wall, then turns the box corner which is $90$ \degree, follows the wall for some more time, and heads to its starting position (where it stops).}
@@ -229,78 +229,10 @@ The following is a representation of the algorithm in a state diagram form:
 \end{figure} 
 
 
-%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\newpage
-\section{Plotting}
-\label{Plotting}
-
-At each epoch in the control loop, a Pose and sensor-activation array is published to a Redis channel.
-If the goal has changed, it is also published to a separate channel. 
-
-%TODO remove repeated M-line description
-
-In the case of \textit{Bug2} this goal line will be the so-called \textit{m-line}, representing a 
-straight path the return algorithm will attempt to take. As the Redis instance is network-accessible 
-and running as it's own process, this prevents any rendering or plotting activity from stalling or 
-slowing the control loop. This also keeps loop run-time consistent, and allows the rendering to
-be done on a separate computer.
-
-In the case of using RViz to render our data, \texttt{data.py} contains code for 
-subscribing to all the Redis channels the control loop will publish to and exposing 
-ROS Topics for the same data that can be picked up by RViz or any other ROS compatible 
-program.
-
-The data received from the control loop is raw sensor data, that requires both conversion to
-actual distance data and translation from the Khepera's frame of reference to the global frame.
-The activation to distance conversion was done using an equation from an equation solver and 10
-samples of \textit{distance, activation} pairs.
-
-\begin{figure}[h]
-  \begin{center}
-    \includegraphics[width=30em]{../assets/plots/sensor-equation.png}
-  \end{center}
-  \begin{equation}
-    S = 1.074519 + 
-    \frac{9.502961}
-         {(1 + \frac{\alpha}{70.42612}^{69.9039})^{0.02119919}}
-  \end{equation}
-  \caption{Solved equation translation betweek $S$, the distance, and $\alpha$, 
-    the raw activation data of the sensor.}
-\end{figure}
-
-The reference pane transformation is performed by a ${3\times3}$ matrix, rotating and translating
-onto the global reference pane.
-
-\subsection{mapping}
-
-A simple map is evolved as the Robot explores it's environment. We can derive solids in the environment
-from the distance sensor readings, by discarding distances above a given threshold but persisting a
-\textit{voxel} for any readings that are closer than this threshold.
-
-\begin{figure}[h]
-  \begin{center}
-    \includegraphics[width=30em]{../assets/khepera-wall.png}
-  \end{center}
-  \caption{\textbf{Left:} Illustration showing voxels colourised by proximity (red closer) and their
-    relation to the Khepera robot. \textbf{Right:} Part of the map evolved, showing voxels and a
-    red odometry trail of poses}
-\end{figure}
-
-%ANGUS - the voxel diagram is backwards and very unclear, just make it a slope in front of the robot or something... no need for the trigonometry
-
-%TODO fix it
-
-\begin{figure}[h]
-  \begin{center}
-    \includegraphics[width=38em]{../assets/merged_top_fig.png}
-  \end{center}
-  \caption{Top-down hybrid Rviz plot and photograph, showing \textbf{left} a long duration (~1m)
-    exploration, and \textbf{right} multiple explorations and returns in the same environment, where a
-    different route was taken each time.}
-\end{figure}
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 \newpage
 \section{Return Algorithm}
 \label{Return Algorithm}
@@ -349,9 +281,9 @@ The algorithm is:
 
 Below is the a demonstation of the algorithm in a diagram
 
-\begin{figure}[h]
+\begin{figure}[H]
   \begin{center}
-    \includegraphics[width=30em]{../assets/bug-algorithm-diagram.png}
+    \includegraphics[width=20em]{../assets/bug-algorithm-diagram.png}
     \caption{The Bug 2 basic operation diagram. The Goal is where it is trying to go to and the Start is where it starts said journey to. The straight line between them is the M-line.}
   \end{center}
 \end{figure} 
@@ -381,7 +313,7 @@ that unlike in the report for Task 1, here the collistion voidance is regarded a
 wall following, forward driving and "boredom" ("exploration algorithm") one
 
 The following is a representation of the algorithm in a state diagram form:
-\begin{figure}[h]
+\begin{figure}[H]
   \begin{center}
     \includegraphics[width=30em]{../assets/control-choice-diagram.png}
     \caption{Control algorithm choice in a state diagram form.}
@@ -439,30 +371,115 @@ Altering the two constants for M-line recomputing is what was also done durting 
 
 Below if the final form of the return algorithm that we have used
 
-\begin{figure}[h]
+\begin{figure}[H]
   \begin{center}
     \includegraphics[width=30em]{../assets/return-algorithm.png}
     \caption{The return algorithm in a state diagram form where the oval shape is the conditional action done before going to Bug 2 algorithm. That action replans the M-line.}
   \end{center}
 \end{figure} 
 
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+\section{Plotting}
+\label{Plotting}
+
+At each epoch in the control loop, a Pose and sensor-activation array is published to a Redis channel.
+If the goal has changed, it is also published to a separate channel. 
+
+%TODO remove repeated M-line description
+
+In the case of \textit{Bug2} this goal line will be the \textit{m-line}, representing a 
+straight path home the return algorithm will attempt to take. As the Redis instance is network-accessible 
+and running as it's own process, this prevents any rendering or plotting activity from stalling or 
+slowing the control loop. This also keeps loop run-time consistent, and allows the rendering to
+be done on a separate computer.
+
+In the case of using RViz to render our data, \texttt{data.py} contains code for 
+subscribing to all the Redis channels the control loop will publish to and exposing 
+ROS Topics for the same data that can be picked up by RViz or any other ROS compatible 
+program.
+
+The data received from the control loop is raw sensor data, that requires both conversion to
+actual distance data and translation from the Khepera's frame of reference to the global frame.
+The activation to distance conversion was done using an equation from an equation solver and 10
+samples of \textit{distance, activation} pairs.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=30em]{../assets/plots/sensor-equation.png}
+  \end{center}
+  \begin{equation}
+    S = 1.074519 + 
+    \frac{9.502961}
+         {(1 + \frac{\alpha}{70.42612}^{69.9039})^{0.02119919}}
+  \end{equation}
+  \caption{Solved equation translation betweek $S$, the distance, and $\alpha$, 
+    the raw activation data of the sensor.}
+\end{figure}
+
+The reference pane transformation is performed by a ${3\times3}$ matrix, rotating and translating
+onto the global reference pane.
+
+\subsection{mapping}
+
+A simple map is evolved as the Robot explores it's environment. We can derive solids in the environment
+from the distance sensor readings, by discarding distances above a given threshold but persisting a
+Point Cloud of \textit{voxels} for any readings that are closer than this threshold. These voxels (a 3D pixel)
+are colorised by proximity to the robot -- bluer indicates a farther point, redder indicates closer.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=25em]{../assets/environments/success_2_detail_merged.png}
+  \end{center}
+  \caption{Voxel map, Pose (red arrow), Origin and Odometry trail overlaid onto an image of the \textit{Khepera} 
+  and environment taken from the same perspective. Voxels are placed at the Khepera's `eye level' of 16mm.}
+\end{figure}
+
+%TODO fix it
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=38em]{../assets/merged_top_fig.png}
+  \end{center}
+  \caption{Top-down hybrid Rviz plot and photograph, showing \textbf{left} a long duration (~1m)
+    exploration, and \textbf{right} multiple explorations and returns in the same environment, where a
+    different route was taken each time. The \textit{Khepera} is highlighted in yellow at it's home location.}
+\end{figure}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Experimental Results}
-\label{Experimental Results}
+\label{Results}
 
+In our testing, with two different and complex environments measuring roughly 1m by 2m the robot
+successfully returned to within 10cm of it's starting position after 30 seconds of unguided exploration
+in 17/20 tests. The Robot took a different path in each excursion because it was manually guided in the 
+first few seconds by the operator placing a temporary obstacle in it's way. Figure \ref{resultsfigure} 
+shows the plots of these excursions separated by the two test environments. Both environments contain
+sparesely populated and dense areas, and `traps' that require correct Bug behaviour to navigate.
 
-%TODO insert results
+The three failures to return to the home location were due to odometry drift -- the robot completed at a
+location it believed was withing 10cm of home but was in fact further away. One excursion had a near
+algorithm failure, this eventually cleared and the robot successfully returned home. This incident
+is visible in the top image depicting the first 10 trials, bottom left where there is an excess of 
+voxels and odometry.
 
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=35em]{../assets/multi_explore_figure.jpg}
+  \end{center}
+  \caption{\label{resultsfigure} Tracks from the two test sets overlaid on a photograph of the environment.
+  \textbf{Top:} The first 10 trials, \textbf{Bottom:} the second 10 trials.}
+\end{figure} 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-
+\newpage
 \section{Discussion \& Possible Improvements}
 
-\label{Results}
+\label{Discussion}
 
 
 %TODO say what is long and waht is short
@@ -480,7 +497,7 @@ The plotting worked wonders and not only allowed us to properly test our odometr
 but also visualize the environment in a highly comprehensible and inforamtive way. Moreover, it uses a separate
 data server, which means if the main program crashes the data is not lost. Furthermore, we have derived a 
 distance formula for the distance to the obstacle based on the IR values. Lastly, the way it was developed 
-allows an easy transition towards SLAM (hint hint).
+allows an easy transition towards SLAM (hint hint). % JEVGENIJ: I like it. Cheeky fuck.
 
 Lastly, the subsumptious hybrid architecture that was developed between the three algorithms (as described
 before) worked very well and allowed the robot to properly switch between behaviors. The reutrn algorithm's precision
@@ -508,12 +525,10 @@ mobile autonomous system.
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \newpage
-\begin{thebibliography}{8}
+\begin{thebibliography}{9}
 
-%ANGUS - which one of these is the BUG one ?
-
-\bibitem{principlesrobot}
-\par{Principles of Robot Motion: Theory, Algorithms, and Implementation \S2.1}\\
+\bibitem{principlesrobot} % The bug one
+\par{Principles of Robot Motion: Theory, Algorithms, and Implementation \S2.1 `Bug Algorithms'}\\
 \textit{Howie Choset}
 
 \bibitem{Redis}
@@ -545,12 +560,8 @@ mobile autonomous system.
 \textit{http://ftp.k-team.com/khepera/documentation/Kh2UserManual.pdf}
 
 \bibitem{task1_report} 
-\par{Our Task1 solution and report} \\
+\par{IAR 2016 Task1 Report} \\
 \textit{Angus Pearson, Jevgenij Zubovskij}
-
-
-
-
 
 \end{thebibliography}
 
@@ -561,7 +572,7 @@ mobile autonomous system.
 \lstinputlisting[language=python]{../../main.py}
 \lstinputlisting[language=python]{../../data.py}
 \lstinputlisting[language=python]{../../state.py}
-%ANGUS - where is nav state...... XD
+\lstinputlisting[language=python]{../../navigation_state.py}
 \lstinputlisting[language=python]{../../bug_state.py}
 \lstinputlisting[language=python]{../../bug_algorithm.py}
 \lstinputlisting[language=python]{../../navigation_algorithm.py}
