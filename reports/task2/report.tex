@@ -281,78 +281,73 @@ activation is the dominant algorithm unless one of the following is true for tha
 	\item There is a miscalculation for the new speeds and they robot may try to drive towards the wall it is following - exploration (navigation) algorithm is in control
 
 \end{enumerate}
-%TODO put all references
 
 The second point can occur if \textit{m-line} recomputation occurs as described in \textit{m-line Replanning}
 
 Figure \ref{controlflow} shows how the controling paradigm is chosen from Ractive Avoidance, 
 explorative Navigation and Return at every iteration of the loop. Before the 30 second mark robot
-performs exactly as per \textit{Task 1}, after that the ``boredom''\cite{task1_report} is disabled. Please note
-that unlike in the report for Task 1, here the collistion voidance is regarded as a separate algorithm from the
-wall following, forward driving and "boredom" ("exploration algorithm") one
+performs exactly as per \textit{Task 1}, after that the ``boredom''\cite{task1_report} is disabled. 
+Please note that unlike in the report for \textit{Task 1}, here the collistion voidance is regarded
+as a separate algorithm from the wall following, forward driving and ``boredom'' (exploration algorithm) one
 
 The following is a representation of the algorithm in a state diagram form:
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=30em]{../assets/control-choice-diagram.png}
-    \caption{\label{controlflow}Control algorithm choice in a state diagram form.}
+    \caption{\label{controlflow}Control algorithm selection in a state diagram form.}
   \end{center}
 \end{figure} 
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\subsection{Needed Alterations}
+\subsection{Applied Alterations}
 \label{Needed Alterations}
 
-%TODO mention that it sometimes gets stuck etc
-
 However, the implementation is much less trivial than the higher level description. It it had 
-to be altered due to problems that became evident during testing \textit{\S\ref{Results} Experimental Results} and are generalized below.
+to be altered due to problems that became evident during testing and in \textit{\S\ref{Results} Experimental Results}
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 
 \subsubsection{Thresholding}
 
-%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
-
-
-the first problem is that due to imperfect encoders, wheel slippage, odometry drift as well as not
-beign able to sample odometry more often than every $20$ ms\cite{khepera_manual} (due to sequential 
-reads of IR being in the same loop. Moreover, one must remember odometry fomulas used are only approximations.
+Due to imperfect encoders, wheel slippage, odometry drift and being unable to sample odometry 
+more often than every $20$ ms\cite{khepera_manual} (due to sequential 
+reads of IR being in the same loop. Moreover, one must remember odometry fomulas have intrinsic 
+systematic error.
 
 Hence, all odometry and position-related calculations can not be strict equalities to compensate 
-for the error the above introduces. Hence, all values are considered "on-point" as long as the 
-fall within $\pm$ threshold of ideal value. Some thresholds are several centimeters.
+for the above error. Hence, all values are considered ``on-point'' as long as their value
+fall within the expected range. Some thresholds are several centimeters.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\subsubsection{M-line Replanning}
+\subsubsection{Replanning the \textit{m-line}}
 
 
-Testing also revealed that about $1/15$ times the claculations of the approach angle to the goal would 
-fail and be 180 \degree more than the real value. Many attampts were made to trace down the bug, however,
-none were successful. Hence, we made an alteration to the Bug 2, so if it is in free space (not following 
-walls or beign "unstuck"\cite{task1_report}) and it goes away from the last detected m-line segment for more
-than a threshold value, we recompute the approach vector to the goal.
+Testing revealed that about $1/15$ times the calculations of the approach angle to the goal would 
+fail and be $180\degree$ more than the real value. This required an alteration to \textit{Bug 2}, 
+so if it is in free space (not following walls or being ``unstuck''\cite{task1_report}) and it 
+deviates from the last detected \textit{m-line} segment for more than a threshold value, we 
+recompute the approach vector to the goal (along the new \textit{m-line}) .
 
-This revealed another bug that was left over from task 1 as in the wall following was state-based and sometimes
-a spike in sensor readings made it seem that the tobot left the wall and was in free space, recomputing the M-line
-wrongly even if it continued to follow the wall. 
+Additionally a spike in an IR sensor reading could wrongly present as a departure from the wall,
+triggering an incorrect recompute of the \textit{m-line}.
 
+This was mitigated by introducing another distance check into the Bug algorithm, to see if
+we could still theoretically follow the wall, in which case the threshold at which we would 
+recompute the \textit{m-line} was extended. Hence, even if robot gets stuck in a particular 
+scenario, there should be very few edge cases wher it will get trapped and continue reocomputing
+ the \textit{m-line}, getting itself stuck again. Altering the two constants for \textit{m-line}
+ recomputing is what was also done durting testing to minimize said edge cases.
 
-This was countered by introducing another distance check into the Bug algorithm, to check if we could still 
-theoretically follow the wall, in which case the threshold at which we would recompute the M-line was several 
-times larger than the one for recom[uting in free space. Hence, even if robot gets stuck in a particular scenarion, 
-there should be very few edge cases wher it will get trapped and continue reocmputing the M-line, getting itself stuck again.
-Altering the two constants for M-line recomputing is what was also done durting testing to minimize said edge cases.
-
-
-Below if the final form of the return algorithm that we have used
 
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=30em]{../assets/return-algorithm.png}
-    \caption{The return algorithm in a state diagram form where the oval shape is the conditional action done before going to Bug 2 algorithm. That action replans the M-line.}
+    \caption{The return algorithm in a state diagram form where the oval shape is the conditional action done before going to \textit{Bug 2} algorithm. That action replans the \textit{m-line}}
   \end{center}
 \end{figure} 
 
@@ -362,16 +357,12 @@ Below if the final form of the return algorithm that we have used
 \section{Plotting}
 \label{Plotting}
 
-At each epoch in the control loop, a Pose and sensor-activation array is published to a Redis channel.
-If the goal has changed, it is also published to a separate channel. 
+At each epoch in the control loop, a Pose and sensor-activation array is published to a Redis 
+channel. If the goal has changed, it is also published to a separate channel. In the case of \textit{Bug2} this goal line will be the \textit{m-line}.
 
-%TODO remove repeated M-line description
-
-In the case of \textit{Bug2} this goal line will be the \textit{m-line}, representing a 
-straight path home the return algorithm will attempt to take. As the Redis instance is network-accessible 
-and running as it's own process, this prevents any rendering or plotting activity from stalling or 
-slowing the control loop. This also keeps loop run-time consistent, and allows the rendering to
-be done on a separate computer.
+As the Redis instance is network-accessible and running as it's own process, this prevents any 
+rendering or plotting activity from stalling or slowing the control loop. This also keeps loop 
+run-time consistent, and allows the rendering to be done on a separate computer.
 
 In the case of using RViz to render our data, \texttt{data.py} contains code for 
 subscribing to all the Redis channels the control loop will publish to and exposing 
@@ -399,11 +390,12 @@ samples of \textit{distance, activation} pairs.
 The reference pane transformation is performed by a ${3\times3}$ matrix, rotating and translating
 onto the global reference pane.
 
+\newpage
 \subsection{mapping}
 
 A simple map is evolved as the Robot explores it's environment. We can derive solids in the environment
 from the distance sensor readings, by discarding distances above a given threshold but persisting a
-Point Cloud of \textit{voxels} for any readings that are closer than this threshold. These voxels (a 3D pixel)
+PointCloud of \textit{voxels} for any readings that are closer than this threshold. These voxels (a 3D pixel)
 are colorised by proximity to the robot -- bluer indicates a farther point, redder indicates closer.
 
 \begin{figure}[H]
@@ -414,15 +406,14 @@ are colorised by proximity to the robot -- bluer indicates a farther point, redd
   and environment taken from the same perspective. Voxels are placed at the Khepera's `eye level' of 16mm.}
 \end{figure}
 
-%TODO fix it
-
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=38em]{../assets/merged_top_fig.png}
   \end{center}
-  \caption{Top-down hybrid Rviz plot and photograph, showing \textbf{left} a long duration (~1m)
-    exploration, and \textbf{right} multiple explorations and returns in the same environment, where a
-    different route was taken each time. The \textit{Khepera} is highlighted in yellow at it's home location.}
+  \caption{Top-down Rviz plot overlaid on a photograph of the environment, showing \textbf{left}
+    a long duration (\textasciitilde1min) exploration, and \textbf{right} multiple explorations 
+    and returns, where a different route was taken each time. The \textit{Khepera} 
+    is highlighted in yellow at it's home location.}
 \end{figure}
 
 
@@ -431,15 +422,15 @@ are colorised by proximity to the robot -- bluer indicates a farther point, redd
 \section{Experimental Results}
 \label{Results}
 
-In our testing, with two different and complex environments measuring roughly 1m by 2m the robot
-successfully returned to within 10cm of it's starting position after 30 seconds of unguided exploration
+In our testing, with two different and complex environments measuring roughly $1$m by $2$m the robot
+successfully returned to within $10$cm of it's starting position after 30 seconds of unguided exploration
 in 17/20 tests. The Robot took a different path in each excursion because it was manually guided in the 
 first few seconds by the operator placing a temporary obstacle in it's way. Figure \ref{resultsfigure} 
 shows the plots of these excursions separated by the two test environments. Both environments contain
 sparesely populated and dense areas, and `traps' that require correct Bug behaviour to navigate.
 
 The three failures to return to the home location were due to odometry drift -- the robot completed at a
-location it believed was withing 10cm of home but was in fact further away. One excursion had a near
+location it believed was withing $10$cm of home but was in fact further away. One excursion had a near
 algorithm failure, this eventually cleared and the robot successfully returned home. This incident
 is visible in the top image depicting the first 10 trials, bottom left where there is an excess of 
 voxels and odometry.
@@ -449,7 +440,7 @@ voxels and odometry.
     \includegraphics[width=35em]{../assets/multi_explore_figure.jpg}
   \end{center}
   \caption{\label{resultsfigure} Tracks from the two test sets overlaid on a photograph of the environment.
-  \textbf{Top:} The first 10 trials, \textbf{Bottom:} the second 10 trials.}
+  \textbf{Top:} The first $10$ trials, \textbf{Bottom:} the second $10$ trials.}
 \end{figure} 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -459,9 +450,7 @@ voxels and odometry.
 
 \label{Discussion}
 
-
-%TODO say what is long and waht is short
-Various system implementation methods were reasrched, best ones chosen, implemented and 
+Various system implementation methods were researched, best ones chosen, implemented and 
 tested in both sprase and dense environment for both short and long periods of time. It
 should be noted that this time was proportional to the exploration time set.
 
@@ -482,7 +471,7 @@ before) worked very well and allowed the robot to properly switch between behavi
 depends on positioning errors, hence, it's errors also come from odometry. However, it worked with a
 very high sucess rate, getting stuck in only edge cases where it would be trapped in a very deep pocket which
 protruded almost towards the goal and had very logn walls until the robot could escape. Hence, that is the only case
-when we had a failure rate and it was $50\%$. %TODO check values
+when we had a failure rate and it was $50\%$.
 
 Attempts to correct the algorithmic flaws were made as per above and in \textit{\S\ref{Needed Alterations} Needed Alterations}
 and could yield better results if wall sticking is fixed to where the approach was used
