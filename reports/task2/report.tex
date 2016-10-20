@@ -451,40 +451,32 @@ voxels and odometry.
 \label{Discussion}
 
 Various system implementation methods were researched, best ones chosen, implemented and 
-tested in both sprase and dense environment for both short and long periods of time. It
-should be noted that this time was proportional to the exploration time set.
+tested in both sparse and dense environment for both short and long periods of time.
 
-The more the robot drove around, the more the odometry drift increased and the further it got from the 
-start point, while thinking it stopped at the spot it started at. It was also noted that the more 
-turns the robot had to do the more the drift became. However, the path that was taken by the robot,
-the angles of the turns and distances were identified very accurately. Hence, even though it worked very 
-well in highly dense environments, the above errors were virtually unnoticeable in sparse environments.
+Odometry drift increases with time, and with the number of turns taken. However, the path that was taken
+by the robot, the angles of the turns and distances were identified very accurately. Even though it worked
+very well in highly dense environments the above errors were minimal in sparse environments.
 
-The plotting worked wonders and not only allowed us to properly test our odometry as well as return algorithm,
-but also visualize the environment in a highly comprehensible and inforamtive way. Moreover, it uses a separate
-data server, which means if the main program crashes the data is not lost. Furthermore, we have derived a 
-distance formula for the distance to the obstacle based on the IR values. Lastly, the way it was developed 
-allows an easy transition towards SLAM (hint hint). % JEVGENIJ: I like it. Cheeky fuck.
+The live plotting was highly effective and not only allowed us to properly test our odometry as well as 
+return algorithm, but also visualize the environment in a highly comprehensible and inforamtive way. 
+Moreover, it uses a separate data server, which means if the main program crashes the data is not lost,
+and data can persist and be played back through Rviz later. Furthermore, we have solved a 
+formula for the distance to the obstacle based on the IR values. Lastly, the current system facilitates an 
+easy move towards SLAM \textit{(hint hint)}.
 
-Lastly, the subsumptious hybrid architecture that was developed between the three algorithms (as described
-before) worked very well and allowed the robot to properly switch between behaviors. The reutrn algorithm's precision
-depends on positioning errors, hence, it's errors also come from odometry. However, it worked with a
-very high sucess rate, getting stuck in only edge cases where it would be trapped in a very deep pocket which
-protruded almost towards the goal and had very logn walls until the robot could escape. Hence, that is the only case
-when we had a failure rate and it was $50\%$.
+The subsumptious hybrid architecture that was developed between the three algorithms (as described
+before) worked effectively and allowed the robot to properly switch between behaviors. The return 
+algorithm's precision depends on positioning errors, so it's error is derived almost entirely from 
+odometry. However, it worked with a very high sucess rate, getting stuck in only edge cases where it would 
+be trapped in a very deep pocket which protruded almost towards the goal and had long walls.
 
-Attempts to correct the algorithmic flaws were made as per above and in \textit{\S\ref{Needed Alterations} Needed Alterations}
-and could yield better results if wall sticking is fixed to where the approach was used
-would not be needed, leaving the algorithm as closely unchanged to Bug 2.
+Attempts to correct the algorithmic flaws were made as per above and in \textit{\S\ref{Needed Alterations}
+Needed Alterations} and could yield better results if wall following is fixed to where the approach that we used would not be needed, leaving the algorithm a faithful implementation of \textit{Bug 2}.
 
-Lastly, another improvement would be more accurate encoders which are not magnetic as before repairs
-our robot was swirving to the side and the encoders were not detecting that, therefore we might predict
-that the main source of drift is said poor detection and the approximations that are used for formulas
-to compute the pose.
-
-
+The prime targets for improvement are our trigonometric calculations, and a supplementary localisation
+technique to counteract the odometry error which is currently our limiting factor.
 However, we would consider it a sucessful odometric, plotting and returning hybrid subsumptious 
-mobile autonomous system. 
+mobile autonomous system\texttrademark.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -530,7 +522,7 @@ mobile autonomous system.
 
 \end{thebibliography}
 
-
+\newpage
 \begin{appendices}
 \section*{Appendix}
 \subsection{Code Listings}
