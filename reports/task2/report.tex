@@ -96,11 +96,6 @@
 
 
 \begin{abstract}
-  % TODO : Maybe do more experiments?
-
-  %ANGUS - atop %JEVGENIJ atop is a word
-  %I drew a diaram where  I call it hybryd subsumptions etc, need t odiscuss
-  %TODO define our arhcitecture name
   We present an implementation of an algorithm similar to \textit{Bug2} \cite{principlesrobot} 
   built atop reactive obstacle collision avoidance and edge following behaviour developed for 
   \textit{Task1} with the \textit{Khepera} robot. The existing architecture is extended to
@@ -108,10 +103,9 @@
   Real-time visualisation using a Redis to ROS \cite{ROS} pipe provides a graphical display 
   of odometry, sensory information and goals in Rviz. After-the-fact plotting is provided 
   with MatPlotLib independent of ROS.
-	
-  %TODO update numbers everywhere
-  In our testing, the robot was able to navigate to within 10cm of the origin (it's start point) 
-  from an abitary location in multiple environments successfully in 12/15 experiments, where each 
+
+  In our testing, the robot was able to navigate to within 10cm of the origin (it's home location) 
+  from any location in an environment successfully in 17/20 experiments, where each 
   environment was designed to evoke edge-case behaviour considered hard for the algorithm. The 
   algorithm performs similarly in both a static world and dynamic one in which other actors 
   (e.g. Humans) present a transient obstacle. 
@@ -128,103 +122,90 @@ to maintain an estimate of the robot's location. The task also calls for `return
 ``either by retracing its outward route or more directly''. As an extention, basic mapping 
 of the world is developed (without localisation correction for odometry dead-reckoning drift). 
 
-This new navigational behaviour is bolted-on to the simpler reactive wall-following
-and collision avoidance code from \textit{Task1}, in a hybrid-subsumtive sense where the
-higher-level return navigation generally informs the Robot's behaviour, but if proximity thresholds
-are violated the lower level reaction will peturb the trajectory away from an obstacle until the
-proximity error clears.
+This new return home behaviour is implemented as extension to the simpler reactive wall-following
+and collision avoidance code from \textit{Task1}\cite{task1_report}, in a hybrid-subsumtive sense 
+where the higher-level return navigation generally informs the Robot's behaviour, but if proximity
+thresholds are violated the lower level reaction will peturb the trajectory away from an obstacle
+until the proximity error clears.
 
-We use Rviz for real-time plotting, a popular graphical tool for ROS to live-render the Khepera 
-Robot's pose, odometry trail, obstacles perceived by the IR range sensors and goal (a plan-line 
-to the origin). Rviz is plotting standard ROS messages we publish to `topics', such as Poses,
-Paths and Point Clouds.
+We use Rviz for real-time plotting, a popular graphical tool for ROS to live-render the 
+Robot's pose, odometry trail, obstacles perceived by the IR range sensors and goals. 
+Rviz is plotting standard ROS messages such as Poses, Paths and Point Clouds that we publish 
+to `ROS topics'.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-
+\newpage
 \section{Odometry}
 \label{Odometry}
 
 
-The goal of odometry was to find the global pose of the robot ${(X,Y,\Theta)}$. It was decided
-to use the strarting position of the robot as the origin of the coordinate system ${(0, 0)}$ 
-and the forward-facing direction of the robot as the positive direction of the X-axis and
-all angles are measured in relation to that. We also need to account for odometry drifting with
-time due to wheel slippage, non-ideal encoders as well as approximations used in calculations etc.
+We use odometry to find the Pose of the robot ${(x,y,\Theta)}$. The strarting position of the robot as the origin of the coordinate system ${(0, 0)}$
+and the forward-facing direction of the robot as the positive direction of the $x$ axis and
+all angles are measured in relation to that. Ideally we would like to account for odometry drift
+over time due to wheel slippage, encoder error and approximate calculations etc.
 
-Moreover, we assume that the wheels have equal diameter and therefore that the data given in the 
+Moreover, we assume that the wheels have equal diameter and that the data given in the 
 Khepera 2 User Manual \cite{khepera_manual} is correct and an increment of 12 encoder ticks 
-means a wheel has driven 1mm in that direction. 
+means a wheel has advanced 1mm in it's rotational direction.
 
-The advantage of the Khepera is that it has very thin wheels, meaning almost a single point of contact
+An advantage of the Khepera is that it has very thin wheels, meaning almost a single point of contact
 to the floor, which make odometry much more accurate.
 
 \subsection{Research}
 
 Before settling on a method to use, we researched several papers and websites for inspiration or 
 already fully conceptualized solutions or even a fully developed and tested approach. The first one
-we found used a fourth order Runge-Kutta numerical integrator \cite{runge_kutta} and looked like 
+we found used a fourth order \textit{Runge-Kutta} numerical integrator \cite{runge_kutta} and looked like 
 it would compensate for non-ideal encoders. However, upon implementation, and  testing if it correctly 
-detects the robot going in a straight line (equal motor speeds) and said algorithm absolutely fialing,
-it was abandoned. 
+detects the robot going in a straight line (equal motor speeds) and said algorithm fialing to significantly reduce error, it was abandoned. 
 
-Hence, a very simple yet mathematically sound approach \cite{odo_used} was adapted 
-
+Hence, a simple yet mathematically sound approach \cite{odo_used} was adopted. 
 
 
-\subsection{Method Chosen}
 
-The method chosen for calculating pose\cite{odo_used} use simple trigonometry and differential drive on 
-the wheels to perform its task. Please see the relevant document for deriviation of the formulas. The position for 
-${(X,Y,\Theta)}$ are in in relation to initial position, where the forward-facing direction is the positive half of the
-X-axis and initial X,Y are ${(0,0)}$ and therefore further angles are in that frame of reference.
+\subsection{Chosen Method}
+
+Pose calculation\cite{odo_used} uses simple trigonometry and differential drive on 
+the wheels to perform its task. The position for 
+${(x,y,\Theta)}$ are in the global reference pane, relative to initial position.
 
 \begin{enumerate}
 
-	\item Distance driven by each wheel $\Delta s_{wheel} = \frac {\Delta ticks_{wheel} } {12 ^{ticks}/_{mm}} $
-	\item Total distance driven $ \Delta s = \frac{\Delta s_{r} + \Delta s_{l} }{2}$
-	\item Direction in which it was driven (and new orientation) $\Theta s = \frac{ \Delta s_{r} - \Delta s_{l} }{2L}$ where L is the wheel base 
-	(distance between points of contact of the two wheels to the floor)
-	\item X position update $X_{n+1} = X_{n} + \Delta s \cos (\Theta)$
-	\item Y position update $Y_{n+1} = Y_{n} + \Delta s \sin (\Theta)$
+	\item Distance driven by each wheel ${\Delta s_{wheel} = \frac {\Delta ticks_{wheel} } {12 ^{ticks}/_{mm}}}$
+	\item Total distance driven ${\Delta s = \frac{\Delta s_{r} + \Delta s_{l} }{2}}$
+	\item Direction in which it was driven (and new orientation) ${\Delta\Theta = \frac{ \Delta s_{r} - \Delta s_{l} }{B}}$ where $B$ is the wheel base 
+	(distance between points of contact of the two wheels on the floor)
+	\item $x$ position update ${x_{n+1} = x_{n} + \Delta s \cos (\Theta_n + \frac{\Delta\Theta}{2})}$
+	\item $y$ position update ${y_{n+1} = y_{n} + \Delta s \sin (\Theta_n + \frac{\Delta\Theta}{2})}$
+        \item Lastly update ${\Theta_{n+1} = \Theta_{n} + \Delta\Theta}$
 
 
 \end{enumerate}
 
+The encoders are incremental and are able to detect both forward and backward movement 
+of the wheel, so no software switching is required to differentiate forward and reverse
+motion.
 
-The distance driven by each wheel is not as per document we mainly used as we know 
-how many (encoder) ticks are per milimeter. The method proved very sucessful as 
-will be shown in subsequent sections. The encoders are incremental and are able to 
-detect both forward and backward movement of the wheel, hence, the above method works 
-without any tricks.
-
-\subsection{Method Chosen}
-
-The odometry is an independent module from the remaining part of the system as 
-all it uses is encoder data and produces the new position value, it is not directly
-involved in any decision making
+We do not use Odometry to inform navigation other than by the \textit{\S\ref{Return Algorithm}
+ Return Algorithm} to ensure the robot is within the desired radius of the goal.
 
 \subsection{Calibration}
 
-The odometry was initially tested in a square box to see if it detects $90$\degree turns correctly 
-(while following the walls of the box) as well as distances. Initially it did not, however, we 
-found multiple mobile robot odometry calibration articles and used one of them\cite{odo_calibration}
- to calibrate our Khepera. As shown, we reduced the wheelbase if the angle was shown to be too small 
-and increased if it was too large until we saw that the odometry detected the  $90$\degree turns correctly. 
-Hence, the actual $5$ cm wheelbase is $5.6$ cm in the code.
+The odometry was tested in a square box to verify it identifies $90$\degree turns correctly 
+(while following the walls of the box) as well as representing accurate distance. We calibrated 
+according to the methods laid out in \cite{odo_calibration}. We reduced the wheelbase if the 
+angle was shown to be too small and increase if it was too large until  the odometry detected 
+the  $90$\degree turns correctly. The actual $5$ cm wheelbase is calibrated to $5.6$ cm in code.
 
-Hence, odometry development was finished, the code was modularly isolated from the navigation algorithm 
-into corresponding state data structures (please see code). For more detailed testign see 
-\textit{\S\ref{Experimental Results} Experimental Results}
-
-Below is a diagram of a simple test showing how we tested when the right angled turn in reality is 
-refelcted correctly in odometry.
+Figure \ref{rightanglecalib} shows a diagram of a simple test to ensure the actual right-angle 
+turn is refelcted correctly in odometry.
 
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=30em]{../assets/right-angle-calibration.png}
-    \caption{The robot starts in the centre of an empty squre box, heads towards the wall, turns to follow the wall, then turns the box corner which is $90$ \degree, follows the wall for some more time, and heads to its starting position (where it stops).}
+    \caption{\label{rightanglecalib}The robot starts in the centre of an empty squre box, heads towards the wall, turns to follow the wall, then turns the box corner which is $90$ \degree, follows the wall for some more time, and heads to its starting position (where it stops).}
   \end{center}
 \end{figure} 
 
@@ -233,22 +214,19 @@ refelcted correctly in odometry.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\newpage
 \section{Return Algorithm}
 \label{Return Algorithm}
 
-Since Task 2 only mentions odometry and mapping is only mentioned in Task 3, we assumed that we should
-be able to return to the start position of the robot ${(0,0)}$ (the goal) with using only IR sensors for avoiding obstacles
-and odometry for pose calculations. 
-
+Since Task 2 requires odometry, we localise solely with odometry and use the IR sensors for 
+avoiding obstacles as per \textit{Task 1}\cite{task1_report}.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \subsection{Research}
 
-Through researching for algorithms that would only use the end (and knowing the current) position for navigation, 
-found the so called Bug algorithms as the are insect inspired. Bug 2 is the robuts and 
-(on average) the most efficient out of the three mentioned bug algorithms. 
+Choset's so-called \textit{Bug algorithms}\cite{principlesrobot}, inspired by insect behaviour
+give simple behaviour capable of navigating to a location suitable for the task. \textit{Bug 2} is
+robust and in most environments the most efficient out of the three Bug algorithms. 
 Hence, it was chosen to be implemented.
 
 
@@ -257,36 +235,37 @@ Hence, it was chosen to be implemented.
 
 \subsection{Method Chosen}
 
-The Bug 2 algorithms is quite easy conceptually. The assumptions it needs to work properly can be simplified to:
+The Bug 2 algorithms is conceptually simple. The assumptions it needs to work properly can 
+be simplified to:
 
 \begin{enumerate}
 
 	\item Known direction to goal and robot can measure distance between points
-	\item Be in a bounded workspace with a finite number of finitie size objects
+	\item Be in a bounded workspace with a finite number of finite size objects
 
 \end{enumerate}
 
-Hence, we satisfy these assumptions by having odometry and a global frame of reference as well 
-as a square box arena with physical obstacles.
+These assumptions are satisfied by the environment for the task.
 
-The algorithm is:
-
-\begin{enumerate}
-
-	\item Head toward goal on the m-line - the straight line drawn from the start point to the goal
-	\item if an obstacle is in the way, follow it until you encounter the m-line again closer to the goal
-	\item Leave the obstacle and continue toward the goal
-
-\end{enumerate}
-
-Below is the a demonstation of the algorithm in a diagram
+\begin{figure}[H]
+  \textbf{\scshape Bug 2 Algorithm}
+  
+  \begin{enumerate}
+    
+  \item Head toward goal on the \textit{m-line} -- the straight line drawn from the start point to the goal
+  \item If an obstacle is in the way, follow it until you encounter the \textit{m-line} again closer to the goal
+  \item Leave the obstacle and continue toward the goal
+    
+  \end{enumerate}
+\end{figure}
 
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=20em]{../assets/bug-algorithm-diagram.png}
-    \caption{The Bug 2 basic operation diagram. The Goal is where it is trying to go to and the Start is where it starts said journey to. The straight line between them is the M-line.}
+    \caption{Example Bug 2 operation diagram.
+      The straight line between them is the \textit{m-line}}
   \end{center}
-\end{figure} 
+\end{figure}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -294,21 +273,21 @@ Below is the a demonstation of the algorithm in a diagram
 \subsection{Integration}
 
 The algorithm is activated after $\approx 30$ seconds of exploration\cite{task1_report} and after
-activation is the leading algorithm unless on of the following are true for that control loop iteration:
+activation is the dominant algorithm unless one of the following is true for that control loop iteration:
 
 \begin{enumerate}	
 
-	\item The reactive control (getting "unstuck"\cite{task1_report})activates - reactive avoidance algorithm is in control
-	\item There is a miscalculation for the new speeds and they robot may try to drive towards the wall it is following - exploration algorithm is in control
+	\item The reactive control (getting ``unstuck''\cite{task1_report}) activates - reactive avoidance algorithm is in control
+	\item There is a miscalculation for the new speeds and they robot may try to drive towards the wall it is following - exploration (navigation) algorithm is in control
 
 \end{enumerate}
 %TODO put all references
 
-The second point can occur if M-line recomputation occurs as described in \textit{M-line Replanning}
+The second point can occur if \textit{m-line} recomputation occurs as described in \textit{m-line Replanning}
 
-Below is a diagram showing how the controlling $3$ algorithm (ractive avoidance, exploration and return algorithm)
-is chosen at every iteration of the loop (starting from the start marker). Before the 30 second mark robot
-performs exactly as for Task 1, after that the "boredom"\cite{task1_report} is disabled. Please note
+Figure \ref{controlflow} shows how the controling paradigm is chosen from Ractive Avoidance, 
+explorative Navigation and Return at every iteration of the loop. Before the 30 second mark robot
+performs exactly as per \textit{Task 1}, after that the ``boredom''\cite{task1_report} is disabled. Please note
 that unlike in the report for Task 1, here the collistion voidance is regarded as a separate algorithm from the
 wall following, forward driving and "boredom" ("exploration algorithm") one
 
@@ -316,7 +295,7 @@ The following is a representation of the algorithm in a state diagram form:
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=30em]{../assets/control-choice-diagram.png}
-    \caption{Control algorithm choice in a state diagram form.}
+    \caption{\label{controlflow}Control algorithm choice in a state diagram form.}
   \end{center}
 \end{figure} 
 
@@ -329,8 +308,7 @@ The following is a representation of the algorithm in a state diagram form:
 %TODO mention that it sometimes gets stuck etc
 
 However, the implementation is much less trivial than the higher level description. It it had 
-to be altered due to problems that became evident during testing \textit{\S\ref{Experimental 
-Results} Experimental Results} and are generalized below.
+to be altered due to problems that became evident during testing \textit{\S\ref{Results} Experimental Results} and are generalized below.
 
 \subsubsection{Thresholding}
 
@@ -506,8 +484,6 @@ very high sucess rate, getting stuck in only edge cases where it would be trappe
 protruded almost towards the goal and had very logn walls until the robot could escape. Hence, that is the only case
 when we had a failure rate and it was $50\%$. %TODO check values
 
-\label{Discussion}
-
 Attempts to correct the algorithmic flaws were made as per above and in \textit{\S\ref{Needed Alterations} Needed Alterations}
 and could yield better results if wall sticking is fixed to where the approach was used
 would not be needed, leaving the algorithm as closely unchanged to Bug 2.
@@ -543,7 +519,7 @@ mobile autonomous system.
 \par{Fourth order Runge - Kutta algorithm for pose estimation} \\
 \textit{https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab\%203.html}
 
-\bibitem{odo_used} 
+\bibitem{odo_used}
 \par{Princeton University lecture on Autonomous Robot Navigation with odometry formulas and their deriviation from geometry and trigonometry. These formulas are devised specifically for differential drive robots} \\
 \textit{https://www.cs.princeton.edu/courses/archive/fall11/cos495/COS495-Lecture5-Odometry.pdf }
 
