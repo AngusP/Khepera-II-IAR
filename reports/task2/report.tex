@@ -96,6 +96,9 @@
 
 \begin{abstract}
   % TODO : Maybe do more experiments?
+
+  %ANGUS - atop, I drew a diaram where  I call it hybryd subsumptions etc, need t odiscuss
+  %TODO define our arhcitecture name
   We present an implementation of an algorithm similar to \textit{Bug2} \cite{principlesrobot} 
   built atop reactive obstacle collision avoidance and edge following behaviour developed for 
   \textit{Task1} with the \textit{Khepera} robot. The existing architecture is extended to
@@ -103,7 +106,8 @@
   Real-time visualisation using a Redis to ROS \cite{ROS} pipe provides a graphical display 
   of odometry, sensory information and goals in Rviz. After-the-fact plotting is provided 
   with MatPlotLib independent of ROS.
-
+	
+  %TODO update numbers everywhere
   In our testing, the robot was able to navigate to within 10cm of the origin (it's start point) 
   from an abitary location in multiple environments successfully in 12/15 experiments, where each 
   environment was designed to evoke edge-case behaviour considered hard for the algorithm. The 
@@ -202,8 +206,6 @@ involved in any decision making
 
 \subsection{Calibration}
 
-TODO ... take a pic of a fuckign square box.......
-
 The odometry was initially tested in a square box to see if it detects $90$\degree turns correctly 
 (while following the walls of the box) as well as distances. Initially it did not, however, we 
 found multiple mobile robot odometry calibration articles and used one of them\cite{odo_calibration}
@@ -213,7 +215,18 @@ Hence, the actual $5$ cm wheelbase is $5.6$ cm in the code.
 
 Hence, odometry development was finished, the code was modularly isolated from the navigation algorithm 
 into corresponding state data structures (please see code). For more detailed testign see 
-\textit{\S\ref{Testing Odometry} Testing Odometry}
+\textit{\S\ref{Experimental Results} Experimental Results}
+
+Below is a diagram of a simple test showing how we tested when the right angled turn in reality is 
+refelcted correctly in odometry.
+
+The following is a representation of the algorithm in a state diagram form:
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=30em]{../assets/right-angle-calibration.png}
+    \caption{The robot starts in the centre of an empty squre box, heads towards the wall, turns to follow the wall, then turns the box corner which is $90$ \degree, follows the wall for some more time, and heads to its starting position (where it stops).}
+  \end{center}
+\end{figure} 
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -224,6 +237,9 @@ into corresponding state data structures (please see code). For more detailed te
 
 At each epoch in the control loop, a Pose and sensor-activation array is published to a Redis channel.
 If the goal has changed, it is also published to a separate channel. 
+
+%TODO remove repeated M-line description
+
 In the case of \textit{Bug2} this goal line will be the so-called \textit{m-line}, representing a 
 straight path the return algorithm will attempt to take. As the Redis instance is network-accessible 
 and running as it's own process, this prevents any rendering or plotting activity from stalling or 
@@ -235,8 +251,8 @@ subscribing to all the Redis channels the control loop will publish to and expos
 ROS Topics for the same data that can be picked up by RViz or any other ROS compatible 
 program.
 
-The data deveolved from the control loop is raw sensor data, that requires both conversion to
-actaul distance data and translation from the Khepera's frame of reference to the global frame.
+The data received from the control loop is raw sensor data, that requires both conversion to
+actual distance data and translation from the Khepera's frame of reference to the global frame.
 The activation to distance conversion was done using an equation from an equation solver and 10
 samples of \textit{distance, activation} pairs.
 
@@ -271,6 +287,10 @@ from the distance sensor readings, by discarding distances above a given thresho
     red odometry trail of poses}
 \end{figure}
 
+%ANGUS - the voxel diagram is backwards and very unclear, just make it a slope in front of the robot or something... no need for the trigonometry
+
+%TODO fix it
+
 \begin{figure}[h]
   \begin{center}
     \includegraphics[width=38em]{../assets/merged_top_fig.png}
@@ -294,7 +314,7 @@ and odometry for pose calculations.
 
 \subsection{Research}
 
-Through researhing for algorithms that would only use the end (and knowing the current) position for navigation, 
+Through researching for algorithms that would only use the end (and knowing the current) position for navigation, 
 found the so called Bug algorithms as the are insect inspired. Bug 2 is the robuts and 
 (on average) the most efficient out of the three mentioned bug algorithms. 
 Hence, it was chosen to be implemented.
@@ -304,10 +324,6 @@ Hence, it was chosen to be implemented.
 
 
 \subsection{Method Chosen}
-
-
-TODO .... insert picture from document
-
 
 The Bug 2 algorithms is quite easy conceptually. The assumptions it needs to work properly can be simplified to:
 
@@ -325,11 +341,20 @@ The algorithm is:
 
 \begin{enumerate}
 
-	\item Head toward goal on the m-line
+	\item Head toward goal on the m-line - the straight line drawn from the start point to the goal
 	\item if an obstacle is in the way, follow it until you encounter the m-line again closer to the goal
 	\item Leave the obstacle and continue toward the goal
 
 \end{enumerate}
+
+Below is the a demonstation of the algorithm in a diagram
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=30em]{../assets/bug-algorithm-diagram.png}
+    \caption{The Bug 2 basic operation diagram. The Goal is where it is trying to go to and the Start is where it starts said journey to. The straight line between them is the M-line.}
+  \end{center}
+\end{figure} 
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -337,7 +362,7 @@ The algorithm is:
 \subsection{Integration}
 
 The algorithm is activated after $\approx 30$ seconds of exploration\cite{task1_report} and after
-activation is the leading algorithm unless on of the followign are true for that control loop iteration:
+activation is the leading algorithm unless on of the following are true for that control loop iteration:
 
 \begin{enumerate}	
 
@@ -345,6 +370,7 @@ activation is the leading algorithm unless on of the followign are true for that
 	\item There is a miscalculation for the new speeds and they robot may try to drive towards the wall it is following - exploration algorithm is in control
 
 \end{enumerate}
+%TODO put all references
 
 The second point can occur if M-line recomputation occurs as described in \textit{M-line Replanning}
 
@@ -366,9 +392,13 @@ The following is a representation of the algorithm in a state diagram form:
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \subsection{Needed Alterations}
+\label{Needed Alterations}
+
+%TODO mention that it sometimes gets stuck etc
 
 However, the implementation is much less trivial than the higher level description. It it had 
-to be altered due to problems that became evident during testing (please see \textit{Testing Return Algorithm}).
+to be altered due to problems that became evident during testing \textit{\S\ref{Experimental 
+Results} Experimental Results} and are generalized below.
 
 \subsubsection{Thresholding}
 
@@ -392,7 +422,7 @@ fall within $\pm$ threshold of ideal value. Some thresholds are several centimet
 Testing also revealed that about $1/15$ times the claculations of the approach angle to the goal would 
 fail and be 180 \degree more than the real value. Many attampts were made to trace down the bug, however,
 none were successful. Hence, we made an alteration to the Bug 2, so if it is in free space (not following 
-walls or beign "unstuck"\cite{task1_report} and it goes away from the last detected m-line segment for more
+walls or beign "unstuck"\cite{task1_report}) and it goes away from the last detected m-line segment for more
 than a threshold value, we recompute the approach vector to the goal.
 
 This revealed another bug that was left over from task 1 as in the wall following was state-based and sometimes
@@ -406,15 +436,32 @@ times larger than the one for recom[uting in free space. Hence, even if robot ge
 there should be very few edge cases wher it will get trapped and continue reocmputing the M-line, getting itself stuck again.
 Altering the two constants for M-line recomputing is what was also done durting testing to minimize said edge cases.
 
+
+Below if the final form of the return algorithm that we have used
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=30em]{../assets/return-algorithm.png}
+    \caption{The return algorithm in a state diagram form where the oval shape is the conditional action done before going to Bug 2 algorithm. That action replans the M-line.}
+  \end{center}
+\end{figure} 
+
+
+
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \section{Experimental Results}
-\label{Results}
+\label{Experimental Results}
+
+
+%TODO insert results
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 \section{Discussion \& Possible Improvements}
+
 \label{Results}
 
 
@@ -440,11 +487,11 @@ before) worked very well and allowed the robot to properly switch between behavi
 depends on positioning errors, hence, it's errors also come from odometry. However, it worked with a
 very high sucess rate, getting stuck in only edge cases where it would be trapped in a very deep pocket which
 protruded almost towards the goal and had very logn walls until the robot could escape. Hence, that is the only case
-when we had a failure rate and it was $50\%$.
+when we had a failure rate and it was $50\%$. %TODO check values
 
 \label{Discussion}
 
-Attempts to correct the algorithmic flaws were made as per above and the %TODO insert ref to algo section
+Attempts to correct the algorithmic flaws were made as per above and in \textit{\S\ref{Needed Alterations} Needed Alterations}
 and could yield better results if wall sticking is fixed to where the approach was used
 would not be needed, leaving the algorithm as closely unchanged to Bug 2.
 
@@ -463,6 +510,8 @@ mobile autonomous system.
 \newpage
 \begin{thebibliography}{8}
 
+%ANGUS - which one of these is the BUG one ?
+
 \bibitem{principlesrobot}
 \par{Principles of Robot Motion: Theory, Algorithms, and Implementation \S2.1}\\
 \textit{Howie Choset}
@@ -477,7 +526,7 @@ mobile autonomous system.
 
 \bibitem{runge_kutta} 
 \par{Fourth order Runge - Kutta algorithm for pose estimation} \\
-\textit{https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab\%203.html }
+\textit{https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/16311/www/s07/labs/NXTLabs/Lab\%203.html}
 
 \bibitem{odo_used} 
 \par{Princeton University lecture on Autonomous Robot Navigation with odometry formulas and their deriviation from geometry and trigonometry. These formulas are devised specifically for differential drive robots} \\
@@ -512,6 +561,7 @@ mobile autonomous system.
 \lstinputlisting[language=python]{../../main.py}
 \lstinputlisting[language=python]{../../data.py}
 \lstinputlisting[language=python]{../../state.py}
+%ANGUS - where is nav state...... XD
 \lstinputlisting[language=python]{../../bug_state.py}
 \lstinputlisting[language=python]{../../bug_algorithm.py}
 \lstinputlisting[language=python]{../../navigation_algorithm.py}
