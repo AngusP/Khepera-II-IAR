@@ -80,6 +80,7 @@ def main():
 	    #if have free movement, use the bug algorithm
 	    if bug_state.algorithm_activated and bug_state.in_control == True:
 		nav_state = bug.new_state(nav_state, odo_state, bug_state)
+		#if we are done break the control loop, stop the robot and exit
 		if bug_state.done:
 			print("DONE")
 			comms.drive(0, 0)

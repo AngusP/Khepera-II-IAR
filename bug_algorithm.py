@@ -55,12 +55,17 @@ class Bug_Algorithm:
 
 	#check if c is between a and b
 	def is_on_mline(self,a, b, c):
+
+	    #thresholded cross product to account for non-ideal odometry
 	    crossproduct = (c[1] - a[1]) * (b[0] - a[0]) - (c[0] - a[0]) * (b[1] - a[1])
-	    if abs(crossproduct) > 20 : return False   # (or != 0 if using integers)
+	    if abs(crossproduct) > 20 : return False   
 	    
+	    #thresholded dot product to account for non-ideal odometry
 	    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1])*(b[1] - a[1])
 	    if dotproduct < -20 : return False
 
+
+	    #thresholded to account for non-ideal odometry
 	    squaredlengthba = (b[0] - a[0])*(b[0] - a[0]) + (b[1] - a[1])*(b[1] - a[1])
 	    if dotproduct > squaredlengthba + 20: return False
 
@@ -115,21 +120,17 @@ class Bug_Algorithm:
 		turn_less = constants.CONST_SPEED 
 		turn_more = constants.CONST_SPEED
 
-            	######################
-            	# IF IN FREE SPACE, CAN FOLLOW M-LINE
-            	#####################
 		
-		#check if we are closer on the m_x line
-
+		#set up more convenient variables for checking distances, use integers to account for rounding errors
 		current_pos = [int(odo_state.x), int(odo_state.y)]
 		previous_pos = [int(bug_state.last_m_x) , int(bug_state.last_m_y)]
 		line_start = [ int(bug_state.m_line_start[0]) , int(bug_state.m_line_start[1]) ]
 
 		#if we are on the mline again
-		
 		on_mline = self.is_on_mline(line_start, previous_pos, current_pos)
 		closer_on_mline = False
 
+		#new distance to the origin
 		new_distance = self.vector_magnitude(current_pos)
 		old_distance =  self.vector_magnitude(previous_pos)
 
@@ -144,13 +145,13 @@ class Bug_Algorithm:
 		if new_distance < 40:
 			bug_state.done = True
 		
-		#if far away from M-line
-
+		#if far away from M-line, different constants for free space and wall following
 		far_in_open_space = dist_to_mline > constants.M_DISTANCE * 4.0 and nav_state.system_state == constants.STATE_DRIVE_FORWARD
 		far_on_wall = dist_to_mline > constants.M_DISTANCE*10.0
+		#recalculate M-line if such a need arises
 		if far_in_open_space or far_on_wall:
 			
-			#DROP IT and for a new one as driving forward and just lost it due to collision or something
+			#renew m-line record
 			bug_state.m_line_end  = [odo_state.x , odo_state.y]
 			bug_state.m_line_start= [0,0]
 
@@ -162,65 +163,66 @@ class Bug_Algorithm:
 			turn_less = -constants.CONST_SPEED 
 			turn_more = constants.CONST_SPEED 
 
-		#if veering off M-line (but still on it)
+		#Try keeping the robot on the M-line (be it old one or updated one)
 		if True:
-		
+			#initially assume we are not following a wall
 			is_wall_following = False
-			#print "angle ON M-line %s" % (angle_to_m)
+			#then assign it a value, for clarity in this case
 			is_wall_following = nav_state.system_state == constants.STATE_RIGHT_FOLLOW and nav_state.system_state == constants.STATE_LEFT_FOLLOW
-			# stay on the straight line
+			#If are in free space
 			if nav_state.system_state == constants.STATE_DRIVE_FORWARD:
 
 				turn_less = -constants.CONST_SPEED 
 				turn_more = constants.CONST_SPEED 
 
+				#record new closer position on m-line if we are getting closer along it
 				if on_mline and new_distance <= old_distance:
 					bug_state.last_m_x = odo_state.x
    					bug_state.last_m_y = odo_state.y
 					
-				#print("trying to correct trijectory")
-
 
 			# if can leave a wall closer on m-line
 			elif new_distance <= old_distance and is_wall_following and on_mline:
 
+				#turn aggressively
 				turn_less = -constants.CONST_SPEED 
 				turn_more = constants.CONST_SPEED
+
+				#make this the new closest we have gotten along m-line
 				bug_state.last_m_x = odo_state.x
    				bug_state.last_m_y = odo_state.y 
 				closer_on_mline = True
-				print("trying to leave wall")
 
 			
 			angle_to_m = self.get_angle_on_m(odo_state, bug_state)
-			#print "ANGLE TO MLINE %s" % (angle_to_m)	
-
 
 			#OUR angle too small
 			if angle_to_m > constants.M_N_ANGLE:		
 				
+				#if are following a wall and are closer along m-line to goal
+				#or are not wall following (are in free space)
 				if closer_on_mline or not is_wall_following:
 					# check if there is a wall on the left
 					if nav_state.system_state is not constants.STATE_LEFT_FOLLOW:
 						# if there is none, turn left
 						speed_r = turn_more
 						speed_l = turn_less	
-						#print("our angle too small")
 
 			#OUR angle too big
 			elif angle_to_m < -constants.M_N_ANGLE:
+
+
+				#if are following a wall and are closer along m-line to goal
+				#or are not wall following (are in free space)
 				if closer_on_mline or not is_wall_following:
 					# check if there is a wall on the right
 					if nav_state.system_state is not constants.STATE_RIGHT_FOLLOW:
 						# if there is none, turn right
 						speed_r = turn_less
 						speed_l = turn_more
-						#print("our angle too big")
-					
+
+		#send out the new speed controls			
 		nav_state.speed_l = speed_l
 		nav_state.speed_r = speed_r 
-		
-		#print("BUG")
-
 		return nav_state
 		    

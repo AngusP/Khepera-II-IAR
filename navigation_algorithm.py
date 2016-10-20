@@ -108,8 +108,9 @@ class Navigation_Algorithm:
 	    result = Navigation_State()
 	    result = nav_state
 
-	    bug_state.in_control = False
 
+ 	    #variable to indicate if reactive avoidance is in control of the robot
+	    bug_state.in_control = False
 
             
            ########################
@@ -134,32 +135,33 @@ class Navigation_Algorithm:
 		#record that we have already recorded said values
 
 		bug_state.algorithm_point = True
-		#do the 180 turn by recording initial turn
+		#do the turn towards the goal, called 180 because we were going away from the goal and now are going towards it
 		nav_state.system_state = constants.STATE_BUG_180
 
-	    #now, if have not yet done a 180 degree turn before
+	    #now, if have not yet turned back towards the goal
 	    elif not bug_state.algorithm_activated:
 		#check if that is the case now
-	
 		angle = bug.get_angle_on_m(odo_state, bug_state)
-		pointing_at_origin = abs(angle) < 10
 
-		#print(new_theta)
+		#thresholded value due to imperfect sensor reading timings
+		pointing_at_origin = abs(angle) < 10
+   		#if done turning
 		if nav_state.system_state == constants.STATE_BUG_180 and pointing_at_origin:
-			#if done turning at 180, then can proceed to the return algorithm
+			#if done turning, then can proceed with the return algorithm
 			nav_state.system_state = constants.STATE_DRIVE_FORWARD
 			#reset boredom
 		        result.boredom_counter = 0
 			bug_state.algorithm_activated = True
 		else:	
-
+		   #if not done turing, check which way we need to turn to reduce the angle difference 
+		   #between the M-line (directed towards (0,0)) and the pose of the robot
 		   if angle > 10:
 			result.speed_l = -constants.CONST_SPEED
                    	result.speed_r = constants.CONST_SPEED 
 		   elif angle < -10:
 			result.speed_r = -constants.CONST_SPEED
                    	result.speed_l = constants.CONST_SPEED 
-
+		   #continue turning
 		   nav_state.system_state = constants.STATE_BUG_180
 		   return result
 
@@ -177,8 +179,6 @@ class Navigation_Algorithm:
 		    
 		    #check if robot is "bored" and it is not being handled
 		    if self.bored(result.boredom_counter) and not self.is_boredom_handled(result.system_state):
-
-		        #print("bored...")
 
 		        #turn away from the wall that was last followed
 		        if result.system_state == constants.STATE_LEFT_FOLLOW:
@@ -216,22 +216,11 @@ class Navigation_Algorithm:
             # IF STUCK
             ############################
 
-            if self.is_stuck(result.dist):
-                
-                 print("stuck")
+            if self.is_stuck(result.dist):      
 
                  # do not interrupt if already handle
                  if self.is_being_unstuck(result.system_state):
 			return result
-
-		 #if bug_state.algortitm_activated:
-		#	 #update m-line
-		#	 bug_state.m_line_end  = [odo_state.x , odo_state.y]
-		#	 bug_state.m_line_start= [0,0]
-	 
-		#	 #update last position on m-line
-		#	 bug_state.last_m_x = odo_state.x
-	   	#	 bug_state.last_m_y = odo_state.y
 		
                  # determine direction of where better to turn to unstuck
                  if self.should_unstuck_right(result.dist, result.system_state):
@@ -266,8 +255,7 @@ class Navigation_Algorithm:
 
             if self.should_follow_left_wall(result.dist, result.system_state):
                 
-                #print("following left")
-	
+		#reactive control not activated, can use the return algorithm
 		bug_state.in_control = True
 
 		turn_least = constants.CONST_SPEED * constants.TURN_LESS
@@ -303,7 +291,7 @@ class Navigation_Algorithm:
             #####################                       
             elif self.should_follow_right_wall(result.dist, result.system_state):
                 
-
+		#reactive control not activated, can use the return algorithm
 		bug_state.in_control = True
 
                 #print("following right")
@@ -340,7 +328,7 @@ class Navigation_Algorithm:
             # IF NONE OF THE ABOVE
             #####################
             else:
-		
+		    #reactive control not activated, can use the return algorithm
 		    bug_state.in_control = True	
 
                     # reset variables as not doing anything
