@@ -119,7 +119,7 @@
 
 The second IAR assignment entails extending the existing systems from Task 1 with Odometry, 
 to maintain an estimate of the robot's location. The task also calls for `return to home' ability, 
-``either by retracing its outward route or more directly''. As an extention, basic mapping 
+``either by retracing its outward route or more directly''. As an extension, basic mapping 
 of the world is developed (without localisation correction for odometry dead-reckoning drift). 
 
 This new return home behaviour is implemented as extension to the simpler reactive wall-following
@@ -141,7 +141,7 @@ to `ROS topics'.
 \label{Odometry}
 
 
-We use odometry to find the Pose of the robot ${(x,y,\Theta)}$. The strarting position of the robot as the origin of the coordinate system ${(0, 0)}$
+We use odometry to find the Pose of the robot ${(x,y,\Theta)}$. The starting position of the robot as the origin of the coordinate system ${(0, 0)}$
 and the forward-facing direction of the robot as the positive direction of the $x$ axis and
 all angles are measured in relation to that. Ideally we would like to account for odometry drift
 over time due to wheel slippage, encoder error and approximate calculations etc.
@@ -159,7 +159,7 @@ Before settling on a method to use, we researched several papers and websites fo
 already fully conceptualized solutions or even a fully developed and tested approach. The first one
 we found used a fourth order \textit{Runge-Kutta} numerical integrator \cite{runge_kutta} and looked like 
 it would compensate for non-ideal encoders. However, upon implementation, and  testing if it correctly 
-detects the robot going in a straight line (equal motor speeds) and said algorithm fialing to significantly reduce error, it was abandoned. 
+detects the robot going in a straight line (equal motor speeds) and said algorithm failing to significantly reduce error, it was abandoned. 
 
 Hence, a simple yet mathematically sound approach \cite{odo_used} was adopted. 
 
@@ -201,12 +201,12 @@ angle was shown to be too small and increase if it was too large until  the odom
 the  $90$\degree turns correctly. The actual $5$ cm wheelbase is calibrated to $5.6$ cm in code.
 
 Figure \ref{rightanglecalib} shows a diagram of a simple test to ensure the actual right-angle 
-turn is refelcted correctly in odometry.
+turn is reflected correctly in odometry.
 
 \begin{figure}[H]
   \begin{center}
     \includegraphics[width=30em]{../assets/right-angle-calibration.png}
-    \caption{\label{rightanglecalib}The robot starts in the centre of an empty squre box, heads towards the wall, turns to follow the wall, then turns the box corner which is $90$ \degree, follows the wall for some more time, and heads to its starting position (where it stops).}
+    \caption{\label{rightanglecalib}The robot starts in the centre of an empty square box, heads towards the wall, turns to follow the wall, then turns the box corner which is $90$ \degree, follows the wall for some more time, and heads to its starting position (where it stops).}
   \end{center}
 \end{figure} 
 
@@ -285,10 +285,10 @@ activation is the dominant algorithm unless one of the following is true for tha
 
 The second point can occur if \textit{m-line} recomputation occurs as described in \textit{m-line Replanning}
 
-Figure \ref{controlflow} shows how the controling paradigm is chosen from Ractive Avoidance, 
+Figure \ref{controlflow} shows how the controling paradigm is chosen from Reactive Avoidance, 
 explorative Navigation and Return at every iteration of the loop. Before the 30 second mark robot
 performs exactly as per \textit{Task 1}, after that the ``boredom''\cite{task1_report} is disabled. 
-Please note that unlike in the report for \textit{Task 1}, here the collistion voidance is regarded
+Please note that unlike in the report for \textit{Task 1}, here the collision avoidance is regarded
 as a separate algorithm from the wall following, forward driving and ``boredom'' (exploration algorithm) one
 
 The following is a representation of the algorithm in a state diagram form:
@@ -315,12 +315,12 @@ to be altered due to problems that became evident during testing and in \textit{
 
 Due to imperfect encoders, wheel slippage, odometry drift and being unable to sample odometry 
 more often than every $20$ ms\cite{khepera_manual} (due to sequential 
-reads of IR being in the same loop. Moreover, one must remember odometry fomulas have intrinsic 
+reads of IR being in the same loop. Moreover, one must remember odometry fomulae have intrinsic 
 systematic error.
 
 Hence, all odometry and position-related calculations can not be strict equalities to compensate 
 for the above error. Hence, all values are considered ``on-point'' as long as their value
-fall within the expected range. Some thresholds are several centimeters.
+fall within the expected range. Some thresholds are several centimetres.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -340,9 +340,9 @@ triggering an incorrect recompute of the \textit{m-line}.
 This was mitigated by introducing another distance check into the Bug algorithm, to see if
 we could still theoretically follow the wall, in which case the threshold at which we would 
 recompute the \textit{m-line} was extended. Hence, even if robot gets stuck in a particular 
-scenario, there should be very few edge cases wher it will get trapped and continue reocomputing
+scenario, there should be very few edge cases where it will get trapped and continue recomputing
  the \textit{m-line}, getting itself stuck again. Altering the two constants for \textit{m-line}
- recomputing is what was also done durting testing to minimize said edge cases.
+ recomputing is what was also done during testing to minimize said edge cases.
 
 
 \begin{figure}[H]
