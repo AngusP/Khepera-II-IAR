@@ -118,7 +118,7 @@ class DataStore:
 
         # We push a reference to this new hashmap onto 
         # the statestream list
-        self.r.lpush(self.listname, mapname)
+        self.r.rpush(self.listname, mapname)
 
         # Also publish onto a channel
         self.r.publish(self.listname, mapname)
@@ -139,7 +139,7 @@ class DataStore:
             pointname = "goal" + str(pointnum)
             pointnum += 1
             self.r.hmset(pointname, point)
-            self.r.lpush(self.goallist, pointname)
+            self.r.rpush(self.goallist, pointname)
 
         self.r.publish(self.goallist, self.goallist)
 
@@ -378,7 +378,7 @@ class DataStore:
   <<<------------------------###
 ''')
         data = self.r.lrange(self.listname, 0, limit)
-        data.reverse()
+        #data.reverse()
         # ... this might take a while
         try:
             for epoch in data:
