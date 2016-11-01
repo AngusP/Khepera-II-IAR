@@ -95,7 +95,7 @@ class DataStore:
         self.wt = whiptail.Whiptail()
         self.pp = pprint.PrettyPrinter(indent=1)
 
-        self.og = GridManager(self.r)
+        self.og = GridManager(self.r, debug=True)
 
         # Redis List and Channel name
         self.listname = "statestream"
@@ -550,7 +550,7 @@ class GridManager:
     The Map is _sparse_, in that it is hypothetically infinitely large.
     '''
     
-    def __init__(self, redis, granularity=1.0):
+    def __init__(self, redis, granularity=0.5, debug=False):
         '''
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
@@ -561,6 +561,43 @@ class GridManager:
             'occ' : -1 or [0..100]
         }
         '''
+
+        self._testworld = """\
+????????????????????????????????
+?XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?
+?X                  XX    XX  X?
+?X                   X    XX  X?
+?X     XXXXXXX       XX       X?
+?X     XXXXXXX        X    XXXX?
+?X     XX                  X  X?
+?X     XX                     X?
+?X                            X?
+?X              XX            X?
+?X             XXXX           X?
+?X              XX            X?
+?X    XX                      X?
+?X   XXXX               XXXXXXX?
+?X    XX     XX         X     X?
+?X           XX         X     X?
+?X           XX         X     X?
+?X           XX               X?
+?X   XXXX    XX               X?
+???? XXXX          XXXX       ??
+????        ?      X??X       ??
+??????      ????   XXXX      ???
+?????        ????            ???
+??????         ??? ?????    ????
+???????             ?????? ?????
+????????          ??????????????
+???????   ??     ???????????????
+????????????     ???????????????
+????????????????      ??????????
+?????????????????    ???????????
+????????????????????????????????
+????????????????????????????????
+????????????????????????????????
+"""
+        
         self.granularity = granularity
         
         self.r = redis
@@ -581,10 +618,10 @@ class GridManager:
         }
 
         self.bounds = {
-            'maxx'  :  10.0,
-            'maxy'  :  10.0,
-            'minx'  : -10.0,
-            'miny'  : -10.0
+            'maxx'    : 0.0,
+            'maxy'    : 0.0,
+            'minx'    : 0.0,
+            'miny'    : 0.0
         }
 
         # If prior config exists, pull it in
@@ -609,6 +646,8 @@ class GridManager:
         
         self.wt = whiptail.Whiptail()
         self.pp = pprint.PrettyPrinter(indent=1)
+
+        self.DEBUG = debug
 
 
 
@@ -640,10 +679,11 @@ class GridManager:
         Returns the entire known map, in a ROS friendly format
         of a 2D array, with floating occupancies. Default value is -1
         '''
-        xwidth = int(math.ceil(-self.bounds['minx'] + self.bounds['maxx']))
-        ywidth = int(math.ceil(-self.bounds['miny'] + self.bounds['maxy']))
+        xwidth = 1 + int(math.ceil((-self.bounds['minx'] + self.bounds['maxx']) * 1.0/self.granularity))
+        ywidth = 1 + int(math.ceil((-self.bounds['miny'] + self.bounds['maxy']) * 1.0/self.granularity))
 
-        print("Map dim " + str(xwidth) + " " + str(ywidth))
+        if self.DEBUG:
+            print("Map dim " + str(xwidth) + " " + str(ywidth))
 
         # Initialise a 2D array of the correct size... yuck
         data = [[-1]*ywidth]*xwidth
@@ -652,11 +692,17 @@ class GridManager:
 
         for grid_key in pts_keys:
             grid_hm = self.r.hgetall(grid_key)
-            x, y = map(lambda e: int(e * 1.0/self.granularity), self._dekey(grid_key))
+            x, y = self._dekey(grid_key)
 
-            if not self._bounds_check(x,y,False):
-                # Os s**t, this coord doesn't fit!
+            if self.DEBUG:
+                print("Looking at ({}, {}) from {}:{}".format(x,y,grid_key,grid_hm))
+
+            if not self._bounds_check(x,y):
+                # If co-ord doesn't fit we have an inconsistency (booo!)
                 raise IndexError("Encountered point outwith map bounds at ({},{}).".format(x,y))
+
+            # scale to the array sixe (where 1.0 is an increase by 1 granularity)
+            x, y = map(lambda e: int(e * 1.0/self.granularity), (x,y))
 
             # Boundaries as per ROS spec
             data[x][y] = max(0, min(int(grid_hm['occ']), 100))
@@ -700,7 +746,8 @@ class GridManager:
         occupancy  --  Occupancy certainty, -1 for unknown or [0..100]
         '''
 
-        self._bounds_check(x,y)
+        # Bump grid size if this is outside current bounding box
+        self._bounds_check(x,y,True)
 
         k = self._genkey(x,y)
         if self.r.exists(k):
@@ -728,41 +775,7 @@ class GridManager:
 
         if f is None:
             # Development & Testing map, origin will be upper left corner :'(
-            f = """\
-????????????????????????????????
-?XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?
-?X                  XX    XX  X?
-?X                   X    XX  X?
-?X     XXXXXXX       XX       X?
-?X     XXXXXXX        X    XXXX?
-?X     XX                  X  X?
-?X     XX                     X?
-?X                            X?
-?X              XX            X?
-?X             XXXX           X?
-?X              XX            X?
-?X    XX                      X?
-?X   XXXX               XXXXXXX?
-?X    XX     XX         X     X?
-?X           XX         X     X?
-?X           XX         X     X?
-?X           XX               X?
-?X   XXXX    XX               X?
-???? XXXX          XXXX       ??
-????        ?      X??X       ??
-??????      ????   XXXX      ???
-?????        ????            ???
-??????         ??? ?????    ????
-???????             ?????? ?????
-????????          ??????????????
-???????   ??     ???????????????
-????????????     ???????????????
-????????????????      ??????????
-?????????????????    ???????????
-????????????????????????????????
-????????????????????????????????
-????????????????????????????????
-""".splitlines()
+            f = self._testworld.splitlines()
         else:
             f = open(f, 'r')
             f = f.read().splitlines()
@@ -776,15 +789,24 @@ class GridManager:
                 elif char == '?':
                     certainty = -1  # Unknown
 
-                if len(line) <= 40 and len(f) <= 40:
-                    # Only print small maps...
-                    print("{} ".format(char), end='')
+                if self.DEBUG:
+                    # Spew map at user
+                    print(" {}({},{})".format(char,i* self.granularity,j* self.granularity), end='')
 
-                self.update(i,j,certainty)
+                # Multiply by granularity to scale onto native grid resolution
+                self.update(float(i) * self.granularity,
+                            float(j) * self.granularity,
+                            certainty)
         
         print("")
         print("Done.")
 
+
+    def dump(self):
+        '''
+        Dump map to a string or file
+        '''
+        raise NotImplementedError()
 
 
     def _genkey(self, x, y):
@@ -811,7 +833,7 @@ class GridManager:
 
 
 
-    def _bounds_check(self,x,y,expand=True):
+    def _bounds_check(self,x,y,expand=False):
         '''
         Assert (x,y) is within grid; If they don't and expand is True, 
         embiggen the grid to fit them.
@@ -819,34 +841,40 @@ class GridManager:
         Arguments:
         x       --  X coordinate
         y       --  Y Coordinate
-        expand  --  True automagics the map to be bigger, false doesn't
+        expand  --  True automagics the map to be bigger, False doesn't
         '''
-        fits = True
-        xr = range(math.floor(self.bounds['minx']),math.ceil(self.bounds['maxx']))
-        yr = range(math.floor(self.bounds['miny']),math.ceil(self.bounds['maxy']))
-
-        if x not in xr:
-            fits = False
-
-        if y not in yr:
-            fits = False
-        
-        if expand and not fits: # but sits?
+        if not expand:
             if x > self.bounds['maxx']:
-                self.bounds['maxx'] = math.ceil(x)
+                return False
+            elif x < self.bounds['minx']:
+                return False
+            elif y > self.bounds['maxy']:
+                return False
+            elif y < self.bounds['miny']:
+                return False
+        
+        if expand:
+            change = False
+            if x > self.bounds['maxx']:
+                self.bounds['maxx'] = float(x)
+                change = True
             if x < self.bounds['minx']:
-                self.bounds['minx'] = math.floor(x)
+                self.bounds['minx'] = float(x)
+                change = True
 
             if y > self.bounds['maxy']:
-                self.bounds['maxy'] = math.ceil(y)
+                self.bounds['maxy'] = float(y)
+                change = True
             if y < self.bounds['miny']:
-                self.bounds['miny'] = math.floor(y)
+                self.bounds['miny'] = float(y)
+                change = True
 
-            # Let Redis know we've made changes
-            self.r.hmset(self.mapmeta, self.bounds)
-            self.r.publish(self.channel, "#bounds")
+            if change:
+                # Let Redis know we've made changes
+                self.r.hmset(self.mapmeta, self.bounds)
+                self.r.publish(self.channel, "#bounds")
 
-        return fits
+        return True
 
 
 
