@@ -28,7 +28,7 @@ try:
     ros = True
     from std_msgs.msg import String
     from geometry_msgs.msg import PoseWithCovariance, PoseStamped, Point32
-    from nav_msgs.msg import Odometry, Path
+    from nav_msgs.msg import Odometry, Path, OccupancyGrid, MapMetaData
     from sensor_msgs.msg import PointCloud, ChannelFloat32
     import tf
 except ImportError as e:
@@ -67,15 +67,18 @@ class DataStore:
         self.r = redis.StrictRedis(host=host, port=port, db=db)
         self.wt = whiptail.Whiptail()
         self.pp = pprint.PrettyPrinter(indent=4)
+
+        self.og = GridManager(self.r)
+
         # Redis List and Channel name
         self.listname = "statestream"
-        self.mapname  = "map"
         self.goallist = "goalstream"
         # ROS Topics
         self.posetopic = self.listname + "pose"
         self.odomtopic = self.listname + "odom"
         self.disttopic = self.listname + "dist"
         self.goaltopic = self.listname + "goal"
+        self.maptopic  = self.listname + "map"
 
         # Test Redis connection
         self.r.ping()
@@ -174,7 +177,7 @@ class DataStore:
 
 
 
-    def push_map(self):
+    def push_map(self, og):
         '''
         Push a new map (occupancy grid)
         '''
@@ -345,6 +348,7 @@ class DataStore:
         odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=100)
         dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=100)
         goal_pub = rospy.Publisher(self.goaltopic, Path, queue_size=10)
+        map_pub  = rospy.Publisher(self.maptopic,  OccupancyGrid, queue_size=100)
         tbr = tf.TransformBroadcaster()
         
         rospy.init_node('talker', anonymous=True)
@@ -493,6 +497,113 @@ class DataStore:
         Copy DB to disk
         '''
         return self.r.save()
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+class GridManager:
+    
+    def __init__(self, redis, granularity=1.0):
+        '''
+        Origin is centered in the map.
+        The Map is _sparse_, in that it is hypothetically infinitely large.
+
+        Arguments:
+        granularity  --  Minimum distance representable in the map, as a decimal multiple of 
+                         whatever units the distances are given in.
+        '''
+        self.granularity = granularity
+        
+        self.r = redis
+        # Redis list and channel name
+        self.mapname = "map"
+        
+        # Default origin
+        self.origin = {
+            'x'       : 0.0,
+            'y'       : 0.0,
+            'z'       : 0.0,
+            'quat_x'  : 0.0,
+            'quat_y'  : 0.0,
+            'quat_z'  : 0.0,
+            'quat_w'  : 0.0
+        }
+
+
+    def _genkey(self, x, y):
+        '''
+        Standardised generator for a hash key for a given coord
+
+        Returns:
+        key  --  String with the global key name and x, y coords appended, snapped to the grid 
+        '''
+        return self.mapname + "-" + str(self._granularise(x)) + "-" + str(self._granularise(y))
+
+
+    def _granularise(self, coord):
+        '''
+        Bring coordinate onto the granular scale
+
+        Arguments:
+        coord  --  Arbuitary coordinate (float, int)
+
+        Returns:
+        coord  --  Snapped to grid. int or float, depending on whether the granularity is an
+                   integer or float.
+        '''
+        # See how far it is from the nearest lower point
+        distance = float(coord) % self.granularity
+        
+        # If closer to a higher one, push it up
+        if distance >= self.granularity/2.0:
+            coord += (self.granularity - distance)
+        else:
+            coord -= distance
+
+        if self.granularity < 1.0:
+            # If the granularity is sub-integer, try and kill any floating point artefacts
+            # Get order of magnitude:
+            om = int(round(math.log10(self.granularity), 0))
+            coord = round(coord, -om)
+        else:
+            # If it isn't, ints make all floating point problems go away
+            coord = int(coord)
+        
+        return coord
+
+
+    def set_origin(self, origin_dict):
+        '''
+        Update the OccupancyGrid's origin position and quaternion
+
+        Arguments:
+        origin_dict  --  Dictionary containing new values for origin, with keys from 
+                         ['x', 'y', 'z', 'quat_x', 'quat_y', 'quat_z', 'quat_w']
+        '''
+        new_ks = set(origin_dict.keys())
+        ks = set(self.origin.keys())
+
+        if new_ks.issubset(ks):
+            self.origin.update(origin_dict)
+        else:
+            raise KeyError("Expect subset or all of keys " + str(self.origin.keys()))
+
+
+
+    def is_occupied(self, x, y):
+        return int(self.r.hget(self._genkey(x,y), self.occk))
+
+
+    def update(self, x, y):
+        raise NotImplementedError()
+
+
+    def get(self):
+        
+        pts = self.r.hgetall(self.mapname, 0, -1)
+    
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
