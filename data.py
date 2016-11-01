@@ -294,7 +294,13 @@ class DataStore:
 
             
     def static_plot(self, start=0, stop=-1):
-        # Plot all existing data after a run
+        '''
+        Produces a matplotlib plot of all odometry data in redis.
+
+        Arguments:
+        start  --  First list index
+        stop   --  Last list index, -1 means all
+        '''
         data = self.get(start, stop)
         
         xs = []
@@ -312,6 +318,11 @@ class DataStore:
 
     @requireros
     def rospipe(self):
+        '''
+        Pipes messages published on Redis channels to ROS Topics, 
+        transforming parts of the data allowing other stuff that
+        speaks ROS to interact with the data.
+        '''
 
         print('''
     __    __    __      _______     _____     _____    
@@ -426,7 +437,13 @@ class DataStore:
 
 
     def replay(self, speed=1.0, limit=-1):
-        # Replay data already stored, by re-publishing to the Redis channel
+        '''
+        Replay data already stored, by re-publishing to the Redis channel
+        
+        Arguments:
+        speed  --  Multiplier for replay speed, 1.0 is real time, > 1 is faster. Default 1.0
+        limit  --  How far back to look (number of epochs) default -1 (all)
+        '''
         print('''
     ____________________________
   /|............................|
@@ -459,7 +476,10 @@ class DataStore:
 
 
     def _purge(self):
-        # Clear out all (literally all) data held in Redis
+        '''
+        Clear out all (literally all) data held in Redis
+        by flushing all keys from the DB. Interactive (uses whiptail prompt)
+        '''
         if self.wt.confirm("Really destroy all data in Redis store?\n\nThis is not undoable!\n(run FLUSHDB)",
                            default='no'):
             self.r.flushdb()
@@ -469,7 +489,9 @@ class DataStore:
 
 
     def save(self):
-        # Copy DB to disk
+        '''
+        Copy DB to disk
+        '''
         return self.r.save()
 
 
@@ -477,10 +499,14 @@ class DataStore:
 
 
 
-# Assistant class, generates ROS Classes from data hashmap
 @requireros
 class ROSGenerator:
 
+    '''
+    Assistant class, generates ROS Classes to be published to a 
+    topic from data hashmap. USed by DataStore's rospipe()
+    '''
+    
     def gen_pose(self, data, quat):
         pose = PoseStamped()
 
@@ -623,12 +649,13 @@ class ROSGenerator:
                         math.pow(1 + (math.pow((reading / 70.42612),69.9039)), 0.02119919 ))
 
 
+
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
 
-# Only run if we're invoked directly:
+# Only run this below code if we're invoked directly:
 if __name__ == "__main__":
 
     args = sys.argv[1:]
