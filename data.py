@@ -378,6 +378,10 @@ class DataStore:
         
         rospy.init_node('talker', anonymous=True)
 
+        # Pre-subscription, we should load the OccupancyGrid Map.
+        # This'll be the only one of our ROS classes that persists
+        og_map = self.rg.gen_map(self.og.get_map())
+
         sub = self.r.pubsub()
         sub.subscribe([self.listname, self.goallist])
 
@@ -492,8 +496,8 @@ class DataStore:
 
    ///                         /#//#/
  ///-------------------------/#/-/#/
- \\\-------------------------\#\-\#\
-   \\\                         \#\\#\
+ \\\\\-------------------------\\#\\-\\#\\ 
+   \\\\\                         \\#\\\\#\\ 
 ''')
         data = self.r.lrange(self.listname, 0, limit)
         
@@ -1084,8 +1088,12 @@ class ROSGenerator:
         pass
 
 
-    def gen_map(self):
-        raise NotImplementedError()
+    def gen_map(self, data):
+        '''
+        Arguments;
+        data  --  list(list(int)) of occupancy data
+        '''
+        m = OccupancyGrid()
 
 
     def _ir_to_dist(self, reading):
