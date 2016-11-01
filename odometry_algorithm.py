@@ -71,7 +71,7 @@ class Odometry_Algorithm:
 		prev_x = prev_state.x
 		prev_y = prev_state.y
 		prev_theta = prev_state.theta
-		t = constants.MEASUREMENT_PERIOD_S
+		#t = constants.MEASUREMENT_PERIOD_S
 		
 		#calculate the new values
 		x_n 	= prev_x     + state_change[0]
@@ -82,8 +82,9 @@ class Odometry_Algorithm:
 	
 		#return new state
 		result 	     = Odometry_State() 
-		result.time  = prev_state.time + t
-		result.x     = x_n
+		#result.time  = prev_state.time + t
+		result.time  = time.time()
+                result.x     = x_n
 		result.y     = y_n
 		result.odo   = new_odo
 		result.theta = theta_n

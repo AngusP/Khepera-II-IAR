@@ -54,10 +54,22 @@ def requireros(func):
 class DataStore:
 
     def __init__(self, host='localhost', db=0, port=6379):
+        '''
+        Instantiate a DataStore class
+
+        Arguments:
+        host  --  Redis server to use, defaults to 'localhost'
+        db    --  Redis database to use, default 0
+        port  --  Port the Redis server is listening on
+
+        Instantiates it's own StrictRedis, PrettyPrint and Whiptail classes
+        '''
         self.r = redis.StrictRedis(host=host, port=port, db=db)
         self.wt = whiptail.Whiptail()
+        self.pp = pprint.PrettyPrinter(indent=4)
         # Redis List and Channel name
         self.listname = "statestream"
+        self.mapname  = "map"
         self.goallist = "goalstream"
         # ROS Topics
         self.posetopic = self.listname + "pose"
@@ -68,7 +80,6 @@ class DataStore:
         # Test Redis connection
         self.r.ping()
 
-        self.pp = pprint.PrettyPrinter(indent=4)
 
 
     def __del__(self):
@@ -76,10 +87,24 @@ class DataStore:
 
 
     def keys(self):
+        '''
+        Returns a list of all keys in the Redis datastore
+        '''
         return self.r.keys()
 
     
     def push(self, pose, ranges=None):
+        '''
+        Push a new 'Pose' onto Redis, and optionally distance data.
+        
+        Arguments:
+        pose    --  Either GenericState instance or a dict, must have 
+                    x, y, t and theta members/keys
+        ranges  --  List of raw sensor readings (float), length 8
+
+        Pushed are added to the history list and also published to the 
+        predefined Redis channels
+        '''
         # Type duck between GenericState and a dict
         if isinstance(pose, GenericState):
             hmap = {
@@ -125,8 +150,12 @@ class DataStore:
 
 
     def push_goal(self, path):
-        # Expects a list of dicts
-        # e.g. [{'x': 0.0, 'y':100.0},{'x': 1502.5, 'y': 1337.0}]
+        '''
+        Similar to push(), pushes a new goal path to Redis.
+
+        Arguments:
+        path --  A list of dicts e.g. [{'x': 0.0, 'y':100.0},{'x': 1502.5, 'y': 1337.0}]
+        '''
         
         # Clear out old points
         for key in self.r.lrange(self.goallist, 0, -1):
@@ -144,8 +173,19 @@ class DataStore:
         self.r.publish(self.goallist, self.goallist)
 
 
+
+    def push_map(self):
+        '''
+        Push a new map (occupancy grid)
+        '''
+        raise NotImplementedError()
+
+
     def sub(self):
-        # Mostly a test method, subscribe and print
+        '''
+        Mostly a test method, subscribe to Redis channels and print
+        any messages that come over it.
+        '''
         sub = self.r.pubsub()
         sub.subscribe([self.listname, self.goallist])
 
@@ -162,7 +202,14 @@ class DataStore:
 
         
     def get(self, start=0, stop=-1):
-        # Returns a list in-order over the range
+        '''
+        Returns a list in-order over the range given in args. Default is
+        to return the entire list.
+
+        Arguments:
+        start  --  First list index
+        stop   --  Last list index, -1 means all
+        '''
         keys = self.r.lrange(self.listname, int(start), int(stop))
         ret = list()
 
@@ -174,6 +221,14 @@ class DataStore:
 
     
     def get_dict(self, start=0, stop=-1):
+        '''
+        Extends the behaviour of get(), provides a time-keyed
+        dictionary of data as opposed to a list
+
+        Arguments:
+        start  --  First list index
+        stop   --  Last list index, -1 means all
+        '''
         # Return a dictionary instead of a list
         lst = self.get(start, stop)
         ret = dict()
@@ -183,10 +238,22 @@ class DataStore:
             
         return ret
 
+
+
+    def get_map(self):
+        '''
+        Returns the map (occupancy grid)
+        '''
+        raise NotImplementedError()
+
     
     def delete_before(self, time):
-        # Remove data with a key from earlier than specified
-
+        '''
+        Remove data with a key from earlier than specified from Redis
+        
+        Arguments:
+        time  --  cutoff time, any value less than this will be killed
+        '''
         if time < 0:
             raise ValueError("Time must be positive you crazy person!")
 
@@ -378,8 +445,7 @@ class DataStore:
   <<<------------------------###
 ''')
         data = self.r.lrange(self.listname, 0, limit)
-        #data.reverse()
-        # ... this might take a while
+        
         try:
             for epoch in data:
                 print("epoch " + str(epoch))
