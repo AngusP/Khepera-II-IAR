@@ -36,6 +36,7 @@ except ImportError as e:
     print(e)
     print("Continuing without ROS integration")
     ros = False
+    del e
     pass
 
 # ROS Import check wrapper
@@ -57,6 +58,26 @@ class DataStore:
     '''
     Primary Data Munging class, handles chatter with Redis and ROS.
     `data.py` can be used interactively.
+    
+                   _._    
+              _.-``__ ''-._
+         _.-``    `.  `_.  ''-._   
+     .-`` .-```.  ```\/    _.,_ ''-._ 
+    (    '      ,       .-`  | `,    )
+    |`-._`-...-` __...-.``-._|'` _.-'|
+    |    `-._   `._    /     _.-'    |
+     `-._    `-._  `-./  _.-'    _.-' 
+    |`-._`-._    `-.__.-'    _.-'_.-'|
+    |    `-._`-._        _.-'_.-'    |
+     `-._    `-._`-.__.-'_.-'    _.-' 
+    |`-._`-._    `-.__.-'    _.-'_.-'|
+    |    `-._`-._        _.-'_.-'    |
+     `-._    `-._`-.__.-'_.-'    _.-'
+         `-._    `-.__.-'    _.-'
+             `-._        _.-'
+                 `-.__.-'
+
+
     '''
 
     def __init__(self, host='localhost', db=0, port=6379):
@@ -434,12 +455,13 @@ class DataStore:
                         
 
                 else:
-                    # If we get an unexpected channel, complain loudly
-                    raise ValueError("Encountered unknown channel '" + 
-                                     str(item['channel']) + "'")
+                    # If we get an unexpected channel, complain loudly.... Thish should never happen
+                    complaint = "Encountered unknown channel '" + str(item['channel']) + "'"
+                    rospy.logerr(complaint)
+                    raise ValueError(complaint)
 
 
-            except (KeyError, ValueError) as e:
+            except (KeyError, ValueError, IndexError) as e:
                 rospy.logwarn(str(e))
                 pass
 
@@ -452,22 +474,26 @@ class DataStore:
         speed  --  Multiplier for replay speed, 1.0 is real time, > 1 is faster. Default 1.0
         limit  --  How far back to look (number of epochs) default -1 (all)
         '''
-        print('''
-    ____________________________
-  /|............................|
- | |:      KHEPERA REWIND      :|
- | |:       "Redis & Co."      :|
- | |:     ,-.   _____   ,-.    :|
- | |:    ( `)) [_____] ( `))   :|
- |v|:     `-`   ' ' '   `-`    :|
- |||:     ,______________.     :|
- |||...../::::o::::::o::::\.....|
- |^|..../:::O::::::::::O:::\....|
- |/`---/--------------------`---|
- `.___/ /====/ /=//=/ /====/____/
-      `--------------------'
 
-  <<<------------------------###
+        print('''
+      ____________________________
+    /|............................|
+   | |:      KHEPERA REWIND      :|
+   | |:       "Redis & Co."      :|
+   | |:     ,-.   _____   ,-.    :|
+   | |:    ( `)) [_____] ( `))   :|
+   |v|:     `-`   ' ' '   `-`    :|
+   |||:     ,______________.     :|
+   |||...../::::o::::::o::::\.....|
+   |^|..../:::O::::::::::O:::\....|
+   |/`---/--------------------`---|
+   `.___/ /====/ /=//=/ /====/____/
+        `--------------------'
+
+   ///                         /#//#/
+ ///-------------------------/#/-/#/
+ \\\-------------------------\#\-\#\
+   \\\                         \#\\#\
 ''')
         data = self.r.lrange(self.listname, 0, limit)
         
@@ -529,6 +555,11 @@ class GridManager:
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
                          whatever units the distances are given in.
+
+        Standards:
+        map:x:y = {
+            'occ' : -1 or [0..100]
+        }
         '''
         self.granularity = granularity
         
@@ -580,6 +611,8 @@ class GridManager:
         self.pp = pprint.PrettyPrinter(indent=1)
 
 
+
+
     def __str__(self):
         '''
         return a string representation of self
@@ -587,6 +620,7 @@ class GridManager:
         return self.pp.pformat(self.__dict__)
 
     __repr__ = __str__
+
 
 
     def get(self, x, y):
@@ -601,7 +635,6 @@ class GridManager:
 
 
 
-
     def get_map(self):
         '''
         Returns the entire known map, in a ROS friendly format
@@ -610,21 +643,32 @@ class GridManager:
         xwidth = int(math.ceil(-self.bounds['minx'] + self.bounds['maxx']))
         ywidth = int(math.ceil(-self.bounds['miny'] + self.bounds['maxy']))
 
-        # Initialise a 2D array of the correct size
-        data = [-1]*ywidth
-        for row in data:
-            row = [-1]*xwidth
-        
-        pts_keys = self.r.hgetall(self.mapname)
+        print("Map dim " + str(xwidth) + " " + str(ywidth))
 
-        for pt_key, grid_key in pts.iteritems():
+        # Initialise a 2D array of the correct size... yuck
+        data = [[-1]*ywidth]*xwidth
+        
+        pts_keys = self._get_map_keys()
+
+        for grid_key in pts_keys:
             grid_hm = self.r.hgetall(grid_key)
-            x, y = self._dekey(pt_key)
+            x, y = map(lambda e: int(e * 1.0/self.granularity), self._dekey(grid_key))
+
+            if not self._bounds_check(x,y,False):
+                # Os s**t, this coord doesn't fit!
+                raise IndexError("Encountered point outwith map bounds at ({},{}).".format(x,y))
+
             # Boundaries as per ROS spec
-            data[x][y] = max(0, min(int(occupancy), 100))
+            data[x][y] = max(0, min(int(grid_hm['occ']), 100))
 
         return data
 
+
+    def _get_map_keys(self):
+        '''
+        Super simple, dump raw 100% organic map Redis data at your face
+        '''
+        return self.r.smembers(self.mapname)
 
 
     def set_origin(self, origin_dict):
@@ -646,11 +690,101 @@ class GridManager:
 
 
 
-    def update(self, x, y, occupancy):
-        # remember to update bounds if outside
-        # and to publish to an updated coords channel
-        raise NotImplementedError()
+    def update(self, x, y, occupancy=100):
+        '''
+        Update an existing square in the map or add a new one.
+
+        Arguments:
+        x          --  x coordinate
+        y          --  y coordinate
+        occupancy  --  Occupancy certainty, -1 for unknown or [0..100]
+        '''
+
+        self._bounds_check(x,y)
+
+        k = self._genkey(x,y)
+        if self.r.exists(k):
+            existing = self.r.hgetall(k)
+            # ...todo - Update, decay, whatever
+        self.r.hmset(k, {
+            'occ'  : int(occupancy),
+            'seen' : time.time()
+        })
+        self.r.sadd(self.mapname, k)
+        self.r.publish(self.channel, k)
+
+
+    def load(self, f=None):
+        '''
+        Load in a map from a given file.
+        Provides a simplified model, a space indicates a certainly free space,
+        a 'X' indicates a certainly occupied space and a ? indicates uncertainty.
+
+        Arguments:
+        f  --  The name of the file to parse; If none, uses built-in development string
+        '''
+
+        print("Loading...")
+
+        if f is None:
+            # Development & Testing map, origin will be upper left corner :'(
+            f = """\
+????????????????????????????????
+?XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?
+?X                  XX    XX  X?
+?X                   X    XX  X?
+?X     XXXXXXX       XX       X?
+?X     XXXXXXX        X    XXXX?
+?X     XX                  X  X?
+?X     XX                     X?
+?X                            X?
+?X              XX            X?
+?X             XXXX           X?
+?X              XX            X?
+?X    XX                      X?
+?X   XXXX               XXXXXXX?
+?X    XX     XX         X     X?
+?X           XX         X     X?
+?X           XX         X     X?
+?X           XX               X?
+?X   XXXX    XX               X?
+???? XXXX          XXXX       ??
+????        ?      X??X       ??
+??????      ????   XXXX      ???
+?????        ????            ???
+??????         ??? ?????    ????
+???????             ?????? ?????
+????????          ??????????????
+???????   ??     ???????????????
+????????????     ???????????????
+????????????????      ??????????
+?????????????????    ???????????
+????????????????????????????????
+????????????????????????????????
+????????????????????????????????
+""".splitlines()
+        else:
+            f = open(f, 'r')
+            f = f.read().splitlines()
+
+        for i, line in enumerate(f):
+            print("")
+            for j, char in enumerate(line):
+                certainty = 0 # Default Unoccupied
+                if char == 'X':
+                    certainty = 100 # Occupied
+                elif char == '?':
+                    certainty = -1  # Unknown
+
+                if len(line) <= 40 and len(f) <= 40:
+                    # Only print small maps...
+                    print("{} ".format(char), end='')
+
+                self.update(i,j,certainty)
         
+        print("")
+        print("Done.")
+
 
 
     def _genkey(self, x, y):
@@ -674,6 +808,47 @@ class GridManager:
             return map(float, self._dekey_re.findall(key)[0])
         except Exception as e:
             raise KeyError("Could not de-key " + str(key) + "  --  '" + str(e) + "'")
+
+
+
+    def _bounds_check(self,x,y,expand=True):
+        '''
+        Assert (x,y) is within grid; If they don't and expand is True, 
+        embiggen the grid to fit them.
+
+        Arguments:
+        x       --  X coordinate
+        y       --  Y Coordinate
+        expand  --  True automagics the map to be bigger, false doesn't
+        '''
+        fits = True
+        xr = range(math.floor(self.bounds['minx']),math.ceil(self.bounds['maxx']))
+        yr = range(math.floor(self.bounds['miny']),math.ceil(self.bounds['maxy']))
+
+        if x not in xr:
+            fits = False
+
+        if y not in yr:
+            fits = False
+        
+        if expand and not fits: # but sits?
+            if x > self.bounds['maxx']:
+                self.bounds['maxx'] = math.ceil(x)
+            if x < self.bounds['minx']:
+                self.bounds['minx'] = math.floor(x)
+
+            if y > self.bounds['maxy']:
+                self.bounds['maxy'] = math.ceil(y)
+            if y < self.bounds['miny']:
+                self.bounds['miny'] = math.floor(y)
+
+            # Let Redis know we've made changes
+            self.r.hmset(self.mapmeta, self.bounds)
+            self.r.publish(self.channel, "#bounds")
+
+        return fits
+
+
 
 
     def _snap(self, coord):
@@ -718,13 +893,13 @@ class GridManager:
         if self.wt.confirm("Do you actually want to delete the map?\n\nThis is not undoable!",
                            default='no'):
         
-            points = self.r.hgetall(self.mapname)
+            points = self.r.smembers(self.mapname)
             
-            for key, val in points.iteritems():
+            for key in points:
                 self.r.delete(key)
                 
-                self.r.delete(self.mapname)
-                self.r.delete(self.mapmeta)
+            self.r.delete(self.mapname)
+            self.r.delete(self.mapmeta)
                 
                 
             print("!!! Deleted the world from Redis !!!")
@@ -881,6 +1056,10 @@ class ROSGenerator:
         pass
 
 
+    def gen_map(self):
+        raise NotImplementedError()
+
+
     def _ir_to_dist(self, reading):
         '''
         From solved equation:
@@ -904,8 +1083,14 @@ if __name__ == "__main__":
 
     try:
         optlist, args = getopt.getopt(args, 
-                                      'ds:prem:', 
-                                      ['delete','server=', 'plot', 'rospipe', 'replay', 'speed='])
+                                      'ds:prem:l:', 
+                                      ['delete',
+                                       'server=', 
+                                       'plot', 
+                                       'rospipe', 
+                                       'replay', 
+                                       'speed=',
+                                       'load='])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-d or --delete   : Destroy all data held in Redis")
@@ -914,6 +1099,7 @@ if __name__ == "__main__":
         print("-r or --rospipe  : Pipe redis messages into ROS topics")
         print("-e or --replay   : Take historical data from Redis and re-publish to channel")
         print("-m or --speed    :     - Speed multiplier, default 1.0")
+        print("-l or --load     : Load a map (occupancy grid) from file")
         sys.exit(2)
 
     server = "localhost"
@@ -944,4 +1130,7 @@ if __name__ == "__main__":
 
         elif opt in ('-e', '--replay'):
             ds.replay(speed=speed)
+
+        elif opt in ('-l', '--load'):
+            ds.og.load(str(arg))
 
