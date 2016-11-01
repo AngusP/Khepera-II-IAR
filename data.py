@@ -358,7 +358,7 @@ class DataStore:
                 pass
 
 
-    def replay(self, limit=-1):
+    def replay(self, speed=1.0, limit=-1):
         # Replay data already stored, by re-publishing to the Redis channel
         print('''
     ____________________________
@@ -384,7 +384,7 @@ class DataStore:
             for epoch in data:
                 print("epoch " + str(epoch))
                 self.r.publish(self.listname, epoch)
-                time.sleep(constants.MEASUREMENT_PERIOD_S)
+                time.sleep(constants.MEASUREMENT_PERIOD_S * speed)
                 
         except KeyboardInterrupt as e:
             print(e)
