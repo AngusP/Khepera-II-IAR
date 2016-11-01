@@ -569,8 +569,8 @@ if __name__ == "__main__":
 
     try:
         optlist, args = getopt.getopt(args, 
-                                      'ds:pre', 
-                                      ['delete','server=', 'plot', 'rospipe', 'replay'])
+                                      'ds:prem:', 
+                                      ['delete','server=', 'plot', 'rospipe', 'replay', 'speed='])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-d or --delete   : Destroy all data held in Redis")
@@ -578,6 +578,7 @@ if __name__ == "__main__":
         print("-p or --plot     : Live plot of published data")
         print("-r or --rospipe  : Pipe redis messages into ROS topics")
         print("-e or --replay   : Take historical data from Redis and re-publish to channel")
+        print("-m or --speed    :     - Speed multiplier, default 1.0")
         sys.exit(2)
 
     server = "localhost"
@@ -589,6 +590,7 @@ if __name__ == "__main__":
             server = str(arg)
 
     ds = DataStore(host=server)
+    speed = 1.0 # For replay 
 
     # Post-instantioation options
     for opt, arg in optlist:
@@ -601,6 +603,10 @@ if __name__ == "__main__":
         elif opt in ('-r', '--rospipe'):
             ds.rospipe()
 
+        
+        elif opt in ('-m', '--speed'):
+            speed = float(arg)
+
         elif opt in ('-e', '--replay'):
-            ds.replay()
+            ds.replay(speed=speed)
 
