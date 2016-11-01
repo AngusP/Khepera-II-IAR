@@ -18,6 +18,7 @@ import math
 import time
 import yaml
 import pprint
+import re
 
 import constants
 
@@ -53,6 +54,11 @@ def requireros(func):
 
 class DataStore:
 
+    '''
+    Primary Data Munging class, handles chatter with Redis and ROS.
+    `data.py` can be used interactively.
+    '''
+
     def __init__(self, host='localhost', db=0, port=6379):
         '''
         Instantiate a DataStore class
@@ -66,7 +72,7 @@ class DataStore:
         '''
         self.r = redis.StrictRedis(host=host, port=port, db=db)
         self.wt = whiptail.Whiptail()
-        self.pp = pprint.PrettyPrinter(indent=4)
+        self.pp = pprint.PrettyPrinter(indent=1)
 
         self.og = GridManager(self.r)
 
@@ -83,7 +89,13 @@ class DataStore:
         # Test Redis connection
         self.r.ping()
 
+    def __str__(self):
+        '''
+        return a string representation of self
+        '''
+        return self.pp.pformat(self.__dict__)
 
+    __repr__ = __str__
 
     def __del__(self):
         self.save()
@@ -240,14 +252,6 @@ class DataStore:
             ret[int(item['t'])] = item
             
         return ret
-
-
-
-    def get_map(self):
-        '''
-        Returns the map (occupancy grid)
-        '''
-        raise NotImplementedError()
 
     
     def delete_before(self, time):
@@ -479,7 +483,7 @@ class DataStore:
         print("Replay done.")
 
 
-    def _purge(self):
+    def _destroy(self):
         '''
         Clear out all (literally all) data held in Redis
         by flushing all keys from the DB. Interactive (uses whiptail prompt)
@@ -489,7 +493,7 @@ class DataStore:
             self.r.flushdb()
             print("!!! Flushed Redis Data Store !!!")
         else:
-            print("Did not purge Redis Store")
+            print("Did not flush Redis Store")
 
 
     def save(self):
@@ -499,17 +503,29 @@ class DataStore:
         return self.r.save()
 
 
+
+
+
+
+
+
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
 class GridManager:
+
+    '''
+    Handles the Occupancy Grid's mechanics, as it's a more complex datastructure.
+    Gets passed a reference to (presumably) a `DataStore`'s Redis instance.
+
+    
+    Origin is centered in the map.
+    The Map is _sparse_, in that it is hypothetically infinitely large.
+    '''
     
     def __init__(self, redis, granularity=1.0):
         '''
-        Origin is centered in the map.
-        The Map is _sparse_, in that it is hypothetically infinitely large.
-
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
                          whatever units the distances are given in.
@@ -517,8 +533,10 @@ class GridManager:
         self.granularity = granularity
         
         self.r = redis
-        # Redis list and channel name
+        # Redis list and channel names
         self.mapname = "map"
+        self.mapmeta = self.mapname + "-meta"
+        self.channel = self.mapname + "-update"
         
         # Default origin
         self.origin = {
@@ -531,20 +549,136 @@ class GridManager:
             'quat_w'  : 0.0
         }
 
+        self.bounds = {
+            'maxx'  :  10.0,
+            'maxy'  :  10.0,
+            'minx'  : -10.0,
+            'miny'  : -10.0
+        }
+
+        # If prior config exists, pull it in
+        for k, v in self.origin.iteritems():
+            if self.r.hexists(self.mapmeta, k):
+                self.origin[k] = float(self.r.hget(self.mapmeta, k))
+
+
+        for k, v in self.bounds.iteritems():
+            if self.r.hexists(self.mapmeta, k):
+                self.bounds[k] = float(self.r.hget(self.mapmeta, k))
+
+        # Push origin and boundaries back to redis
+        self.r.hmset(self.mapmeta, self.origin)
+        self.r.hmset(self.mapmeta, self.bounds)
+
+
+        # Regex to turn a serialised key into coords
+        # This re finds a combination of two floats or two ints
+        # IMPORTANT: Must remain consistent with _genkey()
+        self._dekey_re = re.compile("([+-]?\d+\.\d*|\d+):([+-]?\d+\.\d*|\d+)$")
+        
+        self.wt = whiptail.Whiptail()
+        self.pp = pprint.PrettyPrinter(indent=1)
+
+
+    def __str__(self):
+        '''
+        return a string representation of self
+        '''
+        return self.pp.pformat(self.__dict__)
+
+    __repr__ = __str__
+
+
+    def get(self, x, y):
+        '''
+        Returns the int held at the given grid coord's occupancy value
+        '''
+        occ = self.r.hget(self._genkey(x,y), 'occ')
+        if occ is None:
+            return None
+        else:
+            return int(occ)
+
+
+
+
+    def get_map(self):
+        '''
+        Returns the entire known map, in a ROS friendly format
+        of a 2D array, with floating occupancies. Default value is -1
+        '''
+        xwidth = int(math.ceil(-self.bounds['minx'] + self.bounds['maxx']))
+        ywidth = int(math.ceil(-self.bounds['miny'] + self.bounds['maxy']))
+
+        # Initialise a 2D array of the correct size
+        data = [-1]*ywidth
+        for row in data:
+            row = [-1]*xwidth
+        
+        pts_keys = self.r.hgetall(self.mapname)
+
+        for pt_key, grid_key in pts.iteritems():
+            grid_hm = self.r.hgetall(grid_key)
+            x, y = self._dekey(pt_key)
+            # Boundaries as per ROS spec
+            data[x][y] = max(0, min(int(occupancy), 100))
+
+        return data
+
+
+
+    def set_origin(self, origin_dict):
+        '''
+        Update the OccupancyGrid's origin position and quaternion
+
+        Arguments:
+        origin_dict  --  Dictionary containing new values for origin, with keys from 
+                         ['x', 'y', 'z', 'quat_x', 'quat_y', 'quat_z', 'quat_w']
+        '''
+        new_ks = set(origin_dict.keys())
+        ks = set(self.origin.keys())
+
+        if new_ks.issubset(ks):
+            self.origin.update(origin_dict)
+            self.r.hmset(self.mapmeta, self.origin)
+        else:
+            raise KeyError("Expect subset or all of keys " + str(self.origin.keys()))
+
+
+
+    def update(self, x, y, occupancy):
+        # remember to update bounds if outside
+        # and to publish to an updated coords channel
+        raise NotImplementedError()
+        
+
 
     def _genkey(self, x, y):
         '''
-        Standardised generator for a hash key for a given coord
+        Standardised generator for a hash key for a given coord.
+        IMPORTANT: This needs to remain consistent with the self._dekey_re RegEx
 
         Returns:
         key  --  String with the global key name and x, y coords appended, snapped to the grid 
         '''
-        return self.mapname + "-" + str(self._granularise(x)) + "-" + str(self._granularise(y))
+        return self.mapname + ":" + str(self._snap(x)) + ":" + str(self._snap(y))
 
 
-    def _granularise(self, coord):
+        
+    def _dekey(self, key):
         '''
-        Bring coordinate onto the granular scale
+        Turn a string into a (x,y) pair using the member regex _dekey_re
+        and return said tuple
+        '''
+        try:
+            return map(float, self._dekey_re.findall(key)[0])
+        except Exception as e:
+            raise KeyError("Could not de-key " + str(key) + "  --  '" + str(e) + "'")
+
+
+    def _snap(self, coord):
+        '''
+        Snap a given coordinate to the grid
 
         Arguments:
         coord  --  Arbuitary coordinate (float, int)
@@ -562,48 +696,43 @@ class GridManager:
         else:
             coord -= distance
 
-        if self.granularity < 1.0:
-            # If the granularity is sub-integer, try and kill any floating point artefacts
-            # Get order of magnitude:
-            om = int(round(math.log10(self.granularity), 0))
-            coord = round(coord, -om)
-        else:
-            # If it isn't, ints make all floating point problems go away
+        # if self.granularity < 1.0:
+        #     # If the granularity is sub-integer, try and kill any floating point artefacts
+        #     # Get order of magnitude:
+        #     om = int(round(math.log10(self.granularity), 0))
+        #     coord = round(coord, -om)
+        # else:
+        #     # If it isn't, ints make all floating point problems go away
+        #     coord = int(coord)
+
+        if self.granularity >= 1.0:
             coord = int(coord)
         
         return coord
 
 
-    def set_origin(self, origin_dict):
+    def _destroy(self):
         '''
-        Update the OccupancyGrid's origin position and quaternion
-
-        Arguments:
-        origin_dict  --  Dictionary containing new values for origin, with keys from 
-                         ['x', 'y', 'z', 'quat_x', 'quat_y', 'quat_z', 'quat_w']
+        Delete the known world (Interactive)
         '''
-        new_ks = set(origin_dict.keys())
-        ks = set(self.origin.keys())
-
-        if new_ks.issubset(ks):
-            self.origin.update(origin_dict)
-        else:
-            raise KeyError("Expect subset or all of keys " + str(self.origin.keys()))
-
-
-
-    def is_occupied(self, x, y):
-        return int(self.r.hget(self._genkey(x,y), self.occk))
-
-
-    def update(self, x, y):
-        raise NotImplementedError()
-
-
-    def get(self):
+        if self.wt.confirm("Do you actually want to delete the map?\n\nThis is not undoable!",
+                           default='no'):
         
-        pts = self.r.hgetall(self.mapname, 0, -1)
-    
+            points = self.r.hgetall(self.mapname)
+            
+            for key, val in points.iteritems():
+                self.r.delete(key)
+                
+                self.r.delete(self.mapname)
+                self.r.delete(self.mapmeta)
+                
+                
+            print("!!! Deleted the world from Redis !!!")
+
+        else:
+            print("Did not delete the world")
+
+
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -616,6 +745,8 @@ class ROSGenerator:
     '''
     Assistant class, generates ROS Classes to be published to a 
     topic from data hashmap. USed by DataStore's rospipe()
+
+    Prime candidate for the "Looks the most like Java Eww" award
     '''
     
     def gen_pose(self, data, quat):
@@ -799,7 +930,7 @@ if __name__ == "__main__":
     # Post-instantioation options
     for opt, arg in optlist:
         if opt in ('-d', '--delete'):
-            ds._purge()
+            ds._destroy()
 
         elif opt in ('-p', '--plot'):
             ds.plot()
