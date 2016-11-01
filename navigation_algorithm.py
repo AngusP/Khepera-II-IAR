@@ -184,7 +184,7 @@ class Navigation_Algorithm:
 		        if result.system_state == constants.STATE_LEFT_FOLLOW:
 			    result.speed_l = constants.CONST_SPEED
 		            result.speed_r = -constants.CONST_SPEED 
-		        elif system_state == constants.STATE_RIGHT_FOLLOW:
+		        elif result.system_state == constants.STATE_RIGHT_FOLLOW:
 		            result.speed_l = -constants.CONST_SPEED
 		            result.speed_r = constants.CONST_SPEED 
 		        
