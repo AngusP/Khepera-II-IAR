@@ -25,7 +25,6 @@ Panels:
   - Class: rviz/Views
     Expanded:
       - /Current View1
-      - /Fixed Foolow Khepera1
       - /Follow Khepera1
       - /TopDown Khepera1
       - /TopDown Map1
@@ -35,7 +34,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud
 Visualization Manager:
   Class: ""
   Displays:
@@ -147,6 +146,9 @@ Visualization Manager:
       Class: rviz/Path
       Color: 25; 255; 0
       Enabled: true
+      Head Diameter: 0.3
+      Head Length: 0.2
+      Length: 0.3
       Line Style: Lines
       Line Width: 1
       Name: Path
@@ -154,6 +156,10 @@ Visualization Manager:
         X: 0
         Y: 0
         Z: 0
+      Pose Style: None
+      Radius: 0.03
+      Shaft Diameter: 0.1
+      Shaft Length: 0.1
       Topic: /statestreamgoal
       Unreliable: false
       Value: true
@@ -170,6 +176,15 @@ Visualization Manager:
       Name: Axes
       Radius: 5
       Reference Frame: map
+      Value: true
+    - Alpha: 0.7
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic: /statestreammap
+      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -194,20 +209,23 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -1.5708
-      Class: rviz/TopDownOrtho
+      Class: rviz/Orbit
+      Distance: 514.548
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
       Name: Current View
       Near Clip Distance: 0.01
-      Scale: 2.28975
-      Target Frame: map
-      Value: TopDownOrtho (rviz)
-      X: 0
-      Y: 0
+      Pitch: 0.785398
+      Target Frame: khepera
+      Value: Orbit (rviz)
+      Yaw: 0.785398
     Saved:
       - Class: rviz/Orbit
         Distance: 514.548
@@ -220,7 +238,7 @@ Visualization Manager:
           X: 0
           Y: 0
           Z: 0
-        Name: Fixed Foolow Khepera
+        Name: Fixed Follow Khepera
         Near Clip Distance: 0.01
         Pitch: 0.785398
         Target Frame: khepera

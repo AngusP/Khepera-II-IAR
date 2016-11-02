@@ -29,7 +29,7 @@ try:
     ros = True
     from std_msgs.msg import String
     from geometry_msgs.msg import PoseWithCovariance, PoseStamped, Point32
-    from nav_msgs.msg import Odometry, Path, OccupancyGrid, MapMetaData
+    from nav_msgs.msg import Odometry, Path, OccupancyGrid
     from sensor_msgs.msg import PointCloud, ChannelFloat32
     import tf
 except ImportError as e:
@@ -95,11 +95,12 @@ class DataStore:
         self.wt = whiptail.Whiptail()
         self.pp = pprint.PrettyPrinter(indent=1)
 
-        self.og = GridManager(self.r, debug=True)
+        self.og = GridManager(self.r, debug=False)
 
         # Redis List and Channel name
         self.listname = "statestream"
         self.goallist = "goalstream"
+        self.mapchan  = self.og.channel
         # ROS Topics
         self.posetopic = self.listname + "pose"
         self.odomtopic = self.listname + "odom"
@@ -375,15 +376,14 @@ class DataStore:
         goal_pub = rospy.Publisher(self.goaltopic, Path, queue_size=10)
         map_pub  = rospy.Publisher(self.maptopic,  OccupancyGrid, queue_size=100)
         tbr = tf.TransformBroadcaster()
-        
-        rospy.init_node('talker', anonymous=True)
 
         # Pre-subscription, we should load the OccupancyGrid Map.
         # This'll be the only one of our ROS classes that persists
-        og_map = self.rg.gen_map(self.og.get_map())
+        og_map = rg.gen_map(self.og.get_map(), self.og)
+        map_pub.publish(og_map)
 
         sub = self.r.pubsub()
-        sub.subscribe([self.listname, self.goallist])
+        sub.subscribe([self.listname, self.goallist, self.mapchan])
 
         # Loop until stopped plotting the path
         for item in sub.listen():
@@ -456,12 +456,20 @@ class DataStore:
                         
                     goal_pub.publish(path)
                     rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
+
+
+                if item['channel'] == self.mapchan:
+                    # Handle a map diff (update)
+
+                    # Fetch contents of new map key
+                    newm_grid = self.r.hgetall(item['data'])
+                    rospy.loginfo("Map update {} --> {}".format(item['data'], newm_grid))
+                    map_pub.publish(og_map)
                         
 
                 else:
                     # If we get an unexpected channel, complain loudly.... Thish should never happen
-                    complaint = "Encountered unknown channel '" + str(item['channel']) + "'"
-                    rospy.logerr(complaint)
+                    complaint = "Encountered unhandled channel '" + str(item['channel']) + "'"
                     raise ValueError(complaint)
 
 
@@ -690,7 +698,7 @@ class GridManager:
             print("Map dim " + str(xwidth) + " " + str(ywidth))
 
         # Initialise a 2D array of the correct size... yuck
-        data = [[-1]*ywidth]*xwidth
+        data = [[-1]*xwidth]*ywidth
         
         pts_keys = self._get_map_keys()
 
@@ -705,11 +713,10 @@ class GridManager:
                 # If co-ord doesn't fit we have an inconsistency (booo!)
                 raise IndexError("Encountered point outwith map bounds at ({},{}).".format(x,y))
 
-            # scale to the array sixe (where 1.0 is an increase by 1 granularity)
+            # scale to the array index to the right size (where 1.0 is an increase by 1 granularity)
             x, y = map(lambda e: int(e * 1.0/self.granularity), (x,y))
 
-            # Boundaries as per ROS spec
-            data[x][y] = max(0, min(int(grid_hm['occ']), 100))
+            data[y][x] = max(0, min(int(grid_hm['occ']), 100))
 
         return data
 
@@ -955,6 +962,13 @@ class ROSGenerator:
 
     Prime candidate for the "Looks the most like Java Eww" award
     '''
+
+    def __init__(self):
+        '''
+        All we have to do here is init a node
+        '''
+        rospy.init_node('talker', anonymous=True)
+        
     
     def gen_pose(self, data, quat):
         pose = PoseStamped()
@@ -1082,18 +1096,42 @@ class ROSGenerator:
         path = Path()
         path.header.stamp = rospy.Time.now()
         path.header.frame_id = "map"
+        
         return path
 
-    def gen_path_pose(self, data):
-        pass
 
-
-    def gen_map(self, data):
+    def gen_map(self, data, og):
         '''
         Arguments;
         data  --  list(list(int)) of occupancy data
+        og    --  Instance of a GridManager class
         '''
         m = OccupancyGrid()
+
+        m.header.stamp = rospy.Time.now()
+        m.header.frame_id = "map"
+
+        # Width & height are a number of cells
+        m.info.width  = 1 + int(math.ceil((-og.bounds['minx'] + og.bounds['maxx']) * 1.0/og.granularity))
+        m.info.height = 1 + int(math.ceil((-og.bounds['miny'] + og.bounds['maxy']) * 1.0/og.granularity))
+        # Units (metres, as far as ROS cares, but not in our case)
+        m.info.resolution = og.granularity * 100
+
+        # Pose and quaternion are all centered
+        m.info.origin.position.x = 0.0
+        m.info.origin.position.y = 0.0
+        m.info.origin.position.z = 0.0
+        m.info.origin.orientation.x = 0.0
+        m.info.origin.orientation.y = 0.0
+        m.info.origin.orientation.z = 0.0
+        m.info.origin.orientation.w = 0.0
+        m.data = []
+
+        # ROS wants the data in Row Major order
+        for row in data:
+            m.data.extend(row)
+        
+        return m
 
 
     def _ir_to_dist(self, reading):
