@@ -2,5 +2,9 @@ http://drexelsaslab.appspot.com/courses/mem380i/assignments/Astar.pdf
 http://www.cs.cmu.edu/~motionplanning/papers/sbp_papers/integrated4/elfes_occup_grids.pdf
 
 
-GOING TO TRY THIS, ELSE WILL HAVE TO THINK FULLY FO MYSELF
-http://www.cs.cmu.edu/~crpalmer/sp/
+http://www.cs.cmu.edu/~crpalmer/sp/ (because I am lazy)
+http://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
+http://www.redblobgames.com/pathfinding/a-star/implementation.html
+https://github.com/vandersonmr/A_Star_Algorithm/blob/master/libs/python/AStar.py (because I am lazy)
+http://stackoverflow.com/questions/2311486/how-to-calculate-the-shortest-path-between-two-points-in-a-grid
+https://github.com/Yonaba/dijkstra-map/blob/master/dijkstra.lua  (because I am lazy)
