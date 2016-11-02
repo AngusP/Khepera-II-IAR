@@ -460,7 +460,7 @@ class DataStore:
 
                 if item['channel'] == self.mapchan:
                     # Handle a map diff (update)
-
+                    # TODO: Handle dimension changes
                     # Fetch contents of new map key
                     newm_grid = self.r.hgetall(item['data'])
                     rospy.loginfo("Map update {} --> {}".format(item['data'], newm_grid))
@@ -562,7 +562,7 @@ class GridManager:
     The Map is _sparse_, in that it is hypothetically infinitely large.
     '''
     
-    def __init__(self, redis, granularity=0.5, debug=False):
+    def __init__(self, redis, granularity=1.0, debug=False):
         '''
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
@@ -574,7 +574,10 @@ class GridManager:
         }
         '''
 
-        self._testworld = "X? "
+        self._testworld = """\
+???XXX   
+   ???XXX
+XXX   ???"""
 
         self._otherworld = """\
 ????????????????????????????????
@@ -695,8 +698,7 @@ class GridManager:
         '''
         xwidth, ywidth = self._get_map_dimensions()
 
-        if self.DEBUG:
-            print("Map dim " + str(xwidth) + " " + str(ywidth))
+        print("Map dim " + str(xwidth) + " " + str(ywidth))
 
         # Initialise a 2D array of the correct size... yuck
         data = [[-1]*ywidth]*xwidth
@@ -707,18 +709,15 @@ class GridManager:
             grid_hm = self.r.hgetall(grid_key)
             x, y = self._dekey(grid_key)
 
-            if self.DEBUG:
-                print("Looking at ({}, {}) from {}:{}".format(x,y,grid_key,grid_hm))
-
             if not self._bounds_check(x,y):
                 # If co-ord doesn't fit we have an inconsistency (booo!)
                 raise IndexError("Encountered point outwith map bounds at ({},{}).".format(x,y))
 
             # scale to the array index to the right size (where 1.0 is an increase by 1 granularity)
             x, y = map(lambda x: int(x * 1.0/self.granularity), (x,y))
-            print("x:{} y:{}".format(x,y))
 
             data[x][y] = int(grid_hm['occ'])
+            print("x:{} y:{} is {}".format(x,y,data[x][y]))
 
         return data
 
