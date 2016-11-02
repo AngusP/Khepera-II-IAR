@@ -1,17 +1,9 @@
-http://drexelsaslab.appspot.com/courses/mem380i/assignments/Astar.pdf
-http://www.cs.cmu.edu/~motionplanning/papers/sbp_papers/integrated4/elfes_occup_grids.pdf
+http://www.laurentluce.com/posts/solving-mazes-using-python-simple-recursivity-and-a-search/  
+(VERY NICE AND CLEAN IMPLEMENTATION, EASY TO UPDATE TO 8 NEIGBOURS PER NODE)
+
+http://www.redblobgames.com/pathfinding/a-star/implementation.html (NEXT BEST THING)
 
 
-http://www.cs.cmu.edu/~crpalmer/sp/ (because I am lazy)
-http://theory.stanford.edu/~amitp/GameProgramming/ImplementationNotes.html
-http://www.redblobgames.com/pathfinding/a-star/implementation.html
-https://github.com/vandersonmr/A_Star_Algorithm/blob/master/libs/python/AStar.py (because I am lazy)
-http://stackoverflow.com/questions/2311486/how-to-calculate-the-shortest-path-between-two-points-in-a-grid
-https://github.com/Yonaba/dijkstra-map/blob/master/dijkstra.lua  (because I am lazy)
+https://gist.github.com/jamiees2/5531924 (VERY POOR SHIT - ONLY 4 DIRECTIONS)
+http://eli.thegreenplace.net/2009/01/09/writing-a-game-in-python-with-pygame-part-iii/ (FULL EXAMPLE OF A GAME)
 
-https://gist.github.com/jamiees2/5531924 (VERY lazy)
-http://www.laurentluce.com/posts/solving-mazes-using-python-simple-recursivity-and-a-search/  (VERY lazy)
-http://eli.thegreenplace.net/2009/01/09/writing-a-game-in-python-with-pygame-part-iii/ (VERY lazy)
-http://www-cs-students.stanford.edu/~amitp/gameprog.html (VERY lazy)
-
-WTF IS DYNAMIC PROGRMAMING ????
