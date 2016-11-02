@@ -562,7 +562,7 @@ class GridManager:
     The Map is _sparse_, in that it is hypothetically infinitely large.
     '''
     
-    def __init__(self, redis, granularity=1.0, debug=False):
+    def __init__(self, redis, granularity=0.5, debug=False):
         '''
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
@@ -575,11 +575,6 @@ class GridManager:
         '''
 
         self._testworld = """\
-???XXX   
-   ???XXX
-XXX   ???"""
-
-        self._otherworld = """\
 ????????????????????????????????
 ?XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?
 ?X                  XX    XX  X?
@@ -707,9 +702,9 @@ XXX   ???"""
             row_l = []
             
             for row in xrange(xwidth):
-                occ = self.get(row,col)
+                occ = self.get(row * self.granularity, col * self.granularity)
                 if occ is None:
-                    occ = -1
+                    occ = -1 # Default to unknown if no key
                 row_l.append(occ)
                 
             data.append(row_l)
@@ -1117,7 +1112,7 @@ class ROSGenerator:
 
         # Width & height are a number of cells
         # Width folows x (forward) , height y
-        m.info.width, m.info.height = og._get_map_dimensions()
+        m.info.width, m.info.height = map(lambda x: x * og.granularity, og._get_map_dimensions()) 
         # Units (metres, as far as ROS cares, but not in our case)
         m.info.resolution = og.granularity * 100
 
