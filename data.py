@@ -95,7 +95,7 @@ class DataStore:
         self.wt = whiptail.Whiptail()
         self.pp = pprint.PrettyPrinter(indent=1)
 
-        self.og = GridManager(self.r, debug=False)
+        self.og = GridManager(self.r, debug=True)
 
         # Redis List and Channel name
         self.listname = "statestream"
@@ -574,7 +574,9 @@ class GridManager:
         }
         '''
 
-        self._testworld = """\
+        self._testworld = "X? "
+
+        self._otherworld = """\
 ????????????????????????????????
 ?XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?
 ?X                  XX    XX  X?
@@ -691,14 +693,13 @@ class GridManager:
         Returns the entire known map, in a ROS friendly format
         of a 2D array, with floating occupancies. Default value is -1
         '''
-        xwidth = 1 + int(math.ceil((-self.bounds['minx'] + self.bounds['maxx']) * 1.0/self.granularity))
-        ywidth = 1 + int(math.ceil((-self.bounds['miny'] + self.bounds['maxy']) * 1.0/self.granularity))
+        xwidth, ywidth = self._det_map_dimensions()
 
         if self.DEBUG:
             print("Map dim " + str(xwidth) + " " + str(ywidth))
 
         # Initialise a 2D array of the correct size... yuck
-        data = [[-1]*xwidth]*ywidth
+        data = [[-1]*ywidth]*xwidth
         
         pts_keys = self._get_map_keys()
 
@@ -714,9 +715,10 @@ class GridManager:
                 raise IndexError("Encountered point outwith map bounds at ({},{}).".format(x,y))
 
             # scale to the array index to the right size (where 1.0 is an increase by 1 granularity)
-            x, y = map(lambda e: int(e * 1.0/self.granularity), (x,y))
+            x, y = map(lambda x: int(x * 1.0/self.granularity), (x,y))
+            print("x:{} y:{}".format(x,y))
 
-            data[y][x] = max(0, min(int(grid_hm['occ']), 100))
+            data[x][y] = int(grid_hm['occ'])
 
         return data
 
@@ -726,6 +728,15 @@ class GridManager:
         Super simple, dump raw 100% organic map Redis data at your face
         '''
         return self.r.smembers(self.mapname)
+
+        
+    def _det_map_dimensions(self):
+        '''
+        Returns array size needed to fit map given bounds and granularity.
+        '''
+        xwidth  = 1 + int(math.ceil((-self.bounds['minx'] + self.bounds['maxx']) * 1.0/self.granularity))
+        yheight = 1 + int(math.ceil((-self.bounds['miny'] + self.bounds['maxy']) * 1.0/self.granularity))
+        return xwidth, yheight
 
 
     def set_origin(self, origin_dict):
@@ -1112,8 +1123,8 @@ class ROSGenerator:
         m.header.frame_id = "map"
 
         # Width & height are a number of cells
-        m.info.width  = 1 + int(math.ceil((-og.bounds['minx'] + og.bounds['maxx']) * 1.0/og.granularity))
-        m.info.height = 1 + int(math.ceil((-og.bounds['miny'] + og.bounds['maxy']) * 1.0/og.granularity))
+        # Width folows x (forward) , height y
+        m.info.width, m.info.height = og._get_map_dimensions()
         # Units (metres, as far as ROS cares, but not in our case)
         m.info.resolution = og.granularity * 100
 
@@ -1128,6 +1139,7 @@ class ROSGenerator:
         m.data = []
 
         # ROS wants the data in Row Major order
+        # so scans a full x row, then back up to another collumn
         for row in data:
             m.data.extend(row)
         
