@@ -693,7 +693,7 @@ class GridManager:
         Returns the entire known map, in a ROS friendly format
         of a 2D array, with floating occupancies. Default value is -1
         '''
-        xwidth, ywidth = self._det_map_dimensions()
+        xwidth, ywidth = self._get_map_dimensions()
 
         if self.DEBUG:
             print("Map dim " + str(xwidth) + " " + str(ywidth))
@@ -730,7 +730,7 @@ class GridManager:
         return self.r.smembers(self.mapname)
 
         
-    def _det_map_dimensions(self):
+    def _get_map_dimensions(self):
         '''
         Returns array size needed to fit map given bounds and granularity.
         '''
