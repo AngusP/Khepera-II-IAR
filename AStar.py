@@ -85,18 +85,18 @@ class AStar(object):
             cells.append(self.get_cell(cell.x, cell.y+1))
             
         #ADDED DIAGONALS
-        if cell.x + 1 < self.grid_width-1:
+        if cell.x < self.grid_width-1:
             #check if have diagonals on the right
-            if cell.y + 1 < self.grid_height-1:
+            if cell.y < self.grid_height-1:
                 cells.append(self.get_cell(cell.x+1, cell.y+1))
-            if cell.y - 1 > 0:
+            if cell.y > 0:
                 cells.append(self.get_cell(cell.x+1, cell.y-1))
                 
-        if cell.x - 1 > 0:
+        if cell.x > 0:
             #check if have diagonals on the left                
-            if cell.y + 1 < self.grid_height-1:
+            if cell.y < self.grid_height-1:
                 cells.append(self.get_cell(cell.x-1, cell.y+1))
-            if cell.y - 1 > 0:
+            if cell.y > 0:
                 cells.append(self.get_cell(cell.x-1, cell.y-1))
                 
         return cells
