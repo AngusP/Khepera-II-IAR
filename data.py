@@ -562,7 +562,7 @@ class GridManager:
     The Map is _sparse_, in that it is hypothetically infinitely large.
     '''
     
-    def __init__(self, redis, granularity=0.5, debug=False):
+    def __init__(self, redis, granularity=1.0, debug=False):
         '''
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
