@@ -701,24 +701,18 @@ XXX   ???"""
         print("Map dim " + str(xwidth) + " " + str(ywidth))
 
         # Initialise a 2D array of the correct size... yuck
-        data = [[-1]*ywidth]*xwidth
-        
-        pts_keys = self._get_map_keys()
+        data = []
 
-        for grid_key in pts_keys:
-            grid_hm = self.r.hgetall(grid_key)
-            x, y = self._dekey(grid_key)
-
-            if not self._bounds_check(x,y):
-                # If co-ord doesn't fit we have an inconsistency (booo!)
-                raise IndexError("Encountered point outwith map bounds at ({},{}).".format(x,y))
-
-            # scale to the array index to the right size (where 1.0 is an increase by 1 granularity)
-            x, y = map(lambda x: int(x * 1.0/self.granularity), (x,y))
-
-            data[x][y] = int(grid_hm['occ'])
-            print("x:{} y:{} is {}".format(x,y,data[x][y]))
-
+        for col in xrange(ywidth):
+            row_l = []
+            
+            for row in xrange(xwidth):
+                occ = self.get(row,col)
+                if occ is None:
+                    occ = -1
+                row_l.append(occ)
+                
+            data.append(row_l)
         return data
 
 
@@ -815,8 +809,8 @@ XXX   ???"""
                     print(" {}({},{})".format(char,i* self.granularity,j* self.granularity), end='')
 
                 # Multiply by granularity to scale onto native grid resolution
-                self.update(float(i) * self.granularity,
-                            float(j) * self.granularity,
+                self.update(float(j) * self.granularity,
+                            float(i) * self.granularity,
                             certainty)
         
         print("")
