@@ -1,3 +1,10 @@
+#
+#     - - - -  I A R  - - - -
+#
+#  s1311631         Angus Pearson
+#  s1346981    Jevgenij Zubovskij
+#
+
 import heapq
 
 
