@@ -16,10 +16,8 @@ from odometry_state 		import Odometry_State
 from navigation_state 		import Navigation_State
 from navigation_algorithm 	import Navigation_Algorithm
 
-from bug_algorithm 		import Bug_Algorithm
-from bug_state 			import Bug_State
-
-
+from pathing    import Pathing_Algorithm
+from grid_state import Grid_State
 
 import constants
 import sys
@@ -49,20 +47,17 @@ def main():
 	nav_state = Navigation_State()
 	nav = Navigation_Algorithm()
 	bug = Bug_Algorithm()
-	bug_state = Bug_State()
+    
+    #TODO so where is the gird, its form etc.....
+    #because if there is no variable that holds it well, I need to make one
+    
+	grid_state = Grid_State()
+    pathing = Pathing_Algorithm()
 
 
         # varaibles to not resend speeds during wall following
         speed_l = 0
         speed_r = 0
-
-        # List of dict for Redis -> ROS goal line render
-        mline_hm = [
-            {'x': bug_state.m_line_start[0],
-             'y': bug_state.m_line_start[1]},
-            {'x': bug_state.m_line_end[0],
-             'y': bug_state.m_line_end[1]}
-            ]
     
         # reset odometry for this robot run 
         comms.reset_odo()
@@ -75,13 +70,17 @@ def main():
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 
+        #TODO figure out a DONE algorithm (bring back to detecting if we are in the cell)
+        #TODO well, figure out if we really want wall following any more
+
 	    #check reactive first, then bug
-	    nav_state = nav.new_state(nav_state, odo_state, bug_state, comms, bug)
+	    nav_state = nav.new_state(nav_state, odo_state, comms)
+        
 	    #if have free movement, use the bug algorithm
-	    if bug_state.algorithm_activated and bug_state.in_control == True:
-		nav_state = bug.new_state(nav_state, odo_state, bug_state)
+	    if grid_state.algorithm_activated and nav_state.yielding_control == True:
+		nav_state = pathing.new_state(nav_state, odo_state, grid, grid_state)
 		#if we are done break the control loop, stop the robot and exit
-		if bug_state.done:
+		if grid_state.done:
 			print("DONE")
 			comms.drive(0, 0)
 			comms.blinkyblink()
@@ -95,13 +94,6 @@ def main():
             speed_r = nav_state.speed_r
 	    
             ds.push(odo_state, nav_state.dist)
-
-            if (mline_hm[1]['x'] != bug_state.m_line_end[0] or
-                mline_hm[1]['y'] != bug_state.m_line_end[1]):
-                # Update and push
-                mline_hm[1]['x'] = bug_state.m_line_end[0]
-                mline_hm[1]['y'] = bug_state.m_line_end[1]
-                ds.push_goal(mline_hm)
             
 	    # do not attempt to instantly read sensors again
             time.sleep(constants.MEASUREMENT_PERIOD_S)
