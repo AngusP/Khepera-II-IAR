@@ -18,7 +18,14 @@ class Grid_State:
            
            #variable for say alternative nests
            self.alternative_paths = [[]]
+           
+           #variable to indicate reached current path goal
+           self.done = False
+           
+           #variable to indicate it is active
+           self.algorithm_activated = False
 
+    #TODO make some grid update etc
     #TODO add checks to see if this is empty
 
 
