@@ -110,107 +110,9 @@ class Navigation_Algorithm:
 
 
  	    #variable to indicate if reactive avoidance is in control of the robot
-	    bug_state.in_control = False
+		result.yielding_control = False
 
-            
-           ########################
-           #HANDLE THE BUG OPERATIONS
-           ########################
-
-	    if bug_state.exploration_cycle < constants.EXPLORATION_CYCLES:
-		bug_state.exploration_cycle += 1
-
-	    #now that we have explored enough, can record our position from where we need to return
-	    elif (not bug_state.algorithm_point):
-
-		comms.led(0,1)
-		print("beginning turn")
-		#record the line parameters
-		bug_state.m_line_end = [odo_state.x, odo_state.y]
-		bug_state.m_line_start = [0,0]
-
-		#record last position on the M-line
-		bug_state.last_m_x = odo_state.x
-   		bug_state.last_m_y = odo_state.y
-		#record that we have already recorded said values
-
-		bug_state.algorithm_point = True
-		#do the turn towards the goal, called 180 because we were going away from the goal and now are going towards it
-		nav_state.system_state = constants.STATE_BUG_180
-
-	    #now, if have not yet turned back towards the goal
-	    elif not bug_state.algorithm_activated:
-		#check if that is the case now
-		angle = bug.get_angle_on_m(odo_state, bug_state)
-
-		#thresholded value due to imperfect sensor reading timings
-		pointing_at_origin = abs(angle) < 10
-   		#if done turning
-		if nav_state.system_state == constants.STATE_BUG_180 and pointing_at_origin:
-			#if done turning, then can proceed with the return algorithm
-			nav_state.system_state = constants.STATE_DRIVE_FORWARD
-			#reset boredom
-		        result.boredom_counter = 0
-			bug_state.algorithm_activated = True
-		else:	
-		   #if not done turing, check which way we need to turn to reduce the angle difference 
-		   #between the M-line (directed towards (0,0)) and the pose of the robot
-		   if angle > 10:
-			result.speed_l = -constants.CONST_SPEED
-                   	result.speed_r = constants.CONST_SPEED 
-		   elif angle < -10:
-			result.speed_r = -constants.CONST_SPEED
-                   	result.speed_l = constants.CONST_SPEED 
-		   #continue turning
-		   nav_state.system_state = constants.STATE_BUG_180
-		   return result
-
-            ########################
-            #HANDLE BOREDOM COUNTER 
-            ########################
-
-	    #make sure boredom never activates durin bug algorithm
-	    if not(bug_state.algorithm_activated):
-		
-		    #record that we are still moving along a wall and not "exploring"
-		    if result.system_state == constants.STATE_LEFT_FOLLOW or result.system_state == constants.STATE_RIGHT_FOLLOW:
-		        result.boredom_counter +=1
-
-		    
-		    #check if robot is "bored" and it is not being handled
-		    if self.bored(result.boredom_counter) and not self.is_boredom_handled(result.system_state):
-
-		        #turn away from the wall that was last followed
-		        if result.system_state == constants.STATE_LEFT_FOLLOW:
-			    result.speed_l = constants.CONST_SPEED
-		            result.speed_r = -constants.CONST_SPEED 
-		        elif result.system_state == constants.STATE_RIGHT_FOLLOW:
-		            result.speed_l = -constants.CONST_SPEED
-		            result.speed_r = constants.CONST_SPEED 
-		        
-		        # reset state
-		        result.boredom_turn_counter = 0
-		        result.boredom_counter = 0
-		                
-		        # set state
-		        result.system_state = constants.STATE_BOREDOM_ROTATE
-
-		    # if we are rotating on the spot                  
-		    elif result.system_state == constants.STATE_BOREDOM_ROTATE:
-		        #check if we are done rotating
-		        if result.boredom_turn_counter >= constants.CONST_BORED_TURN_MAX:
-		            #different from normal forward driving as we try to get very far from the wall
-		            result.system_state = constants.STATE_BOREDOM_DRIVE
-
-			    result.speed_l = constants.CONST_SPEED
-			    result.speed_r = constants.CONST_SPEED
-
-		        # otherwise, continue rotationg for this loop iteration
-		        else:
-		            result.boredom_turn_counter += 1 
-			    #turn until done turning 
-			    return result
-		  
+  		#TODO consider boredom as a harmful concept 
 
             ############################
             # IF STUCK
@@ -235,19 +137,7 @@ class Navigation_Algorithm:
 		      result.speed_l = -constants.CONST_SPEED
 		      result.speed_r = constants.CONST_SPEED
                 
-
-                 # stop following the wall (as it could ahve potentially led to being stuck)
-                 result.boredom_counter = 0
 		 return result
-
-	    
-            ########################
-            #HANDLE BOREDOM DRIVE
-            ########################
-
-            # if robot not stuck and we are driving away from a "boring" wall, continue doing so
-            if result.system_state == constants.STATE_BOREDOM_DRIVE and not (bug_state.algorithm_activated):
-                 return result
 
             #####################
             ##WALL FOLLOWING LEFT
@@ -256,7 +146,7 @@ class Navigation_Algorithm:
             if self.should_follow_left_wall(result.dist, result.system_state):
                 
 		#reactive control not activated, can use the return algorithm
-		bug_state.in_control = True
+		result.yielding_control = True
 
 		turn_least = constants.CONST_SPEED * constants.TURN_LESS
 		turn_most  = constants.CONST_SPEED * constants.TURN_MORE
@@ -292,7 +182,7 @@ class Navigation_Algorithm:
             elif self.should_follow_right_wall(result.dist, result.system_state):
                 
 		#reactive control not activated, can use the return algorithm
-		bug_state.in_control = True
+		result.yielding_control = False
 
                 #print("following right")
 
@@ -329,7 +219,7 @@ class Navigation_Algorithm:
             #####################
             else:
 		    #reactive control not activated, can use the return algorithm
-		    bug_state.in_control = True	
+		    result.yielding_control = True
 
                     # reset variables as not doing anything
                     result.boredom_counter = 0
