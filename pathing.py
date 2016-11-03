@@ -88,9 +88,16 @@ class Pathing_Algorithm:
 	     
 		#TODO check maybe somehow if we are within a cell or something
 		#TODO rename grid_state in pathing_state...maybe
+		#TODO plan sequence of paths
 		
 		#so if reached the next cell, well pop the now-previous-one
 		if self.is_in_next_cell(grid_state, odo_state):
+			
+			#if we are in the last cell, we have completed the path
+			if len(grid_state.active_path) < 1
+				#indicate completion
+				grid_state.done = True
+				return
 			#proceed to check ehading
 			grid_state.active_path.pop()
 		
