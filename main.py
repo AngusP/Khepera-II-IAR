@@ -75,6 +75,7 @@ def main():
         #TODO detect user input for when "food" was found etc.
         #TODO sequence pathing
         #TODO store the actual grid
+        #TODO actually set a path
 
 	    #check reactive first, then bug
 	    nav_state = nav.new_state(nav_state, odo_state, comms)
