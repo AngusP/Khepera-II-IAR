@@ -58,12 +58,13 @@ EXPLORATION_CYCLES = 50.0 / MEASUREMENT_PERIOD_S
 DIST_CUTOFF = 0.0
 
 #Unscaled distance gradient at which we should recompute the M-line
-M_DISTANCE = 10 # mm
+CELL_DIMENSION = 10 # mm
+IN_CELL = CELL_DIMENSION / 2
+AWAY_FROM_PATH = CELL_DIMENSION * 1.5 
 
 #Angle threshold until we begin correcting out orientation along the M-line
 M_N_ANGLE  = 10 # degrees
 
-#Distance at which we still consider ourselves to be following the M-line
-ON_MLINE   = 30 #mm
+
 
 
