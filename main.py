@@ -70,8 +70,11 @@ def main():
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 
-        #TODO figure out a DONE algorithm (bring back to detecting if we are in the cell)
+        #TODO figure out a better DONE algorithm (bring back to detecting if we are in the cell)
         #TODO well, figure out if we really want wall following any more
+        #TODO detect user input for when "food" was found etc.
+        #TODO sequence pathing
+        #TODO store the actual grid
 
 	    #check reactive first, then bug
 	    nav_state = nav.new_state(nav_state, odo_state, comms)
