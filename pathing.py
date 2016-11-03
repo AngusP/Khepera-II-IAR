@@ -25,7 +25,6 @@ class Bug_Algorithm:
 	def vector_magnitude(self, vector):
 		return math.sqrt( math.pow(vector[0],2) + math.pow(vector[1],2))
 		
-
 	#normalizes angle in degrees to -180 : 180 degrees
     def normalize_angle(self, angle):
 		if angle < 0:
@@ -47,6 +46,9 @@ class Bug_Algorithm:
 		 
 	#get angle while ON the M-line
 	def get_angle_on_m(self, odo_state, direction):
+		
+		#CAN DO TRIG AS WE KNOW CELL COORDINATES
+	
 		direction_angle = math.atan2(direction[1] , direction[0])
 		#if no difference, well then we never left the spot 
 		vector_magnitude = self.vector_magnitude(direction)
@@ -62,15 +64,37 @@ class Bug_Algorithm:
     def is_away_from_path(self, direction):
 			#if we are too far away in cells
 			return vector_magnitude(self, direction) > constants.AWAY_FROM_PATH
+	
+	def is_in_next_cell(self, grid_state, odo_state)
+			current_cell 	 = grid_state.current_cell
+		    next_cell    	 = grid_state.active_path[1]
 		
-        
+			dist_to_next	 = (next_cell.x - odo_state.x, next_cell.y - odo_state.y)
+			
+			grid_detected = current_cell == next_cell
+			odometry_detected = self.vector_magnitude(self, dist_to_next) < constants.IN_CELL
+			
+			return grid_detected or odometry_detected
+	
+	
+	#method returning out current heading cell	
+    def get_direction(self, grid_state):
+			current_cell 	 = grid_state.current_cell
+		    head_cell    	 = grid_state.active_path[0]
+		    direction 		 = (head_cell.x - current_cell.x, head_cell.y - current_cell.y)
     
 	#return new state
     def new_state(self, nav_state, odo_state, grid_state, grid):
 	     
-		current_cell 	 = grid_state.current_cell
-		next_cell    	 = grid_state.active_path[0]
-		direction = (next_cell.x - current_cell.x, next_cell.y - current_cell.y)
+		#TODO check maybe somehow if we are within a cell or something
+		#TODO rename grid_state in pathing_state...maybe
+		
+		#so if reached the next cell, well pop the now-previous-one
+		if self.is_in_next_cell(grid_state, odo_state):
+			#proceed to check ehading
+			grid_state.active_path.pop()
+		
+		direction        = self.get_direction(grid_state)
 	    
         speed_l = nav_state.speed_l 
 	    speed_r = nav_state.speed_r
@@ -80,12 +104,15 @@ class Bug_Algorithm:
 		turn_more = constants.CONST_SPEED 
 
 		#TODO make it say got to another nest or something if there is another one
-
+		#TODO check if are in any other node along the path... or fucking not....
+		
 		#recalculate path if for some reason strayed from it too far
 		if self.is_away_from_path(direction):
+			#so get the new path
 			grid_state.active_path = self.aStar.replan(current_cell, (0,0) , grid) 
 
-
+		#renew our direction
+	    direction  = self.get_direction(grid_state)
 		angle_to_m = self.get_angle_on_m(odo_state, direction)
 		#OUR angle too small
 		if angle_to_m > constants.M_N_ANGLE:		
