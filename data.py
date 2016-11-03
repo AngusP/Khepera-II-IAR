@@ -23,6 +23,8 @@ import re
 import constants
 
 
+
+
 # Check for ROS (http://ros.org/) support
 try:
     import rospy
@@ -34,19 +36,45 @@ try:
     import tf
 except ImportError as e:
     print(e)
-    print("Continuing without ROS integration")
+    print("[NOTICE] Continuing without ROS integration")
     ros = False
     del e
-    pass
 
 # ROS Import check wrapper
 def requireros(func):
     def check_and_call(*args, **kwargs):
         if not ros:
-            raise ImportError("ROS (rospy) Not supported/found")
+            raise ImportError("[FATAL] ROS (rospy) Not supported/found")
         else:
             return func(*args, **kwargs)
     return check_and_call
+
+
+
+
+# Check for Pillow (Python Imaging Oibrary)
+try:
+    import PIL
+    import numpy as np
+    pil = True
+except ImportError as e:
+    print(e)
+    print("[NOTICE] Continuing withut PIL support")
+    pil = False
+    del e
+
+
+# PIL Import check wrapper
+def requireimage(func):
+    def check_and_call(*args, **kwargs):
+        if not pil:
+            raise ImportError("[FATAL] PIL (Image Lib) Not supported/found")
+        else:
+            return func(*args, **kwargs)
+    return check_and_call
+
+
+
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -608,6 +636,7 @@ class GridManager:
 ????????????????????????????????
 ????????????????????????????????
 ????????????????????????????????
+????????????????????????????????
 """
         
         self.granularity = granularity
@@ -640,7 +669,6 @@ class GridManager:
         for k, v in self.origin.iteritems():
             if self.r.hexists(self.mapmeta, k):
                 self.origin[k] = float(self.r.hget(self.mapmeta, k))
-
 
         for k, v in self.bounds.iteritems():
             if self.r.hexists(self.mapmeta, k):
@@ -692,9 +720,6 @@ class GridManager:
         of a 2D array, with floating occupancies. Default value is -1
         '''
         xwidth, ywidth = self._get_map_dimensions()
-
-        print("Map dim " + str(xwidth) + " " + str(ywidth))
-
         # Initialise a 2D array of the correct size... yuck
         data = []
 
@@ -817,6 +842,46 @@ class GridManager:
         Dump map to a string or file
         '''
         raise NotImplementedError()
+
+
+
+    @requireimage
+    def render(self, name=None):
+        '''
+        Render a bitmap image of the map in Greyscale + Alpha
+
+        Arguments:
+        name  --  Image name to save to, will not save if None
+
+        Returns:
+        PIL Image instance. Save with .save(), .show() is a debug preview
+        '''
+        w, h = self._get_map_dimensions()
+        print("Image dimensions are {}x by {}y".format(w, h))
+
+        data = np.zeros((h, w, 4), dtype=np.uint8)
+        
+        map_data = self.get_map()
+        
+        for col in xrange(h-1):
+            for row in xrange(w-1):
+                occupancy = map_data[col][row]
+                if occupancy >= 0:
+                    # Greyscale
+                    occupancy = int(2.55 * (100 - occupancy))
+                    data[col, row] = [occupancy]*3 + [255]
+                else:
+                    # Unknown
+                    data[col, row] = [255,0,0,0]
+        
+        img = PIL.Image.fromarray(data, 'RGBA')
+        #i = PIL.Image.new(mode='LA', size=(width, height), color=0)
+
+        if name is not None:
+            img.save(name)
+            print("Saved image as '{}'".format(name))
+
+        return img
 
 
     def _genkey(self, x, y):
