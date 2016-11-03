@@ -15,7 +15,7 @@ import constants
 import sys
 import math
 
-class Bug_Algorithm:
+class Pathing_Algorithm:
 
 
 	def __init__(self):
