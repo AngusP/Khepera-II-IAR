@@ -33,7 +33,8 @@ class AStar(object):
         self.grid_height = None
         self.grid_width = None
 
-    def init_grid(self, width, height, walls, start, end):
+    def init_grid(self, width, height, grid, start, end):
+    
         """Prepare grid cells, walls.
         @param width grid's width.
         @param height grid's height.
@@ -42,10 +43,10 @@ class AStar(object):
         @param end grid ending point x,y tuple.
         """
         self.grid_height = height
-        self.grid_width = width
+        self.grid_width =  width
         for x in range(self.grid_width):
             for y in range(self.grid_height):
-                if (x, y) in walls:
+                if walls[x][y] == constants.UNREACHABLE:
                     reachable = False
                 else:
                     reachable = True
@@ -151,16 +152,9 @@ class AStar(object):
                         # add adj cell to open list
                         heapq.heappush(self.opened, (adj_cell.f, adj_cell))
 
-def main():
-        #PLEASE NOTE - AXIS ARE X,Y AS EXPECTED (IN PHYSICS, NOT THE WEIRD CS CONVENTION)
-        walls = ((0, 5), (1, 0), (1, 1), (1, 5), (2, 3),(3, 1), (3, 2), (3, 5), (4, 1), (4, 4), (5, 1))
-        start = (0,0)
-        end = (5,5)
-        astar = AStar()
-        
-        astar.init_grid(6, 6, (()), start, end)
-        astar.solve()
-        print(astar.get_path())
-
-if __name__ == "__main__":
-        main()
+    #TODO rename grid state to pathing_state
+    def replan(self, start, end, grid):    
+        #NOTE, this grid as parameter is as seen in REDIS
+        self.init_grid(len(grid), len(grid[0]), grid, start, end)
+        self.solve()
+        return astar.get_path()
