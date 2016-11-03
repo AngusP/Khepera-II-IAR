@@ -13,13 +13,7 @@ from AStar.py import Cell
 
 import constants
 import sys
-
-import time
 import math
-
-
-
-
 
 class Bug_Algorithm:
 
@@ -66,6 +60,7 @@ class Bug_Algorithm:
 	
     #TODO placeholder method, before any linearization etc.
     def is_away_from_path(self, direction):
+			#if we are too far away in cells
 			return vector_magnitude(self, direction) > constants.AWAY_FROM_PATH
 		
         
@@ -88,7 +83,7 @@ class Bug_Algorithm:
 
 		#recalculate path if for some reason strayed from it too far
 		if self.is_away_from_path(direction):
-			grid_state.active_path = aStar.replan(current_cell, (0,0) , grid) 
+			grid_state.active_path = self.aStar.replan(current_cell, (0,0) , grid) 
 
 
 		angle_to_m = self.get_angle_on_m(odo_state, direction)
