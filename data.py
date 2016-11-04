@@ -1329,7 +1329,7 @@ class ROSGenerator:
 
         squares = og._get_map_keys()
 
-        for sq in square:
+        for sq in squares:
             # turn key into xy coords then indicies
             x, y = map(lambda x: int(x / og.granularity), og._dekey(sq))
             occ = og.get(x,y)
