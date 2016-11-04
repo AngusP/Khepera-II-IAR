@@ -1346,7 +1346,7 @@ class ROSGenerator:
         m.info.origin.orientation.y = og.origin['quat_y']
         m.info.origin.orientation.z = og.origin['quat_z']
         m.info.origin.orientation.w = og.origin['quat_w']
-        data = np.ndarray((m.info.width, m.info.height), dtype=int)
+        data = np.ndarray((m.info.height, m.info.width), dtype=int)
         data.fill(-1)
 
         squares = og._get_map_keys()
@@ -1358,7 +1358,7 @@ class ROSGenerator:
             if occ is None:
                 raise ValueError("Key {} in map has no associated occupancy!"
                                  "".format(sq))
-            data[x][y] = occ
+            data[y][x] = occ
 
         m.data = data.flatten().tolist()
 
