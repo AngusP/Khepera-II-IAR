@@ -909,6 +909,9 @@ class GridManager:
         x          --  x coordinate
         y          --  y coordinate
         occupancy  --  Occupancy certainty, -1 for unknown or [0..100]
+
+        BE AWARE this snaps to the grid, 1,1 and 2,2 are not necessarily
+        distinct squaresm depending on the granularity
         '''
 
         # Bump grid size if this is outside current bounding box
