@@ -635,6 +635,9 @@ class GridManager:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
                          whatever units the distances are given in.
 
+        Note: Very small granularities and very large granularities that may have '10e-12' 
+        representations by default will break as they cannot be correctly keyed and de-keyed.
+
         Standards & Conventions:
         map:x:y = {
             'occ' : -1 or [0..100]
@@ -1043,17 +1046,17 @@ class GridManager:
         if expand:
             change = False
             if x > self.bounds['maxx']:
-                self.bounds['maxx'] = float(x)
+                self.bounds['maxx'] = self._snap(float(x))
                 change = True
             if x < self.bounds['minx']:
-                self.bounds['minx'] = float(x)
+                self.bounds['minx'] = self._snap(float(x))
                 change = True
 
             if y > self.bounds['maxy']:
-                self.bounds['maxy'] = float(y)
+                self.bounds['maxy'] = self._snap(float(y))
                 change = True
             if y < self.bounds['miny']:
-                self.bounds['miny'] = float(y)
+                self.bounds['miny'] = self._snap(float(y))
                 change = True
 
             if change:
@@ -1075,14 +1078,17 @@ class GridManager:
 
         for key, val in self.bounds.iteritems():
             try:
-                if float(redis_meta[key]) > val:
+                if abs(float(redis_meta[key])) > abs(float(val)):
                     if self.DEBUG:
-                        print("key {} val {} was bigger in Redis".format(key, val))
+                        print("key '{}' value '{}' was bigger in Redis than cached '{}'"
+                              "".format(key, redis_meta[key], val))
                     self.bounds[key] = redis_meta[key] # case redis was bigger
                     push_back = True
-                elif float(redis_meta[key]) < val:
+                    
+                elif abs(float(redis_meta[key])) < abs(float(val)):
                     self.r.hset(self.mapmeta, key, val) # case we're bigger, push back
                     push_back = True
+                
                 # if same do nothing, we're fine
             except KeyError as e:
                 print(e)
