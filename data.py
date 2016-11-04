@@ -842,8 +842,8 @@ class GridManager:
         '''
         Returns array size needed to fit map given bounds and granularity.
         '''
-        xwidth  = 1 + int(math.ceil((-self.bounds['minx'] + self.bounds['maxx']) * 1.0/self.granularity))
-        yheight = 1 + int(math.ceil((-self.bounds['miny'] + self.bounds['maxy']) * 1.0/self.granularity))
+        xwidth  = 1 + int(math.ceil((-self.bounds['minx'] + self.bounds['maxx']) / self.granularity))
+        yheight = 1 + int(math.ceil((-self.bounds['miny'] + self.bounds['maxy']) / self.granularity))
         return xwidth, yheight
 
 
@@ -1279,8 +1279,9 @@ class ROSGenerator:
 
         # Width & height are a number of cells
         # Width folows x (forward) , height y
-        m.info.width  = (-og.bounds['minx'] + og.bounds['maxx']) / og.granularity
-        m.info.height = (-og.bounds['miny'] + og.bounds['maxy']) / og.granularity
+        m.info.width, m.info.height = og._get_map_dimensions()
+        #m.info.width  = (-og.bounds['minx'] + og.bounds['maxx'] +1) / og.granularity
+        #m.info.height = (-og.bounds['miny'] + og.bounds['maxy'] +1) / og.granularity
         # Units (metres, as far as ROS cares, but not in our case)
         m.info.resolution = og.granularity
 
