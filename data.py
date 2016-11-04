@@ -410,7 +410,7 @@ class DataStore:
         # Pre-subscription, we should load the OccupancyGrid Map.
         # This'll be the only one of our ROS classes that persists
         print("generating map...")
-        og_map = rg.gen_map(self.og.get_map(), self.og)
+        og_map = rg.gen_map(self.og)
         map_pub.publish(og_map)
         print("done.")
 
@@ -776,7 +776,19 @@ class GridManager:
 
         Handles type expetions
         '''
-        occ = self.r.hget(self._genkey(x,y), 'occ')
+        return self_get_keyed(self._genkey(x, y))
+
+
+    def _get_keyed(self, k):
+        '''
+        Similar to get(), though takes a string. Suggested you don't use
+        this much as it is breakier. Almost always generate k with 
+        GridManager._genkey(str)
+
+        Arguments:
+        k  --  str, name of redis key of grid
+        '''
+        occ = self.r.hget(k, 'occ')
         try:
             return int(occ)
         except (ValueError, TypeError, AttributeError):
@@ -786,8 +798,13 @@ class GridManager:
 
     def get_map(self):
         '''
-        Returns the entire known map, in a ROS friendly format
-        of a 2D array, with floating occupancies. Default value is -1
+        Return a row-major (y main list, xs sublist) array representing 
+        the whole map. Occupancies are ints, default is unknown (-1)
+
+        NOTE: This method returns a fully populated map wthin the bounding
+              box, it is *not* going to be fast.
+              For speed use methods such as get() and Redis subscribers to 
+              in-place update a cached map.
         '''
         xwidth, ywidth = self._get_map_dimensions()
         data = []
@@ -814,7 +831,7 @@ class GridManager:
         name  --  Image name to save to, will not save if None
 
         Returns:
-        PIL Image instance. Save with .save(), .show() is a debug preview
+        PIL Image instance. Save with .save(), .show() is a preview
         '''
         w, h = self._get_map_dimensions()
         if self.DEBUG:
@@ -1283,19 +1300,8 @@ class ROSGenerator:
 
     def gen_map(self, data, og):
         '''
-        Return a row-major (y main list, xs sublist) array 
-        retpresenting the whole map.
-
-        Arguments;
-        data  --  list(list(int)) of occupancy data
+        Arguments:
         og    --  Instance of a GridManager class
-
-        NOTE: This method returns a fully populated map wthin the bounding
-              box, it is *not* going to be fast.
-              For speed use methods such as get() and Redis subscribers to 
-              in-place update a cached map.
-
-        TODO: Use faster method than blitting through entire gridspace with data ^
         '''
         m = OccupancyGrid()
 
@@ -1318,12 +1324,20 @@ class ROSGenerator:
         m.info.origin.orientation.y = og.origin['quat_y']
         m.info.origin.orientation.z = og.origin['quat_z']
         m.info.origin.orientation.w = og.origin['quat_w']
-        m.data = []
+        m.data = np.ndarray((m.info.height, m.info.width), dtype=int)
+        m.data.fill(-1)
 
-        # ROS wants the data in Row Major order
-        # so scans a full x row, then back up to another collumn
-        for row in data:
-            m.data.extend(row)
+        squares = og._get_map_keys()
+
+        for sq in square:
+            # turn key into xy coords then indicies
+            x, y = map(lambda x: int(x / og.granularity), og._dekey(sq))
+            occ = og.get(x,y)
+            if occ is None:
+                raise ValueError("Key {} in map has no associated occupancy!"
+                                 "".format(sq))
+            m.data[y][x] = occ
+
         
         return m
 
