@@ -16,8 +16,8 @@ from odometry_state 		import Odometry_State
 from navigation_state 		import Navigation_State
 from navigation_algorithm 	import Navigation_Algorithm
 
-from pathing    import Pathing_Algorithm
-from grid_state import Grid_State
+from pathing_algorithm    	import Pathing_Algorithm
+from pathing_state 	  	import Pathing_State
 
 import constants
 import sys
@@ -46,14 +46,17 @@ def main():
         odo_state = Odometry_State()
 	nav_state = Navigation_State()
 	nav = Navigation_Algorithm()
-	bug = Bug_Algorithm()
-    
-    #TODO so where is the gird, its form etc.....
-    #because if there is no variable that holds it well, I need to make one
-    
-	grid_state = Grid_State()
-    pathing = Pathing_Algorithm()
+	pathing_state = Pathing_State()
+    	pathing = Pathing_Algorithm()
 
+    
+    	#TODO so where is the gird, its form etc.....
+        #TODO figure out a better DONE algorithm (bring back to detecting if we are in the cell)
+        #TODO well, figure out if we really want wall following any more
+        #TODO detect user input for when "food" was found etc.
+        #TODO sequence pathing
+        #TODO store the actual grid
+        #TODO actually set a path
 
         # varaibles to not resend speeds during wall following
         speed_l = 0
@@ -70,21 +73,15 @@ def main():
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 
-        #TODO figure out a better DONE algorithm (bring back to detecting if we are in the cell)
-        #TODO well, figure out if we really want wall following any more
-        #TODO detect user input for when "food" was found etc.
-        #TODO sequence pathing
-        #TODO store the actual grid
-        #TODO actually set a path
 
 	    #check reactive first, then bug
-	    nav_state = nav.new_state(nav_state, odo_state, comms)
+	    nav_state = nav.new_state(nav_state)
         
 	    #if have free movement, use the bug algorithm
-	    if grid_state.algorithm_activated and nav_state.yielding_control == True:
-		nav_state = pathing.new_state(nav_state, odo_state, grid, grid_state)
+	    if pathing_state.algorithm_activated and nav_state.yielding_control == True:
+		nav_state = pathing.new_state(nav_state, odo_state, grid, pathing_state)
 		#if we are done break the control loop, stop the robot and exit
-		if grid_state.done:
+		if pathing_state.done:
 			print("DONE")
 			comms.drive(0, 0)
 			comms.blinkyblink()

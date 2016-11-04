@@ -103,14 +103,14 @@ class Navigation_Algorithm:
 	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
 
 
-        def new_state(self, nav_state, odo_state, bug_state, comms, bug):
+        def new_state(self, nav_state):
 	                
 	    result = Navigation_State()
 	    result = nav_state
 
 
  	    #variable to indicate if reactive avoidance is in control of the robot
-		result.yielding_control = False
+	    result.yielding_control = False
 
   		#TODO consider boredom as a harmful concept 
 
@@ -143,10 +143,10 @@ class Navigation_Algorithm:
             ##WALL FOLLOWING LEFT
             #####################
 
+	    #if not stuck 
+            result.yielding_control = True
+
             if self.should_follow_left_wall(result.dist, result.system_state):
-                
-		#reactive control not activated, can use the return algorithm
-		result.yielding_control = True
 
 		turn_least = constants.CONST_SPEED * constants.TURN_LESS
 		turn_most  = constants.CONST_SPEED * constants.TURN_MORE
@@ -180,9 +180,6 @@ class Navigation_Algorithm:
             ##WALL FOLLOWING RIGHT
             #####################                       
             elif self.should_follow_right_wall(result.dist, result.system_state):
-                
-		#reactive control not activated, can use the return algorithm
-		result.yielding_control = False
 
                 #print("following right")
 
@@ -218,9 +215,6 @@ class Navigation_Algorithm:
             # IF NONE OF THE ABOVE
             #####################
             else:
-		    #reactive control not activated, can use the return algorithm
-		    result.yielding_control = True
-
                     # reset variables as not doing anything
                     result.boredom_counter = 0
 
