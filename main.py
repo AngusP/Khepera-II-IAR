@@ -21,6 +21,7 @@ from pathing_state 	  	import Pathing_State
 
 import constants
 import sys
+import cv2
 import getopt      # CLI Option Parsing
 import whiptail    # Simplest kinda-GUI thing
 import time
@@ -37,7 +38,7 @@ wt = whiptail.Whiptail(title=namebadge)
 
 def main():
 
-
+    cv2.namedWindow("stuff")
     try:
         #flashy to see if robot works
         comms.blinkyblink()
@@ -73,18 +74,25 @@ def main():
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 
-
 	    #check reactive first, then bug
 	    nav_state = nav.new_state(nav_state)
+
+
+
+
         
 	    #if have free movement, use the bug algorithm
 	    if pathing_state.algorithm_activated and nav_state.yielding_control == True:
-		nav_state = pathing.new_state(nav_state, odo_state, grid, pathing_state)
+		nav_state = pathing.new_state(nav_state, odo_state, pathing_state)
 		#if we are done break the control loop, stop the robot and exit
 		if pathing_state.done:
-			print("DONE")
+			print("Brought %d food back to nest" % pathing_state.food)
 			comms.drive(0, 0)
 			comms.blinkyblink()
+
+			
+			
+			#TODO make this go away to go to other nests (or repeatedly go to another one)
 			break
 	
 	    #only send stuff over serial if new values
@@ -95,9 +103,24 @@ def main():
             speed_r = nav_state.speed_r
 	    
             ds.push(odo_state, nav_state.dist)
+
+
+
+
+
             
-	    # do not attempt to instantly read sensors again
-            time.sleep(constants.MEASUREMENT_PERIOD_S)
+	    
+	    # wait for new sensor round and maybe found a new food source
+	    if (cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF )  == ord(' '):
+			# if SPACE is pressed
+   			print("Detected nest")
+			pathing.drive_over_food(pathing_state, comms)
+			#replan, maybe a more efficient route now available
+			pathing.replan_sequence(pathing_state)
+
+
+
+
 		
     except TypeError as e:
         comms.drive(0,0)

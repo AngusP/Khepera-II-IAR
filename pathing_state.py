@@ -7,6 +7,14 @@
 
 from AStar import Cell
 
+
+class Food_Source:
+   #make a new structure to indicate if the food was picked up in this round
+   def __init__(self, location_cell):
+	self.location = location_cell
+	self.picked_up = False
+	
+
 class Pathing_State:
 
     def __init__(self):
@@ -16,8 +24,8 @@ class Pathing_State:
            #variable for current path
            self.current_cell = Cell(0,0, True)
            
-           #variable for say alternative nests
-           self.alternative_paths = [[]]
+           #variable for say alternative food sources
+           self.food_sources = []
            
            #variable to indicate reached current path goal
            self.done = False
@@ -25,8 +33,17 @@ class Pathing_State:
            #variable to indicate it is active
            self.algorithm_activated = False
 
-    #TODO make some grid update etc
-    #TODO add checks to see if this is empty
+	   #idnicating number of food items carried
+	   self.food = 0
+
+	   #TODO check format and do not forget to change this to be empty
+	   self.grid =  [[0, 0, 0, 0, 0, 1],
+        		 [1, 1, 0, 0, 0, 1],
+        		 [0, 0, 0, 1, 0, 0],
+        		 [0, 1, 1, 0, 0, 1],
+        		 [0, 1, 0, 0, 1, 0],
+        		 [0, 1, 0, 0, 0, 0]]
+
 
 
     

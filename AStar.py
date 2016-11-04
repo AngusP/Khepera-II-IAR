@@ -6,6 +6,7 @@
 #
 
 import heapq
+import constants
 
 
 class Cell(object):
@@ -53,7 +54,7 @@ class AStar(object):
         self.grid_width =  width
         for x in range(self.grid_width):
             for y in range(self.grid_height):
-                if walls[x][y] == constants.UNREACHABLE:
+                if grid[x][y] == constants.CELL_UNREACHABLE:
                     reachable = False
                 else:
                     reachable = True
@@ -111,12 +112,15 @@ class AStar(object):
 
     def get_path(self):
         cell = self.end
-        path = [(cell.x, cell.y)]
+        path = [Cell(cell.x, cell.y, True)]
         while cell.parent is not self.start:
             cell = cell.parent
-            path.append((cell.x, cell.y))
+            path.append(Cell(cell.x, cell.y, True))
 
-        path.append((self.start.x, self.start.y))
+
+	cell = self.start
+	path.append(Cell(cell.x, cell.y, True))
+
         path.reverse()
         return path
 
@@ -161,7 +165,12 @@ class AStar(object):
 
     #TODO rename grid state to pathing_state
     def replan(self, start, end, grid):    
-        #NOTE, this grid as parameter is as seen in REDIS
+        #TODO, this grid as parameter is as seen in REDIS
+	if end == start:
+		return [Cell(start[0], start[1], True)]
+
         self.init_grid(len(grid), len(grid[0]), grid, start, end)
         self.solve()
-        return astar.get_path()
+	path = self.get_path()
+
+        return path
