@@ -755,7 +755,7 @@ class GridManager:
         # Regex to turn a serialised key into coords
         # This re finds a combination of two floats or two ints
         # IMPORTANT: Must remain consistent with _genkey()
-        self._dekey_re = re.compile("([+-]?\d+\.\d*|\d+):([+-]?\d+\.\d*|\d+)$")
+        self._dekey_re = re.compile("([+-]?\d+\.\d*|[+-]?\d+):([+-]?\d+\.\d*|[+-]?\d+)$")
 
 
 
@@ -1014,7 +1014,7 @@ class GridManager:
         try:
             return map(float, self._dekey_re.findall(key)[0])
         except Exception as e:
-            raise KeyError("Could not de-key " + str(key) + "  --  '" + str(e) + "'")
+            raise KeyError("Could not de-key {}  --  '{}'".format(key, e))
 
 
 
@@ -1322,9 +1322,9 @@ class ROSGenerator:
         # Units (metres, as far as ROS cares, but not in our case)
         m.info.resolution = og.granularity
 
-        # Pose of the point (0,0)
-        m.info.origin.position.x = og.origin['x']
-        m.info.origin.position.y = og.origin['y']
+        # Pose of the point zeroth datapoint
+        m.info.origin.position.x = og.bounds['minx'] - og.origin['x']
+        m.info.origin.position.y = og.bounds['miny'] - og.origin['y']
         m.info.origin.position.z = og.origin['z']
         m.info.origin.orientation.x = og.origin['quat_x']
         m.info.origin.orientation.y = og.origin['quat_y']
