@@ -882,7 +882,7 @@ class GridManager:
         k = self._genkey(x,y)
         if self.r.exists(k):
             existing = self.r.hgetall(k)
-            # ...todo - Update, decay, whatever
+            # ...TODO - Update, decay, whatever
         self.r.hmset(k, {
             'occ'  : int(occupancy),
             'seen' : time.time()
@@ -1004,33 +1004,37 @@ class GridManager:
             if change:
                 self._meta_sync()
                 # ^^ MUST remain consistent with DataStore.rospipe() processing
+                if self.DEBUG:
+                    print("Bounds-check increased dimensions {}".format(self.bounds))
 
         return True
 
 
     def _meta_sync(self):
         '''
-        Re-sync map meta with Redis. The larger will persist, give there is
+        Re-sync map meta with Redis. The larger will persist, given there is
         no way to sync on timestamps
         '''
         redis_meta = self.r.hgetall(self.mapmeta)
-        change = False
+        push_back = False
 
-        for key, val in self.bounds:
+        for key, val in self.bounds.iteritems():
             try:
-                if redis_meta[key] > val:
+                if float(redis_meta[key]) > val:
+                    if self.DEBUG:
+                        print("key {} val {} was bigger in Redis".format(key, val))
                     self.bounds[key] = redis_meta[key] # case redis was bigger
-                elif redis_meta[key] < val:
-                    self.r.hset(key, val) # case we're bigger, push back
+                    push_back = True
+                elif float(redis_meta[key]) < val:
+                    self.r.hset(self.mapmeta, key, val) # case we're bigger, push back
+                    push_back = True
                 # if same do nothing, we're fine
             except KeyError as e:
                 print(e)
-
-        if self.DEBUG:
-            print("bounds check increased dimensions {}".format(self.bounds))
         
-        if change:
+        if push_back:
             self.r.publish(self.channel, "#bounds {}".format(yaml.dump(self.bounds)))
+
 
 
     def _snap(self, coord):
