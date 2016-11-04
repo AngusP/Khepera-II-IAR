@@ -774,9 +774,12 @@ class GridManager:
         '''
         Returns the int held at the given grid coord's occupancy value
 
-        Handles type expetions
+        Handles type expetions, snaps to grid
+        
+        BE AWARE coords will silently be snapped to the grid, allowing
+        querying at higher resolution than is represented in the map.
         '''
-        return self_get_keyed(self._genkey(x, y))
+        return self._get_keyed(self._genkey(x, y))
 
 
     def _get_keyed(self, k):
