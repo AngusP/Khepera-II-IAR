@@ -8,8 +8,8 @@
 #
 
 from navigation_state import Navigation_State
-from AStar.py import AStar
-from AStar.py import Cell
+from AStar import AStar
+from AStar import Cell
 
 import constants
 import sys
@@ -18,11 +18,11 @@ import math
 class Pathing_Algorithm:
 
 
-	def __init__(self):
+    def __init__(self):
 		self.aStar = AStar()
 	
-	#vector magnitude calculator
-	def vector_magnitude(self, vector):
+    #vector magnitude calculator
+    def vector_magnitude(self, vector):
 		return math.sqrt( math.pow(vector[0],2) + math.pow(vector[1],2))
 		
 	#normalizes angle in degrees to -180 : 180 degrees
@@ -38,14 +38,15 @@ class Pathing_Algorithm:
 		return angle
 
 	#vector difference calculator
-	def vector_diff(self, vector_1, vector_2):
+    def vector_diff(self, vector_1, vector_2):
+
 		dx = vector_1[0] - vector_2[0]*1.0
 		dy = vector_1[1] - vector_2[1]*1.0
 		return [dx,dy]
 
 		 
 	#get angle while ON the M-line
-	def get_angle_on_m(self, odo_state, direction):
+    def get_angle_on_m(self, odo_state, direction):
 		
 		#CAN DO TRIG AS WE KNOW CELL COORDINATES
 	
@@ -62,26 +63,27 @@ class Pathing_Algorithm:
 	
     #TODO placeholder method, before any linearization etc.
     def is_away_from_path(self, direction):
-			#if we are too far away in cells
-			return vector_magnitude(self, direction) > constants.AWAY_FROM_PATH
+		#if we are too far away in cells
+		return vector_magnitude(self, direction) > constants.AWAY_FROM_PATH
 	
-	def is_in_next_cell(self, grid_state, odo_state)
-			current_cell 	 = grid_state.current_cell
-		    next_cell    	 = grid_state.active_path[1]
+    def is_in_next_cell(self, grid_state, odo_state):
+
+		current_cell 	 = grid_state.current_cell
+		next_cell    	 = grid_state.active_path[1]
 		
-			dist_to_next	 = (next_cell.x - odo_state.x, next_cell.y - odo_state.y)
+		dist_to_next	 = (next_cell.x - odo_state.x, next_cell.y - odo_state.y)
 			
-			grid_detected = current_cell == next_cell
-			odometry_detected = self.vector_magnitude(self, dist_to_next) < constants.IN_CELL
+		grid_detected 	  = current_cell == next_cell
+		odometry_detected = self.vector_magnitude(self, dist_to_next) < constants.IN_CELL
 			
-			return grid_detected or odometry_detected
+		return grid_detected or odometry_detected
 	
 	
 	#method returning out current heading cell	
     def get_direction(self, grid_state):
-			current_cell 	 = grid_state.current_cell
-		    head_cell    	 = grid_state.active_path[0]
-		    direction 		 = (head_cell.x - current_cell.x, head_cell.y - current_cell.y)
+		current_cell 	 = grid_state.current_cell
+		head_cell    	 = grid_state.active_path[0]
+		direction 	 = (head_cell.x - current_cell.x, head_cell.y - current_cell.y)
     
 	#return new state
     def new_state(self, nav_state, odo_state, grid_state, grid):
@@ -94,17 +96,18 @@ class Pathing_Algorithm:
 		if self.is_in_next_cell(grid_state, odo_state):
 			
 			#if we are in the last cell, we have completed the path
-			if len(grid_state.active_path) < 1
+			if len(grid_state.active_path) < 1:
 				#indicate completion
 				grid_state.done = True
 				return
 			#proceed to check ehading
-			grid_state.active_path.pop()
+
+		grid_state.active_path.pop()
 		
-		direction        = self.get_direction(grid_state)
+		direction = self.get_direction(grid_state)
 	    
-        speed_l = nav_state.speed_l 
-	    speed_r = nav_state.speed_r
+                speed_l = nav_state.speed_l 
+	        speed_r = nav_state.speed_r
 		
 		#turn aggressively
 		turn_less = -constants.CONST_SPEED 
@@ -119,7 +122,7 @@ class Pathing_Algorithm:
 			grid_state.active_path = self.aStar.replan(current_cell, (0,0) , grid) 
 
 		#renew our direction
-	    direction  = self.get_direction(grid_state)
+	        direction  = self.get_direction(grid_state)
 		angle_to_m = self.get_angle_on_m(odo_state, direction)
 		#OUR angle too small
 		if angle_to_m > constants.M_N_ANGLE:		

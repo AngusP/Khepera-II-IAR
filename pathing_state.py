@@ -7,7 +7,7 @@
 
 from AStar import Cell
 
-class Grid_State:
+class Pathing_State:
 
     def __init__(self):
            #variable for current path
