@@ -497,18 +497,22 @@ class DataStore:
                     
                     # A sharp represents a meta message
                     if not item['data'].startswith("#"):
-                        newm_grid = self.r.hgetall(item['data'])
+
+                        x, y = self.og._dekey(item['data'])
                         
-                        if not newm_grid.has_key("occ"):
-                            raise KeyError("Published key {} missing member 'occ'".format(item['data']))
+                        occ = self.og.get(x,y)
+                        
+                        if occ is None:
+                            raise KeyError("Published key {} had no occupancy".format(item['data']))
                         
                         # in-place update this grid in og_map (the ROS OccupancyGrid instance)
-                        x, y = self.og._dekey(item['data'])
+                        # the map takes absolute coordinates to array index
+                        x, y = map(lambda x: x / og.granularity, (x,y))
                         width, height = self.og._get_map_dimensions()
                         y *= width # row major, so scale y onto a flat array
-                        og_map.data[int(x+y)] = int(newm_grid['occ']) # Toootaly gonna work first time
+                        og_map.data[int(x+y)] = occ # Toootaly worked first time
 
-                        rospy.loginfo("Map update {} --> {}".format(item['data'], newm_grid['occ']))
+                        rospy.loginfo("Map update {} --> {}".format(item['data'], occ))
 
 
                     else:
