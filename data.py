@@ -505,7 +505,7 @@ class DataStore:
                         x, y = self.og._dekey(item['data'])
                         width, height = self.og._get_map_dimensions()
                         y *= height # row major, so scale y onto a flat array
-                        og_map.data[x+y] = newm_grid['occ'] # Toootaly gonna work first time
+                        og_map.data[int(x+y)] = newm_grid['occ'] # Toootaly gonna work first time
 
                         rospy.loginfo("Map update {} --> {}".format(item['data'], newm_grid['occ']))
 
