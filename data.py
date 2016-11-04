@@ -1333,9 +1333,9 @@ class ROSGenerator:
         squares = og._get_map_keys()
 
         for sq in squares:
-            # turn key into xy coords then indicies
-            x, y = map(lambda x: int(x / og.granularity), og._dekey(sq))
-            occ = og.get(x,y)
+            occ = og._get_keyed(sq)
+            # convert from absolute coordinates to array indicies
+            x, y = map(lambda l: int(l / og.granularity), og._dekey(sq))
             if occ is None:
                 raise ValueError("Key {} in map has no associated occupancy!"
                                  "".format(sq))
