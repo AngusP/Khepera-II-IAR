@@ -138,7 +138,8 @@ class DataStore:
         self.maptopic  = self.listname + "map"
 
         # Test Redis connection
-        self.r.ping()
+        if not self.r.ping():
+            raise redis.ConnectionError("No PONG from PING!")
 
     def __str__(self):
         '''
@@ -624,7 +625,7 @@ class GridManager:
     The Map is _sparse_, in that it is hypothetically infinitely large.
     '''
     
-    def __init__(self, redis, granularity=10.0, debug=False):
+    def __init__(self, redis, granularity=100.0, debug=False):
         '''
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
@@ -649,7 +650,7 @@ class GridManager:
         '''
         self.DEBUG = debug
 
-        # For this map the axes directions are the opposite to the convention :'(
+        # Origin is bottom left corner, x left, y up
         self._testworld = """\
 ????????????????????????????????
 ?XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?
@@ -720,17 +721,28 @@ class GridManager:
         for k, v in self.origin.iteritems():
             if self.r.hexists(self.mapmeta, k):
                 self.origin[k] = float(self.r.hget(self.mapmeta, k))
+                if self.DEBUG:
+                    print("Got {} as {} from Redis".format(k, self.origin[k]))
 
         for k, v in self.bounds.iteritems():
             if self.r.hexists(self.mapmeta, k):
                 self.bounds[k] = float(self.r.hget(self.mapmeta, k))
+                if self.DEBUG:
+                    print("Got {} as {} from Redis".format(k, self.bounds[k]))
+
+            
+        if self.r.hexists(self.mapmeta, "granularity"):
+            self.granularity = float(self.r.hget(self.mapmeta, "granularity"))
+            print("Overwrote instantiation granularity with {} from Redis".format(self.granularity))
 
         # Push origin and boundaries back to redis
         self.r.hmset(self.mapmeta, self.origin)
         self.r.hmset(self.mapmeta, self.bounds)
+        self.r.hmset(self.mapmeta, {
+            "granularity" : self.granularity
+        })
 
         if self.DEBUG:
-            print("Loaded prior Occupancy Grid from Redis")
             self.pp.pprint(self.bounds)
             print("Using redis key '{}' for map, channel '{}' for updates"
                   "".format(self.mapname, self.channel))
@@ -774,7 +786,6 @@ class GridManager:
         of a 2D array, with floating occupancies. Default value is -1
         '''
         xwidth, ywidth = self._get_map_dimensions()
-        # Initialise a 2D array of the correct size... yuck
         data = []
 
         for col in xrange(ywidth):
@@ -908,7 +919,7 @@ class GridManager:
 
         if f is None:
             # Development & Testing map. Craxy indexing transforms into correct quadrant
-            f = map(lambda x: x[::-1], self._testworld.splitlines()[::-1])
+            f = self._testworld.splitlines()[::-1]
         else:
             f = open(f, 'r')
             f = f.read().splitlines()
