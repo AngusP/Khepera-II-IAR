@@ -1283,9 +1283,17 @@ class ROSGenerator:
 
     def gen_map(self, data, og):
         '''
+        Return a row-major (y main list, xs sublist) array 
+        retpresenting the whole map.
+
         Arguments;
         data  --  list(list(int)) of occupancy data
         og    --  Instance of a GridManager class
+
+        NOTE: This method returns a fully populated map wthin the bounding
+              box, it is *not* going to be fast.
+              For speed use methods such as get() and Redis subscribers to 
+              in-place update a cached map.
 
         TODO: Use faster method than blitting through entire gridspace with data ^
         '''
