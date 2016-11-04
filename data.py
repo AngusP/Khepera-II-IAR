@@ -1337,7 +1337,8 @@ class ROSGenerator:
         # Units (metres, as far as ROS cares, but not in our case)
         m.info.resolution = og.granularity
 
-        # Pose of the point zeroth datapoint
+        # Pose of the point zeroth datapoint, offset by half a granularity to reflect 
+        # the behaviour of snapping
         m.info.origin.position.x = og.bounds['minx'] - og.origin['x'] - (float(og.granularity)/2.0)
         m.info.origin.position.y = og.bounds['miny'] - og.origin['y'] - (float(og.granularity)/2.0)
         m.info.origin.position.z = og.origin['z']
@@ -1345,7 +1346,7 @@ class ROSGenerator:
         m.info.origin.orientation.y = og.origin['quat_y']
         m.info.origin.orientation.z = og.origin['quat_z']
         m.info.origin.orientation.w = og.origin['quat_w']
-        data = np.ndarray((m.info.height, m.info.width), dtype=int)
+        data = np.ndarray((m.info.width, m.info.height), dtype=int)
         data.fill(-1)
 
         squares = og._get_map_keys()
@@ -1357,7 +1358,7 @@ class ROSGenerator:
             if occ is None:
                 raise ValueError("Key {} in map has no associated occupancy!"
                                  "".format(sq))
-            data[y][x] = occ
+            data[x][y] = occ
 
         m.data = data.flatten().tolist()
 
