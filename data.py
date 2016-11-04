@@ -529,7 +529,7 @@ class DataStore:
                             self.og._bounds_check(new_bounds['maxx'], new_bounds['maxy'], True)
                             
                             # SLOOOOOOOOW, maybe blocking subscribers
-                            og_map = rg.gen_map(self.og.get_map(), self.og)
+                            og_map = rg.gen_map(self.og)
 
                     # ALways refresh
                     map_pub.publish(og_map)
@@ -1298,7 +1298,7 @@ class ROSGenerator:
         return path
 
 
-    def gen_map(self, data, og):
+    def gen_map(self, og):
         '''
         Arguments:
         og    --  Instance of a GridManager class
