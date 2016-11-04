@@ -1329,8 +1329,8 @@ class ROSGenerator:
         m.info.resolution = og.granularity
 
         # Pose of the point zeroth datapoint
-        m.info.origin.position.x = og.bounds['minx'] - og.origin['x']
-        m.info.origin.position.y = og.bounds['miny'] - og.origin['y']
+        m.info.origin.position.x = og.bounds['minx'] - og.origin['x'] - (float(og.granularity)/2.0)
+        m.info.origin.position.y = og.bounds['miny'] - og.origin['y'] - (float(og.granularity)/2.0)
         m.info.origin.position.z = og.origin['z']
         m.info.origin.orientation.x = og.origin['quat_x']
         m.info.origin.orientation.y = og.origin['quat_y']
