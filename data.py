@@ -887,6 +887,8 @@ class GridManager:
             'occ'  : int(occupancy),
             'seen' : time.time()
         })
+        if self.DEBUG:
+            print("update {} {} to {}".format(x,y,occupancy))
         self.r.sadd(self.mapname, k)
         self.r.publish(self.channel, k)
 
@@ -1036,7 +1038,6 @@ class GridManager:
             self.r.publish(self.channel, "#bounds {}".format(yaml.dump(self.bounds)))
 
 
-
     def _snap(self, coord):
         '''
         Snap a given coordinate to the grid
@@ -1086,8 +1087,10 @@ class GridManager:
                 
             self.r.delete(self.mapname)
             self.r.delete(self.mapmeta)
-                
-                
+        
+            # Hack but effective
+            self.__init__(self.r, self.granularity, self.DEBUG)
+            
             print("!!! Deleted the world from Redis !!!")
 
         else:
