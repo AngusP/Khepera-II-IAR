@@ -505,7 +505,7 @@ class DataStore:
                         # in-place update this grid in og_map (the ROS OccupancyGrid instance)
                         x, y = self.og._dekey(item['data'])
                         width, height = self.og._get_map_dimensions()
-                        y *= height # row major, so scale y onto a flat array
+                        y *= width # row major, so scale y onto a flat array
                         og_map.data[int(x+y)] = int(newm_grid['occ']) # Toootaly gonna work first time
 
                         rospy.loginfo("Map update {} --> {}".format(item['data'], newm_grid['occ']))
