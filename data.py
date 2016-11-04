@@ -507,7 +507,7 @@ class DataStore:
                         
                         # in-place update this grid in og_map (the ROS OccupancyGrid instance)
                         # the map takes absolute coordinates to array index
-                        x, y = map(lambda x: x / og.granularity, (x,y))
+                        x, y = map(lambda x: x / self.og.granularity, (x,y))
                         width, height = self.og._get_map_dimensions()
                         y *= width # row major, so scale y onto a flat array
                         og_map.data[int(x+y)] = occ # Toootaly worked first time
@@ -1286,6 +1286,8 @@ class ROSGenerator:
         Arguments;
         data  --  list(list(int)) of occupancy data
         og    --  Instance of a GridManager class
+
+        TODO: Use faster method than blitting through entire gridspace with data ^
         '''
         m = OccupancyGrid()
 
