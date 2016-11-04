@@ -1279,8 +1279,8 @@ class ROSGenerator:
 
         # Width & height are a number of cells
         # Width folows x (forward) , height y
-        m.info.width  = -og.bounds['minx'] + og.bounds['maxx']
-        m.info.height = -og.bounds['miny'] + og.bounds['maxy']
+        m.info.width  = (-og.bounds['minx'] + og.bounds['maxx']) / og.granularity
+        m.info.height = (-og.bounds['miny'] + og.bounds['maxy']) / og.granularity
         # Units (metres, as far as ROS cares, but not in our case)
         m.info.resolution = og.granularity
 
