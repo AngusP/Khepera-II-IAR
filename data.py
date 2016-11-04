@@ -499,8 +499,8 @@ class DataStore:
                     if not item['data'].startswith("#"):
                         newm_grid = self.r.hgetall(item['data'])
                         
-                        if newm_grid is None:
-                            raise KeyError("Couldn't find published key {} in Redis".format(item['data']))
+                        if not newm_grid.has_key("occ"):
+                            raise KeyError("Published key {} missing member 'occ'".format(item['data']))
                         
                         # in-place update this grid in og_map (the ROS OccupancyGrid instance)
                         x, y = self.og._dekey(item['data'])
@@ -538,7 +538,7 @@ class DataStore:
 
             except (KeyError, ValueError, IndexError, TypeError) as e:
                 rospy.logwarn(str(e))
-                raise e
+                #raise e
 
 
     def replay(self, speed=1.0, limit=-1):
