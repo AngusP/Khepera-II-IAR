@@ -629,7 +629,7 @@ class GridManager:
     The Map is _sparse_, in that it is hypothetically infinitely large.
     '''
     
-    def __init__(self, redis, granularity=100.0, debug=False):
+    def __init__(self, redis, granularity=10.0, debug=False):
         '''
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
@@ -1101,6 +1101,23 @@ class GridManager:
         '''
         Snap a given coordinate to the grid
 
+        Snapping treats the occupancy grid squares as being centred on the pysical (e.g.)
+        pose co-ordinate space: (Shown bracketed '(0,0)', OG shown braced '[0,0]')
+        
+                 Y
+                 ^
+                 |
+         ________|________
+        |        |        |
+        |        |        |
+        |        |        |
+        |        |(0,0)   |
+        |        \-----------> X
+        |                 |
+        |                 |
+        | [0,0]           |
+        \_________________/
+
         Arguments:
         coord  --  Arbuitary coordinate (float, int)
 
@@ -1108,7 +1125,7 @@ class GridManager:
         coord  --  Snapped to grid. int or float, depending on whether the granularity is an
                    integer or float.
         '''
-        # See how far it is from the nearest lower point
+        # See how far it is from the next point
         distance = float(coord) % self.granularity
         
         # If closer to a higher one, push it up
@@ -1117,15 +1134,7 @@ class GridManager:
         else:
             coord -= distance
 
-        # if self.granularity < 1.0:
-        #     # If the granularity is sub-integer, try and kill any floating point artefacts
-        #     # Get order of magnitude:
-        #     om = int(round(math.log10(self.granularity), 0))
-        #     coord = round(coord, -om)
-        # else:
-        #     # If it isn't, ints make all floating point problems go away
-        #     coord = int(coord)
-
+        # Don't float if not needed
         if self.granularity >= 1.0:
             coord = int(coord)
         
