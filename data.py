@@ -537,7 +537,7 @@ class DataStore:
 
             except (KeyError, ValueError, IndexError, TypeError) as e:
                 rospy.logwarn(str(e))
-                pass
+                raise e
 
 
     def replay(self, speed=1.0, limit=-1):
@@ -893,6 +893,7 @@ class GridManager:
         self.r.publish(self.channel, k)
 
 
+
     def load(self, f=None):
         '''
         Load in a map from a given file.
@@ -906,8 +907,8 @@ class GridManager:
         print("Loading...")
 
         if f is None:
-            # Development & Testing map, origin will be upper left corner :'(
-            f = self._testworld.splitlines()
+            # Development & Testing map. Craxy indexing transforms into correct quadrant
+            f = map(lambda x: x[::-1], self._testworld.splitlines()[::-1])
         else:
             f = open(f, 'r')
             f = f.read().splitlines()
@@ -930,15 +931,29 @@ class GridManager:
                             float(i) * self.granularity,
                             certainty)
         
+        if type(f) is file:
+            f.close()
+        
         print("")
         print("Done.")
 
 
-    def dump(self):
+
+    def dump(self, f=None):
         '''
         Dump map to a string or file
+
+        TODO: NOTE: Not yet compatible with load()
         '''
-        raise NotImplementedError()
+        dump = yaml.dump(self.get_map())
+        
+        if f is not None:
+            f = open(f, 'w')
+            f.write(dump)
+            f.close()
+
+        return dump
+
 
 
     def _genkey(self, x, y):
@@ -1087,11 +1102,12 @@ class GridManager:
                 
             self.r.delete(self.mapname)
             self.r.delete(self.mapmeta)
+
+            print("!!! Deleted the world from Redis !!!")
         
             # Hack but effective
             self.__init__(self.r, self.granularity, self.DEBUG)
             
-            print("!!! Deleted the world from Redis !!!")
 
         else:
             print("Did not delete the world")
