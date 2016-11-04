@@ -40,6 +40,7 @@ except ImportError as e:
     ros = False
     del e
 
+
 # ROS Import check wrapper
 def requireros(func):
     def check_and_call(*args, **kwargs):
@@ -407,8 +408,10 @@ class DataStore:
 
         # Pre-subscription, we should load the OccupancyGrid Map.
         # This'll be the only one of our ROS classes that persists
+        print("generating map...")
         og_map = rg.gen_map(self.og.get_map(), self.og)
         map_pub.publish(og_map)
+        print("done.")
 
         sub = self.r.pubsub()
         sub.subscribe([self.listname, self.goallist, self.mapchan])
@@ -490,18 +493,49 @@ class DataStore:
                     # Handle a map diff (update)
                     # TODO: Handle dimension changes
                     # Fetch contents of new map key
-                    newm_grid = self.r.hgetall(item['data'])
-                    rospy.loginfo("Map update {} --> {}".format(item['data'], newm_grid))
-                    map_pub.publish(og_map)
+                    
+                    # A sharp represents a meta message
+                    if not item['data'].startswith("#"):
+                        newm_grid = self.r.hgetall(item['data'])
                         
+                        if newm_grid is None:
+                            raise KeyError("Couldn't find published key {} in Redis".format(item['data']))
+                        
+                        # in-place update this grid in og_map (the ROS OccupancyGrid instance)
+                        x, y = self.og._dekey(item['data'])
+                        width, height = self.og._get_map_dimensions()
+                        y *= height # row major, so scale y onto a flat array
+                        og_map.data[x+y] = newm_grid['occ'] # Toootaly gonna work first time
+
+                        rospy.loginfo("Map update {} --> {}".format(item['data'], newm_grid['occ']))
+
+
+                    else:
+                        if item['data'].startswith("#bounds"):
+                            new_bounds = yaml.load(item['data'].strip("#bounds"))
+                            
+                            if type(new_bounds) is not dict:
+                                raise TypeError("Couldn't deserialise {} message '{}' into dict - got {}"
+                                                "".format(item['channel'], item['data'], type(new_bounds)))
+                            
+                            # TODO: In-place update, waaaay faster
+                            # 'bounds check' with True, which will resize the 
+                            self.og._bounds_check(new_bounds['minx'], new_bounds['miny'], True)
+                            self.og._bounds_check(new_bounds['maxx'], new_bounds['maxy'], True)
+                            
+                            # SLOOOOOOOOW, maybe blocking subscribers
+                            og_map = rg.gen_map(self.og.get_map(), self.og)
+
+                    # ALways refresh
+                    map_pub.publish(og_map)
 
                 else:
                     # If we get an unexpected channel, complain loudly.... Thish should never happen
-                    complaint = "Encountered unhandled channel '" + str(item['channel']) + "'"
+                    complaint = "Encountered unhandleable channel '" + str(item['channel']) + "'"
                     raise ValueError(complaint)
 
 
-            except (KeyError, ValueError, IndexError) as e:
+            except (KeyError, ValueError, IndexError, TypeError) as e:
                 rospy.logwarn(str(e))
                 pass
 
@@ -590,18 +624,32 @@ class GridManager:
     The Map is _sparse_, in that it is hypothetically infinitely large.
     '''
     
-    def __init__(self, redis, granularity=1.0, debug=False):
+    def __init__(self, redis, granularity=10.0, debug=False):
         '''
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
                          whatever units the distances are given in.
 
-        Standards:
+        Standards & Conventions:
         map:x:y = {
             'occ' : -1 or [0..100]
         }
-        '''
 
+
+        Axes:
+
+                 (forward)
+                     X
+                     ^
+                     |
+                     |
+                     |
+          Y <------- Z
+        (left)      (up)
+        '''
+        self.DEBUG = debug
+
+        # For this map the axes directions are the opposite to the convention :'(
         self._testworld = """\
 ????????????????????????????????
 ?XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX?
@@ -641,13 +689,16 @@ class GridManager:
         
         self.granularity = granularity
         
+        self.wt = whiptail.Whiptail()
+        self.pp = pprint.PrettyPrinter(indent=1)
+
         self.r = redis
         # Redis list and channel names
         self.mapname = "map"
         self.mapmeta = self.mapname + "-meta"
         self.channel = self.mapname + "-update"
         
-        # Default origin
+        # Default origin, pose given to ROS etc.
         self.origin = {
             'x'       : 0.0,
             'y'       : 0.0,
@@ -678,16 +729,17 @@ class GridManager:
         self.r.hmset(self.mapmeta, self.origin)
         self.r.hmset(self.mapmeta, self.bounds)
 
+        if self.DEBUG:
+            print("Loaded prior Occupancy Grid from Redis")
+            self.pp.pprint(self.bounds)
+            print("Using redis key '{}' for map, channel '{}' for updates"
+                  "".format(self.mapname, self.channel))
+
 
         # Regex to turn a serialised key into coords
         # This re finds a combination of two floats or two ints
         # IMPORTANT: Must remain consistent with _genkey()
         self._dekey_re = re.compile("([+-]?\d+\.\d*|\d+):([+-]?\d+\.\d*|\d+)$")
-        
-        self.wt = whiptail.Whiptail()
-        self.pp = pprint.PrettyPrinter(indent=1)
-
-        self.DEBUG = debug
 
 
 
@@ -705,12 +757,14 @@ class GridManager:
     def get(self, x, y):
         '''
         Returns the int held at the given grid coord's occupancy value
+
+        Handles type expetions
         '''
         occ = self.r.hget(self._genkey(x,y), 'occ')
-        if occ is None:
-            return None
-        else:
+        try:
             return int(occ)
+        except (ValueError, TypeError, AttributeError):
+            return None
 
 
 
@@ -734,6 +788,47 @@ class GridManager:
                 
             data.append(row_l)
         return data
+
+
+    @requireimage
+    def render(self, name=None):
+        '''
+        Render a bitmap image of the map in Greyscale + Alpha
+
+        Arguments:
+        name  --  Image name to save to, will not save if None
+
+        Returns:
+        PIL Image instance. Save with .save(), .show() is a debug preview
+        '''
+        w, h = self._get_map_dimensions()
+        if self.DEBUG:
+            print("Image dimensions are {}x by {}y".format(w, h))
+
+        data = np.zeros((h, w, 4), dtype=np.uint8)
+        
+        map_data = self.get_map()
+        
+        for col in xrange(h-1):
+            for row in xrange(w-1):
+                occupancy = map_data[col][row]
+                if occupancy >= 0:
+                    # Greyscale
+                    occupancy = int(2.55 * (100 - occupancy))
+                    data[col, row] = [occupancy]*3 + [255]
+                else:
+                    # Unknown
+                    data[col, row] = [0,255,0,0] # 100% transparent green
+        
+        img = PIL.Image.fromarray(data, 'RGBA')
+        #i = PIL.Image.new(mode='LA', size=(width, height), color=0)
+
+        if name is not None:
+            img.save(name)
+            if self.DEBUG:
+                print("Saved image as '{}'".format(name))
+
+        return img
 
 
     def _get_map_keys(self):
@@ -844,46 +939,6 @@ class GridManager:
         raise NotImplementedError()
 
 
-
-    @requireimage
-    def render(self, name=None):
-        '''
-        Render a bitmap image of the map in Greyscale + Alpha
-
-        Arguments:
-        name  --  Image name to save to, will not save if None
-
-        Returns:
-        PIL Image instance. Save with .save(), .show() is a debug preview
-        '''
-        w, h = self._get_map_dimensions()
-        print("Image dimensions are {}x by {}y".format(w, h))
-
-        data = np.zeros((h, w, 4), dtype=np.uint8)
-        
-        map_data = self.get_map()
-        
-        for col in xrange(h-1):
-            for row in xrange(w-1):
-                occupancy = map_data[col][row]
-                if occupancy >= 0:
-                    # Greyscale
-                    occupancy = int(2.55 * (100 - occupancy))
-                    data[col, row] = [occupancy]*3 + [255]
-                else:
-                    # Unknown
-                    data[col, row] = [255,0,0,0]
-        
-        img = PIL.Image.fromarray(data, 'RGBA')
-        #i = PIL.Image.new(mode='LA', size=(width, height), color=0)
-
-        if name is not None:
-            img.save(name)
-            print("Saved image as '{}'".format(name))
-
-        return img
-
-
     def _genkey(self, x, y):
         '''
         Standardised generator for a hash key for a given coord.
@@ -917,6 +972,8 @@ class GridManager:
         x       --  X coordinate
         y       --  Y Coordinate
         expand  --  True automagics the map to be bigger, False doesn't
+
+        Note this may become inconsistent with redis - this checks locally cached bounds
         '''
         if not expand:
             if x > self.bounds['maxx']:
@@ -927,7 +984,7 @@ class GridManager:
                 return False
             elif y < self.bounds['miny']:
                 return False
-        
+
         if expand:
             change = False
             if x > self.bounds['maxx']:
@@ -945,13 +1002,35 @@ class GridManager:
                 change = True
 
             if change:
-                # Let Redis know we've made changes
-                self.r.hmset(self.mapmeta, self.bounds)
-                self.r.publish(self.channel, "#bounds")
+                self._meta_sync()
+                # ^^ MUST remain consistent with DataStore.rospipe() processing
 
         return True
 
 
+    def _meta_sync(self):
+        '''
+        Re-sync map meta with Redis. The larger will persist, give there is
+        no way to sync on timestamps
+        '''
+        redis_meta = self.r.hgetall(self.mapmeta)
+        change = False
+
+        for key, val in self.bounds:
+            try:
+                if redis_meta[key] > val:
+                    self.bounds[key] = redis_meta[key] # case redis was bigger
+                elif redis_meta[key] < val:
+                    self.r.hset(key, val) # case we're bigger, push back
+                # if same do nothing, we're fine
+            except KeyError as e:
+                print(e)
+
+        if self.DEBUG:
+            print("bounds check increased dimensions {}".format(self.bounds))
+        
+        if change:
+            self.r.publish(self.channel, "#bounds {}".format(yaml.dump(self.bounds)))
 
 
     def _snap(self, coord):
@@ -1177,18 +1256,19 @@ class ROSGenerator:
 
         # Width & height are a number of cells
         # Width folows x (forward) , height y
-        m.info.width, m.info.height = map(lambda x: x * og.granularity, og._get_map_dimensions()) 
+        m.info.width  = -og.bounds['minx'] + og.bounds['maxx']
+        m.info.height = -og.bounds['miny'] + og.bounds['maxy']
         # Units (metres, as far as ROS cares, but not in our case)
-        m.info.resolution = og.granularity * 100
+        m.info.resolution = og.granularity
 
-        # Pose and quaternion are all centered
-        m.info.origin.position.x = 0.0
-        m.info.origin.position.y = 0.0
-        m.info.origin.position.z = 0.0
-        m.info.origin.orientation.x = 0.0
-        m.info.origin.orientation.y = 0.0
-        m.info.origin.orientation.z = 0.0
-        m.info.origin.orientation.w = 0.0
+        # Pose of the point (0,0)
+        m.info.origin.position.x = og.origin['x']
+        m.info.origin.position.y = og.origin['y']
+        m.info.origin.position.z = og.origin['z']
+        m.info.origin.orientation.x = og.origin['quat_x']
+        m.info.origin.orientation.y = og.origin['quat_y']
+        m.info.origin.orientation.z = og.origin['quat_z']
+        m.info.origin.orientation.w = og.origin['quat_w']
         m.data = []
 
         # ROS wants the data in Row Major order
