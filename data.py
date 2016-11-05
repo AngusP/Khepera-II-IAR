@@ -803,13 +803,21 @@ class GridManager:
 
 
 
-    def get_map(self):
+    def get_map(self, rtype='L'):
         '''
-        Return a row-major (y main list, xs sublist) array representing 
-        the whole map. Occupancies are ints, default is unknown (-1)
+        Return an array representing the whole map. Occupancies are ints, 
+        default is unknown (-1). Range should be [-1..100].
+
+        Arguments:
+        rtype  --  Type to return, default 'L'
+                -  'L' is a 2D python row-major list (biggest me use)
+                -  'N' is a 2D row-major NumPy ndarray
+                -  'C' is a flattened row-major NumPy ndarray (C style)
+                -  'F' is a flattened row-major NumPy ndarray (C style)
+        
 
         NOTE: This method returns a fully populated map wthin the bounding
-              box, it is *not* going to be fast.
+              box, it is *not* going to be as fast.
               For speed use methods such as get() and Redis subscribers to 
               in-place update a cached map.
         '''
@@ -834,7 +842,14 @@ class GridManager:
         #         row_l.append(occ)
         #     data.append(row_l)
 
-        # Not as optimal as returning a ndarray
+        if rtype == 'N':
+            return data
+        elif rtype == 'C':
+            return data.flatten('C') # C/C++ Style, row major
+        elif rtype == 'F':
+            return data.flatten('F') # FORTRAN Style, col major
+        
+        # Default ('L') give a 2D list
         return data.tolist()
 
 
@@ -1409,19 +1424,7 @@ class ROSGenerator:
         m.info.origin.orientation.y = og.origin['quat_y']
         m.info.origin.orientation.z = og.origin['quat_z']
         m.info.origin.orientation.w = og.origin['quat_w']
-        data = np.ndarray((m.info.height, m.info.width), dtype=int)
-        data.fill(-1)
-
-        squares = og._get_map_keys()
-
-        for sq in squares:
-            occ = og._get_keyed(sq)
-            # convert from absolute coordinates to array indicies
-            x, y = map(lambda l: int(l / og.granularity), og._dekey(sq))
-            if occ is None:
-                raise ValueError("Key {} in map has no associated occupancy!"
-                                 "".format(sq))
-            data[y][x] = occ
+        data = og.get_data('N')
 
         m.data = data.flatten().tolist()
 
