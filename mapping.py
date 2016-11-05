@@ -16,27 +16,66 @@ import math
 
 
 testpose = {
-    'r0': '92.0',
-    'r1': '52.0',
-    'r2': '36.0',
-    'r3': '28.0',
-    'r4': '48.0',
-    'r5': '52.0',
-    'r6': '56.0',
-    'r7': '28.0',
-    't': '1478358236.226565',
-    'theta': '-0.5446428571428569',
-    'x': '359.79165663643647',
-    'y': '-279.4477174535753'
+    'r0'    : '92.0',
+    'r1'    : '52.0',
+    'r2'    : '36.0',
+    'r3'    : '28.0',
+    'r4'    : '48.0',
+    'r5'    : '52.0',
+    'r6'    : '56.0',
+    'r7'    : '28.0',
+    't'     : '1478358236.226565',
+    'theta' : '-0.5446428571428569',
+    'x'     : '359.79165663643647',
+    'y'     : '-279.4477174535753'
 }
 
 
 
-class Point(int):
+class Point():
     
-    def __int__(self, x, y):
-        self.x = x
+    def __init__(self, x=None, y=None, val=None):
+        '''
+        Point with a value.
+        Built-in methods will all operate over val
+        '''
+        self.x = x 
         self.y = y
+        self.val = val
+
+    def _euc(self, p):
+        '''
+        Euclidean distance
+        '''
+        dx = self.x - p.x
+        dy = self.y - p.y
+        return math.sqrt(dx**2 + dy**2)
+
+    def __float__(self):
+        return self.val
+
+    def __int__(self):
+        return int(float(self))
+
+    def __eq__(self, p):
+        return self.val == p.val
+
+    def __ge__(self, p):
+        return int(self) >= int(p)
+
+    def __le__(self, p):
+        return int(self) <= int(p)
+
+    def __gt__(self, p):
+        return int(self) > int(p)
+
+    def __lt__(self, p):
+        return int(self) < int(p)
+
+    def __str__(self):
+        return "({},{}) {}".format(self.x, self.y, self.val)
+
+    __repr__ = __str__
 
 
 class Mapping(object):
@@ -97,36 +136,47 @@ class Mapping(object):
                         raise KeyError("Incomplete hashmap published '{}' --> {}"
                                        "".format(msg['data'], data))
 
-                    # TODO: Do the calcs and push to map
+                    points = self._activation_to_points(self, data)
+                    
+                    for point in points:
+                        prior = self.ds.og.get(point.x, point.y)
+                        if prior is None:
+                            prior = 0
+
+                        certainty = 0.0 
+                        
+                        if point.val < 60.0:
+                            certainty = (point.val - 60.0) / 100.0
+
+                        self.ds.og.update(point.x, point.y, ((prior + point.val) * certianty))
                     
             except KeyError as e:
                 print("!!!!! EXCEPTION - Continuing. {}".format(str(e)))
     
 
 
-    def _activation_to_gridup(self, data):
+    def _activation_to_points(self, data):
         '''
         Arguments:
         data  --  hashmap of pose and distance sensor activations
+
+        Note no key existance checking will be done here
+
+        Returns:
+        Array of Points() instances, with coord and distance from bot
         '''
         
         keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
         pre_points = zip(keys, self.sensor_angles, self.sensor_offsets)
 
         points = []
-        intensities = []
 
         # Basic trig, converts ranges to points relative to robot
         for point in pre_points:
             reading = float(data[point[0]])
             distance = utils.ir_to_dist(reading)
+            print("Reading {} yields dist {}".format(reading, distance))
 
-            #print(str(point[0]) + " at " + str(distance))
-
-            # Don't render 'infinite' distance
-            if distance > 60.0:
-                continue
-            
             pt = Point()
 
             # point[2] is the sensor's coords relative to the robot
@@ -134,9 +184,15 @@ class Mapping(object):
 
             pt.x = (distance * math.cos(point[1])) + point[2][0]
             pt.y = (distance * math.sin(point[1])) + point[2][1]
+            pt.val = distance
 
-            intensities.append(distance)
             points.append(pt)
+
+        return points
+
+
+    def _activation_to_occ(self, activation):
+        
 
 
 if __name__ == "__main__":
