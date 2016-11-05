@@ -492,7 +492,8 @@ class DataStore:
 
                 if item['channel'] == self.mapchan:
                     # Handle a map diff (update)
-                    # TODO: Handle dimension changes
+                    # TODO: Handle dimension changes in a less slow way
+                    # TODO: Handle granularity changes
                     # Fetch contents of new map key
                     
                     # A sharp represents a meta message
@@ -812,61 +813,30 @@ class GridManager:
               For speed use methods such as get() and Redis subscribers to 
               in-place update a cached map.
         '''
-        xwidth, ywidth = self._get_map_dimensions()
-        data = []
+        xwidth, yheight = self._get_map_dimensions()
+        data = np.ndarray((yheight, xwidth), dtype=int)
+        data.fill(-1)
 
-        for col in xrange(ywidth):
-            row_l = []
+        for k in self._get_map_keys():
+            x, y = self._dekey(k)
+            xi, yi = self._genindex(x, y)
+            data[yi][xi] = self._get_keyed(k)
+
+
+        # # TODO: This is dumb, only works with positive coords. Fix
+        # for col in xrange(ywidth):
+        #     row_l = []
             
-            for row in xrange(xwidth):
-                occ = self.get(row * self.granularity, col * self.granularity)
-                if occ is None:
-                    occ = -1 # Default to unknown if no key
-                row_l.append(occ)
-                
-            data.append(row_l)
-        return data
+        #     for row in xrange(xwidth):
+        #         occ = self.get(row * self.granularity, col * self.granularity)
+        #         if occ is None:
+        #             occ = -1 # Default to unknown if no key
+        #         row_l.append(occ)
+        #     data.append(row_l)
 
+        # Not as optimal as returning a ndarray
+        return data.tolist()
 
-    @requireimage
-    def render(self, name=None):
-        '''
-        Render a bitmap image of the map in Greyscale + Alpha
-
-        Arguments:
-        name  --  Image name to save to, will not save if None
-
-        Returns:
-        PIL Image instance. Save with .save(), .show() is a preview
-        '''
-        w, h = self._get_map_dimensions()
-        if self.DEBUG:
-            print("Image dimensions are {}x by {}y".format(w, h))
-
-        data = np.zeros((h, w, 4), dtype=np.uint8)
-        
-        map_data = self.get_map()
-        
-        for col in xrange(h-1):
-            for row in xrange(w-1):
-                occupancy = map_data[col][row]
-                if occupancy >= 0:
-                    # Greyscale
-                    occupancy = int(2.55 * (100 - occupancy))
-                    data[col, row] = [occupancy]*3 + [255]
-                else:
-                    # Unknown
-                    data[col, row] = [0,255,0,0] # 100% transparent green
-        
-        img = PIL.Image.fromarray(data, 'RGBA')
-        #i = PIL.Image.new(mode='LA', size=(width, height), color=0)
-
-        if name is not None:
-            img.save(name)
-            if self.DEBUG:
-                print("Saved image as '{}'".format(name))
-
-        return img
 
 
     def _get_map_keys(self):
@@ -875,7 +845,8 @@ class GridManager:
         '''
         return self.r.smembers(self.mapname)
 
-        
+
+
     def _get_map_dimensions(self):
         '''
         Returns array size needed to fit map given bounds and granularity.
@@ -883,6 +854,81 @@ class GridManager:
         xwidth  = 1 + int(math.ceil((-self.bounds['minx'] + self.bounds['maxx']) / self.granularity))
         yheight = 1 + int(math.ceil((-self.bounds['miny'] + self.bounds['maxy']) / self.granularity))
         return xwidth, yheight
+
+
+
+    def _genindex(self, x, y):
+        '''
+        Given a coordinate on grid return the corresponding index into a 2D 
+        array for that point, row major:
+        
+        [[ (0,0)     , (1,0)     , ... , (len(x),0)     ],
+         ...
+         [ (0,len(y)), (1,len(y)), ... , (len(x),len(y))]]
+        
+        This method is very similar to GridManager._get_map_dimensions(), which could
+        be used to initialise an array thn indexed with this method.
+
+        Arguments:
+        x  --  x (forward) axis coord
+        y  --  y (left) axis coord
+        '''
+
+        xoffset = math.floor(-self.bounds['minx'] / self.granularity)
+        yoffset = math.floor(-self.bounds['miny'] / self.granularity)
+
+        xi = int((self._snap(x) / self.granularity) + xoffset)
+        yi = int((self._snap(y) / self.granularity) + yoffset)
+
+        if xi < 0 or yi < 0:
+            raise IndexError("Co-ordinates ({},{}) yielding index [{},{}] out of bounds; "
+                             "Bounds are {}".format(x, y, xi, yi, self.bounds))
+
+        return xi, yi
+
+
+    def _snap(self, coord):
+        '''
+        Snap a given coordinate to the grid
+
+        Snapping treats the occupancy grid squares as being centred on the pysical (e.g.)
+        pose co-ordinate space: (Shown bracketed '(0,0)', OG shown braced '[0,0]')
+        
+                 Y
+                 ^
+                 |
+         ________|________
+        |        |        |
+        |        |        |
+        |        |        |
+        |        |(0,0)   |
+        |        \-----------> X
+        |                 |
+        |                 |
+        | [0,0]           |
+        \_________________/
+
+        Arguments:
+        coord  --  Arbuitary coordinate (float, int)
+
+        Returns:
+        coord  --  Snapped to grid. int or float, depending on whether the granularity is an
+                   integer or float.
+        '''
+        # See how far it is from the next point
+        distance = float(coord) % self.granularity
+        
+        # If closer to a higher one, push it up
+        if distance >= self.granularity/2.0:
+            coord += (self.granularity - distance)
+        else:
+            coord -= distance
+
+        # Don't float if not needed
+        if self.granularity >= 1.0:
+            coord = int(coord)
+        
+        return coord
 
 
     def set_origin(self, origin_dict):
@@ -935,6 +981,23 @@ class GridManager:
 
 
 
+
+    def touch(self, x, y):
+        '''
+        Set 'seen' key for a gridsquare to current time (a la *NIX 'touch')
+        '''
+        raise NotImplementedError()
+
+
+
+    def get_seentime(self, x, y):
+        '''
+        Return a gridsquare's last seen time
+        '''
+        raise NotImplementedError()
+
+
+
     def load(self, f=None):
         '''
         Load in a map from a given file.
@@ -949,7 +1012,7 @@ class GridManager:
 
         if f is None:
             # Development & Testing map. Craxy indexing transforms into correct quadrant
-            f = self._testworld.splitlines()[::-1]
+            f = map(lambda x: x[::-1], self._testworld.splitlines())
         else:
             f = open(f, 'r')
             f = f.read().splitlines()
@@ -997,6 +1060,48 @@ class GridManager:
 
 
 
+    @requireimage
+    def render(self, name=None):
+        '''
+        Render a bitmap image of the map in Greyscale + Alpha
+
+        Arguments:
+        name  --  Image name to save to, will not save if None
+
+        Returns:
+        PIL Image instance. Save with .save(), .show() is a preview
+        '''
+        w, h = self._get_map_dimensions()
+        if self.DEBUG:
+            print("Image dimensions are {}x by {}y".format(w, h))
+
+        data = np.zeros((h, w, 4), dtype=np.uint8)
+        
+        map_data = self.get_map()
+        
+        for col in xrange(h-1):
+            for row in xrange(w-1):
+                occupancy = map_data[col][row]
+                if occupancy >= 0:
+                    # Greyscale
+                    occupancy = int(2.55 * (100 - occupancy))
+                    data[col, row] = [occupancy]*3 + [255]
+                else:
+                    # Unknown
+                    data[col, row] = [0,255,0,0] # 100% transparent green
+        
+        img = PIL.Image.fromarray(data, 'RGBA')
+        #i = PIL.Image.new(mode='LA', size=(width, height), color=0)
+
+        if name is not None:
+            img.save(name)
+            if self.DEBUG:
+                print("Saved image as '{}'".format(name))
+
+        return img
+
+
+
     def _genkey(self, x, y):
         '''
         Standardised generator for a hash key for a given coord.
@@ -1008,14 +1113,15 @@ class GridManager:
         return self.mapname + ":" + str(self._snap(x)) + ":" + str(self._snap(y))
 
 
-        
+
+
     def _dekey(self, key):
         '''
         Turn a string into a (x,y) pair using the member regex _dekey_re
         and return said tuple
         '''
         try:
-            return map(float, self._dekey_re.findall(key)[0])
+            return tuple(map(float, self._dekey_re.findall(key)[0]))
         except Exception as e:
             raise KeyError("Could not de-key {}  --  '{}'".format(key, e))
 
@@ -1097,53 +1203,10 @@ class GridManager:
             self.r.publish(self.channel, "#bounds {}".format(yaml.dump(self.bounds)))
 
 
-    def _snap(self, coord):
-        '''
-        Snap a given coordinate to the grid
-
-        Snapping treats the occupancy grid squares as being centred on the pysical (e.g.)
-        pose co-ordinate space: (Shown bracketed '(0,0)', OG shown braced '[0,0]')
-        
-                 Y
-                 ^
-                 |
-         ________|________
-        |        |        |
-        |        |        |
-        |        |        |
-        |        |(0,0)   |
-        |        \-----------> X
-        |                 |
-        |                 |
-        | [0,0]           |
-        \_________________/
-
-        Arguments:
-        coord  --  Arbuitary coordinate (float, int)
-
-        Returns:
-        coord  --  Snapped to grid. int or float, depending on whether the granularity is an
-                   integer or float.
-        '''
-        # See how far it is from the next point
-        distance = float(coord) % self.granularity
-        
-        # If closer to a higher one, push it up
-        if distance >= self.granularity/2.0:
-            coord += (self.granularity - distance)
-        else:
-            coord -= distance
-
-        # Don't float if not needed
-        if self.granularity >= 1.0:
-            coord = int(coord)
-        
-        return coord
-
 
     def _destroy(self):
         '''
-        Delete the known world (Interactive)
+        Delete the known world! (Interactive)
         '''
         if self.wt.confirm("Do you actually want to delete the map?\n\nThis is not undoable!",
                            default='no'):
