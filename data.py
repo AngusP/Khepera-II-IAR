@@ -1426,7 +1426,7 @@ class ROSGenerator:
         m.info.origin.orientation.y = og.origin['quat_y']
         m.info.origin.orientation.z = og.origin['quat_z']
         m.info.origin.orientation.w = og.origin['quat_w']
-        data = og.get_map('N')
+        data = og.get_map('N', 0)
 
         m.data = data.flatten().tolist()
 
