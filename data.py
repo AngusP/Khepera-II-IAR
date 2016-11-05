@@ -508,7 +508,7 @@ class DataStore:
                         
                         # in-place update this grid in og_map (the ROS OccupancyGrid instance)
                         # the map takes absolute coordinates to array index
-                        x, y = map(lambda x: x / self.og.granularity, (x,y))
+                        x, y = self.og._genindex(x, y)
                         width, height = self.og._get_map_dimensions()
                         y *= width # row major, so scale y onto a flat array
                         og_map.data[int(x+y)] = occ # Toootaly worked first time
@@ -530,7 +530,11 @@ class DataStore:
                             self.og._bounds_check(new_bounds['maxx'], new_bounds['maxy'], True)
                             
                             # SLOOOOOOOOW, maybe blocking subscribers
+                            rospy.logerr("MAP RELOADING")
+                            rospy.logwarn("Update occurred outwith boundsing box, reloading map")
+                            rospy.logwarn("This will take a while...")
                             og_map = rg.gen_map(self.og)
+                            rospy.logwarn("DONE WITH RELOAD")
 
                     # ALways refresh
                     map_pub.publish(og_map)
@@ -1027,7 +1031,7 @@ class GridManager:
 
         if f is None:
             # Development & Testing map. Craxy indexing transforms into correct quadrant
-            f = map(lambda x: x[::-1], self._testworld.splitlines())
+            f = self._testworld.splitlines()[::-1]
         else:
             f = open(f, 'r')
             f = f.read().splitlines()
@@ -1424,7 +1428,7 @@ class ROSGenerator:
         m.info.origin.orientation.y = og.origin['quat_y']
         m.info.origin.orientation.z = og.origin['quat_z']
         m.info.origin.orientation.w = og.origin['quat_w']
-        data = og.get_data('N')
+        data = og.get_map('N')
 
         m.data = data.flatten().tolist()
 
