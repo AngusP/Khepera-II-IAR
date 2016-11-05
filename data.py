@@ -490,11 +490,10 @@ class DataStore:
                     rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
 
 
-                if item['channel'] == self.mapchan:
+                elif item['channel'] == self.mapchan:
                     # Handle a map diff (update)
                     # TODO: Handle dimension changes in a less slow way
                     # TODO: Handle granularity changes
-                    # Fetch contents of new map key
                     
                     # A sharp represents a meta message
                     if not item['data'].startswith("#"):
@@ -711,7 +710,8 @@ class GridManager:
         self.mapmeta = self.mapname + "-meta"
         self.channel = self.mapname + "-update"
         
-        # Default origin, pose given to ROS etc.
+        # Default origin (location of the map)
+        # wit respect to the fixed reference frame
         self.origin = {
             'x'       : 0.0,
             'y'       : 0.0,
@@ -722,11 +722,12 @@ class GridManager:
             'quat_w'  : 0.0
         }
 
+        # Default size
         self.bounds = {
-            'maxx'    : 0.0,
-            'maxy'    : 0.0,
-            'minx'    : 0.0,
-            'miny'    : 0.0
+            'maxx'    :  1000.0,
+            'maxy'    :  1000.0,
+            'minx'    : -1000.0,
+            'miny'    : -1000.0
         }
 
         # If prior config exists, pull it in
@@ -734,18 +735,18 @@ class GridManager:
             if self.r.hexists(self.mapmeta, k):
                 self.origin[k] = float(self.r.hget(self.mapmeta, k))
                 if self.DEBUG:
-                    print("Got {} as {} from Redis".format(k, self.origin[k]))
+                    print("{} got {} = {} from Redis".format(self.__class__.__name__, k, self.origin[k]))
 
         for k, v in self.bounds.iteritems():
             if self.r.hexists(self.mapmeta, k):
                 self.bounds[k] = float(self.r.hget(self.mapmeta, k))
                 if self.DEBUG:
-                    print("Got {} as {} from Redis".format(k, self.bounds[k]))
+                    print("{} got {} = {} from Redis".format(self.__class__.__name__, k, self.bounds[k]))
 
             
         if self.r.hexists(self.mapmeta, "granularity"):
             self.granularity = float(self.r.hget(self.mapmeta, "granularity"))
-            print("Overwrote instantiation granularity with {} from Redis".format(self.granularity))
+            print("{} got granularity = {} from Redis".format(self.__class__.__name__, self.granularity))
 
         # Push origin and boundaries back to redis
         self.r.hmset(self.mapmeta, self.origin)
