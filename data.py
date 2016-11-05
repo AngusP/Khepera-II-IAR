@@ -494,8 +494,7 @@ class DataStore:
                 elif item['channel'] == self.mapchan:
                     # Handle a map diff (update)
                     # TODO: Handle dimension changes in a less slow way
-                    # TODO: Handle granularity changes
-                    
+                    # TODO: Handle granularity changes                  
                     # A sharp represents a meta message
                     if not item['data'].startswith("#"):
 
@@ -835,18 +834,6 @@ class GridManager:
             x, y = self._dekey(k)
             xi, yi = self._genindex(x, y)
             data[yi][xi] = self._get_keyed(k)
-
-
-        # # TODO: This is dumb, only works with positive coords. Fix
-        # for col in xrange(ywidth):
-        #     row_l = []
-            
-        #     for row in xrange(xwidth):
-        #         occ = self.get(row * self.granularity, col * self.granularity)
-        #         if occ is None:
-        #             occ = -1 # Default to unknown if no key
-        #         row_l.append(occ)
-        #     data.append(row_l)
 
         if rtype == 'N':
             return data
