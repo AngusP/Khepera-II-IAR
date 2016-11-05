@@ -21,6 +21,7 @@ import pprint
 import re
 
 import constants
+import utils
 
 
 
@@ -1359,7 +1360,7 @@ class ROSGenerator:
         # Basic trig, converts ranges to points relative to robot
         for point in pre_points:
             reading = float(data[point[0]])
-            distance = self._ir_to_dist(reading)
+            distance = utils.ir_to_dist(reading)
 
             #print(str(point[0]) + " at " + str(distance))
 
@@ -1438,16 +1439,6 @@ class ROSGenerator:
         m.data = data.flatten().tolist()
 
         return m
-
-
-    def _ir_to_dist(self, reading):
-        '''
-        From solved equation:
-        y = 1.074519 + (10.57748 - 1.074519)/(1 + ( x /70.42612)^69.9039)^0.02119919
-        '''
-        return 10.0 * ( 1.074519 + (10.57748 - 1.074519)
-                        /
-                        math.pow(1 + (math.pow((reading / 70.42612),69.9039)), 0.02119919 ))
 
 
 
