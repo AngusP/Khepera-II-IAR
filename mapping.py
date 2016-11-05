@@ -14,20 +14,40 @@ import sys
 import getopt
 import math
 
+'''
+epoch pose-1478358152.95
+epoch pose-1478358153.07
+epoch pose-1478358153.18
+epoch pose-1478358153.29
+epoch pose-1478358153.4
+epoch pose-1478358153.5
+epoch pose-1478358153.61
+epoch pose-1478358153.72
+epoch pose-1478358153.82
+epoch pose-1478358153.93
+epoch pose-1478358154.04
+epoch pose-1478358154.15
+epoch pose-1478358154.26
+epoch pose-1478358154.38
+epoch pose-1478358154.49
+epoch pose-1478358154.6
+epoch pose-1478358154.71
+'''
 
+# pose-1478358145.72
 testpose = {
-    'r0'    : '92.0',
-    'r1'    : '52.0',
-    'r2'    : '36.0',
-    'r3'    : '28.0',
-    'r4'    : '48.0',
-    'r5'    : '52.0',
-    'r6'    : '56.0',
-    'r7'    : '28.0',
-    't'     : '1478358236.226565',
-    'theta' : '-0.5446428571428569',
-    'x'     : '359.79165663643647',
-    'y'     : '-279.4477174535753'
+    'r0': '72.0',
+    'r1': '56.0',
+    'r2': '72.0',
+    'r3': '88.0',
+    'r4': '164.0',
+    'r5': '80.0',
+    'r6': '52.0',
+    'r7': '20.0',
+    't': '1478358145.715587',
+    'theta': '-0.885416666666667',
+    'x': '418.9332184831017',
+    'y': '-490.7891549500857'
 }
 
 
@@ -114,6 +134,9 @@ class Mapping(object):
         '''
         Subscribe (so run async in a different process) to state updates published
         to Redis and affect the map
+
+        TODO: Populating map with unoccupied space is too slow currently, 
+        investigate possible speedups
         '''
         sub = self.ds.r.pubsub()
         sub.subscribe([self.ds.listname])
@@ -132,50 +155,11 @@ class Mapping(object):
                     if msg['channel'] == self.ds.listname:
 
                         data = self.ds.r.hgetall(msg['data'])
-
                         if not keys.issubset(set(data.keys())):
                             raise KeyError("Incomplete hashmap published '{}' --> {}"
                                            "".format(msg['data'], data))
-
-                        points = self._activation_to_points(data)
-                        x, y = map(float, [data['x'], data['y']])
-
-                        # We can immediately declare the spot we're in is unoccupied:
-                        self.ds.og.update(x, y, 0)
-
-                        for point in points:
-
-                            prior = self.ds.og.get(point.x, point.y)
-                            if prior is None:
-                                prior = 0
-
-                            # Ray-trace and update points between us 
-                            # and the object we're seeing
-                            spaces = self.raytrace((x,y), (point.x, point.y))
-                            for space in spaces:
-                                sx, sy = (space[0]+x, space[1]+y)
-                                if self.ds.og.get(sx, sy) != 0:
-                                    self.ds.og.update(space[0], space[1], 0)
-
-
-                            
-                            if point.val > 60.0:
-                                 # We consider this point too far to be 
-                                 # certianly unoccupied
-                                 continue
-
-                            certainty = 100 - 0.3 * point.val
-
-                            
-                            #delta = (prior - point.val) / 2.0
-                            #occ = point.val + delta
-
-                            occ = certainty
-                            # Basic assurance that we're within [0..100]
-                            occ = max(0, min(100, occ))
-
-                            self.ds.og.update(point.x, point.y, occ)
-
+                        
+                        self.update(data)
 
                 except KeyError as e:
                     print("!!!!! EXCEPTION - Continuing. {}".format(str(e)))
@@ -183,6 +167,59 @@ class Mapping(object):
         except KeyboardInterrupt:
             print("Done, stopping...")
     
+
+
+    def update(self, data):
+        '''
+        Apply updates to map from published hints.
+        NOTE THAT key checking won'y be done here, that's your job dear reader.
+
+        Arguments:
+        data  --  full statestream pose and ranges
+        '''
+        points = self._activation_to_points(data)
+
+        # Robot's position:
+        x, y = map(float, [data['x'], data['y']])
+        
+        # We can immediately declare the spot we're in is unoccupied:
+        # self.ds.og.update(x, y, 0)
+        
+        for point in points:
+            
+            prior = self.ds.og.get(point.x, point.y)
+            if prior is None:
+                prior = 0
+
+            # TODO: This is dayum slow
+            # Ray-trace and update points between us 
+            # and the object we're seeing
+            # spaces = self.raytrace((x,y), (point.x, point.y))
+            # for space in spaces:
+            #     sx, sy = (space[0]+x, space[1]+y)
+            #     if self.ds.og.get(sx, sy) != 0:
+            #         self.ds.og.update(space[0], space[1], 0)
+
+            
+            if point.val > 60.0:
+                # We consider this point too far to be 
+                # certianly unoccupied
+                continue
+
+            certainty = 100 - 0.5 * point.val
+
+                            
+            #delta = (prior - point.val) / 2.0
+            #occ = point.val + delta
+            
+            occ = certainty
+            # Basic assurance that we're within [0..100]
+            occ = max(0, min(100, occ))
+            
+            self.ds.og.update(point.x, point.y, occ)
+
+
+
 
 
     def _activation_to_points(self, data):

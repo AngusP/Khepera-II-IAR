@@ -440,8 +440,8 @@ class DataStore:
                     required_keys = ['x','y','theta','t']
                     for key in required_keys:
                         if key not in data.keys():
-                            raise KeyError("Missing key " + str(key) + " from hashmap " +
-                                           str(data) + " on channel " + str(item['channel']))
+                            raise KeyError("Missing key {} from hashmap {}:{} on channel {}"
+                                           "".format(key, item['data'], data, item['channel']))
 
                     # Generate a new Quaternion based on the robot's pose
                     quat = tf.transformations.quaternion_from_euler(0.0, 0.0, 
@@ -846,8 +846,8 @@ class GridManager:
             return data.flatten('C') # C/C++ Style, row major
         elif rtype == 'F':
             return data.flatten('F') # FORTRAN Style, col major
-        
         # Default ('L') give a 2D list
+
         return data.tolist()
 
 
@@ -1107,6 +1107,14 @@ class GridManager:
                 else:
                     # Unknown
                     data[col, row] = [0,255,0,0] # 100% transparent green
+
+        
+        ox = int(math.ceil((-self.bounds['minx'] / self.granularity)))
+        oy = int(math.ceil((-self.bounds['minx'] / self.granularity)))
+        
+        # Make origin a Red pixel:
+        if ox >= 0 and oy >= 0:
+            data[oy][ox] = [255,0,0,255]
         
         img = PIL.Image.fromarray(data, 'RGBA')
         #i = PIL.Image.new(mode='LA', size=(width, height), color=0)
