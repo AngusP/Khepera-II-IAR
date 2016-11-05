@@ -125,7 +125,7 @@ class DataStore:
         self.wt = whiptail.Whiptail()
         self.pp = pprint.PrettyPrinter(indent=1)
 
-        self.og = GridManager(self.r, debug=True)
+        self.og = GridManager(self.r)
 
         # Redis List and Channel name
         self.listname = "statestream"
@@ -812,17 +812,18 @@ class GridManager:
 
 
 
-    def get_map(self, rtype='L'):
+    def get_map(self, rtype='L', default=-1):
         '''
         Return an array representing the whole map. Occupancies are ints, 
         default is unknown (-1). Range should be [-1..100].
 
         Arguments:
-        rtype  --  Type to return, default 'L'
-                -  'L' is a 2D python row-major list (biggest me use)
-                -  'N' is a 2D row-major NumPy ndarray
-                -  'C' is a flattened row-major NumPy ndarray (C style)
-                -  'F' is a flattened row-major NumPy ndarray (C style)
+        rtype   --  Type to return, default 'L'
+                 -  'L' is a 2D python row-major list (biggest me use)
+                 -  'N' is a 2D row-major NumPy ndarray
+                 -  'C' is a flattened row-major NumPy ndarray (C style)
+                 -  'F' is a flattened row-major NumPy ndarray (C style)
+        default --  Default value to populate the map with
         
 
         NOTE: This method returns a fully populated map wthin the bounding
@@ -832,7 +833,7 @@ class GridManager:
         '''
         xwidth, yheight = self._get_map_dimensions()
         data = np.ndarray((yheight, xwidth), dtype=int)
-        data.fill(-1)
+        data.fill(int(default))
 
         for k in self._get_map_keys():
             x, y = self._dekey(k)
@@ -1473,7 +1474,10 @@ if __name__ == "__main__":
             server = str(arg)
 
     ds = DataStore(host=server)
-    speed = 1.0 # For replay 
+
+    # For replay
+    speed = 1.0 
+    do_replay = False
 
     # Post-instantioation options
     for opt, arg in optlist:
@@ -1491,8 +1495,11 @@ if __name__ == "__main__":
             speed = float(arg)
 
         elif opt in ('-e', '--replay'):
-            ds.replay(speed=speed)
+            do_replay = True
 
         elif opt in ('-l', '--load'):
             ds.og.load(str(arg))
+
+    if do_replay:
+        ds.replay(speed=speed)
 

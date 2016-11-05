@@ -140,6 +140,9 @@ class Mapping(object):
                         points = self._activation_to_points(data)
                         x, y = map(float, [data['x'], data['y']])
 
+                        # We can immediately declare the spot we're in is unoccupied:
+                        self.ds.og.update(x, y, 0)
+
                         for point in points:
 
                             prior = self.ds.og.get(point.x, point.y)
@@ -148,20 +151,27 @@ class Mapping(object):
 
                             # Ray-trace and update points between us 
                             # and the object we're seeing
-                            spaces = self.points_between((x,y), (point.x, point.y))
+                            spaces = self.raytrace((x,y), (point.x, point.y))
                             for space in spaces:
-                                self.ds.og.update(space[0], space[0], 0)
+                                sx, sy = (space[0]+x, space[1]+y)
+                                if self.ds.og.get(sx, sy) != 0:
+                                    self.ds.og.update(space[0], space[1], 0)
 
-                            certainty = (60.0 - point.val) / 100.0
+
                             
-                            # if point.val > 60.0:
-                            #     # We consider this point too far to be 
-                            #     # certianly unoccupied
-                            #     continue
+                            if point.val > 60.0:
+                                 # We consider this point too far to be 
+                                 # certianly unoccupied
+                                 continue
 
+                            certainty = 100 - 0.3 * point.val
+
+                            
+                            #delta = (prior - point.val) / 2.0
+                            #occ = point.val + delta
+
+                            occ = certainty
                             # Basic assurance that we're within [0..100]
-                            delta = (prior - point.val) / 2.0
-                            occ = point.val + delta
                             occ = max(0, min(100, occ))
 
                             self.ds.og.update(point.x, point.y, occ)
@@ -221,7 +231,7 @@ class Mapping(object):
         return points
 
 
-    def points_between(self, coord1, coord2):
+    def raytrace(self, coord1, coord2):
         '''
         Baaaasically 2D ray-tracing
 
@@ -231,7 +241,7 @@ class Mapping(object):
         x1, y1 = map(self.ds.og._snap, coord1)
         x2, y2 = map(self.ds.og._snap, coord2)
 
-        print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
+        # print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
         
         x1, x2, x3, x4 = map(float, (x1,x2,y1,y2))
 
@@ -243,14 +253,14 @@ class Mapping(object):
         else:
             m = 0.0
 
-        print("Gradient {} from dy = {} dx = {}".format(m, dy, dx))
+        # print("Gradient {} from dy = {} dx = {}".format(m, dy, dx))
 
         points = []
         for x in xrange(int(math.ceil(dx))):
             y = m * float(x)
             points.append((int(x+x1), int(y+y1)))
 
-        return points
+        return points[1:]
 
 
 if __name__ == "__main__":
