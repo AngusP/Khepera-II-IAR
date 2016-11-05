@@ -82,6 +82,13 @@ def requireimage(func):
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
+class DSException(Exception):
+    pass
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
 
 class DataStore:
 
@@ -239,14 +246,6 @@ class DataStore:
             self.r.rpush(self.goallist, pointname)
 
         self.r.publish(self.goallist, self.goallist)
-
-
-
-    def push_map(self, og):
-        '''
-        Push a new map (occupancy grid)
-        '''
-        raise NotImplementedError()
 
 
     def sub(self):
@@ -440,8 +439,8 @@ class DataStore:
                     required_keys = ['x','y','theta','t']
                     for key in required_keys:
                         if key not in data.keys():
-                            raise KeyError("Missing key {} from hashmap {}:{} on channel {}"
-                                           "".format(key, item['data'], data, item['channel']))
+                            raise DSException("Missing key {} from hashmap {}:{} on channel {}"
+                                              "".format(key, item['data'], data, item['channel']))
 
                     # Generate a new Quaternion based on the robot's pose
                     quat = tf.transformations.quaternion_from_euler(0.0, 0.0, 
@@ -480,9 +479,9 @@ class DataStore:
                         required_keys = ['x','y']
                         for key in required_keys:
                             if key not in raw_pose.keys():
-                                raise KeyError("Missing key " + str(key) + " from point " +
-                                               str(raw_pose) + " on channel " + 
-                                               str(item['channel']))
+                                raise DSException("Missing key " + str(key) + " from point " +
+                                                  str(raw_pose) + " on channel " + 
+                                                  str(item['channel']))
 
                         
                         this_pose = rg.gen_pose(raw_pose, quat)
@@ -504,7 +503,7 @@ class DataStore:
                         occ = self.og.get(x,y)
                         
                         if occ is None:
-                            raise KeyError("Published key {} had no occupancy".format(item['data']))
+                            raise DSException("Published key {} had no occupancy".format(item['data']))
                         
                         # in-place update this grid in og_map (the ROS OccupancyGrid instance)
                         # the map takes absolute coordinates to array index
@@ -521,7 +520,7 @@ class DataStore:
                             new_bounds = yaml.load(item['data'].strip("#bounds"))
                             
                             if type(new_bounds) is not dict:
-                                raise TypeError("Couldn't deserialise {} message '{}' into dict - got {}"
+                                raise DSException("Couldn't deserialise {} message '{}' into dict - got {}"
                                                 "".format(item['channel'], item['data'], type(new_bounds)))
                             
                             # TODO: In-place update, waaaay faster
@@ -542,10 +541,10 @@ class DataStore:
                 else:
                     # If we get an unexpected channel, complain loudly.... Thish should never happen
                     complaint = "Encountered unhandleable channel '" + str(item['channel']) + "'"
-                    raise ValueError(complaint)
+                    raise DSException(complaint)
 
 
-            except (KeyError, ValueError, IndexError, TypeError) as e:
+            except DSException as e:
                 rospy.logwarn(str(e))
                 #raise e
 
