@@ -138,6 +138,7 @@ class Mapping(object):
                                            "".format(msg['data'], data))
 
                         points = self._activation_to_points(data)
+                        x, y = map(float, [data['x'], data['y']])
 
                         for point in points:
 
@@ -145,14 +146,18 @@ class Mapping(object):
                             if prior is None:
                                 prior = 0
 
-                            certainty = 0.0 
+                            # Ray-trace and update points between us 
+                            # and the object we're seeing
+                            spaces = self.points_between((x,y), (point.x, point.y))
+                            for space in spaces:
+                                self.ds.og.update(space[0], space[0], 0)
 
-                            if point.val < 60.0:
-                                certainty = (60.0 - point.val) / 100.0
-                            else:
-                                # We consider this point too far to be 
-                                # certianly unoccupied
-                                continue
+                            certainty = (60.0 - point.val) / 100.0
+                            
+                            # if point.val > 60.0:
+                            #     # We consider this point too far to be 
+                            #     # certianly unoccupied
+                            #     continue
 
                             # Basic assurance that we're within [0..100]
                             delta = (prior - point.val) / 2.0
@@ -216,12 +221,33 @@ class Mapping(object):
         return points
 
 
-    def _rel_to_fixed_frame_tf(self, xabs, yabs, thetaabs, x, y):
+    def points_between(self, coord1, coord2):
         '''
-        Transform points x, y relative to xabs and yabs with rotation
-        thetaabs relative to the fixed frame.
+        Baaaasically 2D ray-tracing
+
+        Return a list of all points between given coordinate tuples,
+        to the granular scale
         '''
-        raise NotImplementedException
+        x1, y1 = map(self.ds.og._snap, coord1)
+        x2, y2 = map(self.ds.og._snap, coord2)
+
+        print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
+        
+        x1, x2, x3, x4 = map(float, (x1,x2,y1,y2))
+
+        dx = (x2 - x1) / self.ds.og.granularity
+        dy = (y2 - y1) / self.ds.og.granularity
+
+        m = dy/dx  # yay, just like teys said it was in Maths!
+        
+        print("Gradient {} from dy = {} dx = {}".format(m, dy, dx))
+
+        points = []
+        for x in xrange(int(math.ceil(dx))):
+            y = m * float(x)
+            points.append((int(x+x1), int(y+y1)))
+
+        return points
 
 
 if __name__ == "__main__":

@@ -749,6 +749,9 @@ class GridManager:
             self.granularity = float(self.r.hget(self.mapmeta, "granularity"))
             print("{} got granularity = {} from Redis".format(self.__class__.__name__, self.granularity))
 
+        if self.granularity == 0:
+            raise ValueError("Granularity CANNOT be zero, you crazy person!")
+
         # Push origin and boundaries back to redis
         self.r.hmset(self.mapmeta, self.origin)
         self.r.hmset(self.mapmeta, self.bounds)
