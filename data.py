@@ -492,7 +492,8 @@ class DataStore:
 
                 if item['channel'] == self.mapchan:
                     # Handle a map diff (update)
-                    # TODO: Handle dimension changes
+                    # TODO: Handle dimension changes in a less slow way
+                    # TODO: Handle granularity changes
                     # Fetch contents of new map key
                     
                     # A sharp represents a meta message
@@ -507,7 +508,7 @@ class DataStore:
                         
                         # in-place update this grid in og_map (the ROS OccupancyGrid instance)
                         # the map takes absolute coordinates to array index
-                        x, y = map(lambda x: x / self.og.granularity, (x,y))
+                        x, y = self.og._genindex(x, y)
                         width, height = self.og._get_map_dimensions()
                         y *= width # row major, so scale y onto a flat array
                         og_map.data[int(x+y)] = occ # Toootaly worked first time
@@ -529,7 +530,11 @@ class DataStore:
                             self.og._bounds_check(new_bounds['maxx'], new_bounds['maxy'], True)
                             
                             # SLOOOOOOOOW, maybe blocking subscribers
+                            rospy.logerr("MAP RELOADING")
+                            rospy.logwarn("Update occurred outwith bounding box, reloading map")
+                            rospy.logwarn("This will take a while...")
                             og_map = rg.gen_map(self.og)
+                            rospy.logwarn("DONE WITH RELOAD")
 
                     # ALways refresh
                     map_pub.publish(og_map)
@@ -629,11 +634,14 @@ class GridManager:
     The Map is _sparse_, in that it is hypothetically infinitely large.
     '''
     
-    def __init__(self, redis, granularity=100.0, debug=False):
+    def __init__(self, redis, granularity=10.0, debug=False):
         '''
         Arguments:
         granularity  --  Minimum distance representable in the map, as a decimal multiple of 
                          whatever units the distances are given in.
+
+        Note: Very small granularities and very large granularities that may have '10e-12' 
+        representations by default will break as they cannot be correctly keyed and de-keyed.
 
         Standards & Conventions:
         map:x:y = {
@@ -755,7 +763,7 @@ class GridManager:
         # Regex to turn a serialised key into coords
         # This re finds a combination of two floats or two ints
         # IMPORTANT: Must remain consistent with _genkey()
-        self._dekey_re = re.compile("([+-]?\d+\.\d*|\d+):([+-]?\d+\.\d*|\d+)$")
+        self._dekey_re = re.compile("([+-]?\d+\.\d*|[+-]?\d+):([+-]?\d+\.\d*|[+-]?\d+)$")
 
 
 
@@ -799,71 +807,55 @@ class GridManager:
 
 
 
-    def get_map(self):
+    def get_map(self, rtype='L'):
         '''
-        Return a row-major (y main list, xs sublist) array representing 
-        the whole map. Occupancies are ints, default is unknown (-1)
+        Return an array representing the whole map. Occupancies are ints, 
+        default is unknown (-1). Range should be [-1..100].
+
+        Arguments:
+        rtype  --  Type to return, default 'L'
+                -  'L' is a 2D python row-major list (biggest me use)
+                -  'N' is a 2D row-major NumPy ndarray
+                -  'C' is a flattened row-major NumPy ndarray (C style)
+                -  'F' is a flattened row-major NumPy ndarray (C style)
+        
 
         NOTE: This method returns a fully populated map wthin the bounding
-              box, it is *not* going to be fast.
+              box, it is *not* going to be as fast.
               For speed use methods such as get() and Redis subscribers to 
               in-place update a cached map.
         '''
-        xwidth, ywidth = self._get_map_dimensions()
-        data = []
+        xwidth, yheight = self._get_map_dimensions()
+        data = np.ndarray((yheight, xwidth), dtype=int)
+        data.fill(-1)
 
-        for col in xrange(ywidth):
-            row_l = []
+        for k in self._get_map_keys():
+            x, y = self._dekey(k)
+            xi, yi = self._genindex(x, y)
+            data[yi][xi] = self._get_keyed(k)
+
+
+        # # TODO: This is dumb, only works with positive coords. Fix
+        # for col in xrange(ywidth):
+        #     row_l = []
             
-            for row in xrange(xwidth):
-                occ = self.get(row * self.granularity, col * self.granularity)
-                if occ is None:
-                    occ = -1 # Default to unknown if no key
-                row_l.append(occ)
-                
-            data.append(row_l)
-        return data
+        #     for row in xrange(xwidth):
+        #         occ = self.get(row * self.granularity, col * self.granularity)
+        #         if occ is None:
+        #             occ = -1 # Default to unknown if no key
+        #         row_l.append(occ)
+        #     data.append(row_l)
 
-
-    @requireimage
-    def render(self, name=None):
-        '''
-        Render a bitmap image of the map in Greyscale + Alpha
-
-        Arguments:
-        name  --  Image name to save to, will not save if None
-
-        Returns:
-        PIL Image instance. Save with .save(), .show() is a preview
-        '''
-        w, h = self._get_map_dimensions()
-        if self.DEBUG:
-            print("Image dimensions are {}x by {}y".format(w, h))
-
-        data = np.zeros((h, w, 4), dtype=np.uint8)
+        if rtype == 'N':
+            return data
+        elif rtype == 'C':
+            return data.flatten('C') # C/C++ Style, row major
+        elif rtype == 'F':
+            return data.flatten('F') # FORTRAN Style, col major
         
-        map_data = self.get_map()
-        
-        for col in xrange(h-1):
-            for row in xrange(w-1):
-                occupancy = map_data[col][row]
-                if occupancy >= 0:
-                    # Greyscale
-                    occupancy = int(2.55 * (100 - occupancy))
-                    data[col, row] = [occupancy]*3 + [255]
-                else:
-                    # Unknown
-                    data[col, row] = [0,255,0,0] # 100% transparent green
-        
-        img = PIL.Image.fromarray(data, 'RGBA')
-        #i = PIL.Image.new(mode='LA', size=(width, height), color=0)
+        # Default ('L') give a 2D list
+        return data.tolist()
 
-        if name is not None:
-            img.save(name)
-            if self.DEBUG:
-                print("Saved image as '{}'".format(name))
-
-        return img
 
 
     def _get_map_keys(self):
@@ -872,7 +864,8 @@ class GridManager:
         '''
         return self.r.smembers(self.mapname)
 
-        
+
+
     def _get_map_dimensions(self):
         '''
         Returns array size needed to fit map given bounds and granularity.
@@ -880,6 +873,81 @@ class GridManager:
         xwidth  = 1 + int(math.ceil((-self.bounds['minx'] + self.bounds['maxx']) / self.granularity))
         yheight = 1 + int(math.ceil((-self.bounds['miny'] + self.bounds['maxy']) / self.granularity))
         return xwidth, yheight
+
+
+
+    def _genindex(self, x, y):
+        '''
+        Given a coordinate on grid return the corresponding index into a 2D 
+        array for that point, row major:
+        
+        [[ (0,0)     , (1,0)     , ... , (len(x),0)     ],
+         ...
+         [ (0,len(y)), (1,len(y)), ... , (len(x),len(y))]]
+        
+        This method is very similar to GridManager._get_map_dimensions(), which could
+        be used to initialise an array thn indexed with this method.
+
+        Arguments:
+        x  --  x (forward) axis coord
+        y  --  y (left) axis coord
+        '''
+
+        xoffset = math.floor(-self.bounds['minx'] / self.granularity)
+        yoffset = math.floor(-self.bounds['miny'] / self.granularity)
+
+        xi = int((self._snap(x) / self.granularity) + xoffset)
+        yi = int((self._snap(y) / self.granularity) + yoffset)
+
+        if xi < 0 or yi < 0:
+            raise IndexError("Co-ordinates ({},{}) yielding index [{},{}] out of bounds; "
+                             "Bounds are {}".format(x, y, xi, yi, self.bounds))
+
+        return xi, yi
+
+
+    def _snap(self, coord):
+        '''
+        Snap a given coordinate to the grid
+
+        Snapping treats the occupancy grid squares as being centred on the pysical (e.g.)
+        pose co-ordinate space: (Shown bracketed '(0,0)', OG shown braced '[0,0]')
+        
+                 Y
+                 ^
+                 |
+         ________|________
+        |        |        |
+        |        |        |
+        |        |        |
+        |        |(0,0)   |
+        |        \-----------> X
+        |                 |
+        |                 |
+        | [0,0]           |
+        \_________________/
+
+        Arguments:
+        coord  --  Arbuitary coordinate (float, int)
+
+        Returns:
+        coord  --  Snapped to grid. int or float, depending on whether the granularity is an
+                   integer or float.
+        '''
+        # See how far it is from the next point
+        distance = float(coord) % self.granularity
+        
+        # If closer to a higher one, push it up
+        if distance >= self.granularity/2.0:
+            coord += (self.granularity - distance)
+        else:
+            coord -= distance
+
+        # Don't float if not needed
+        if self.granularity >= 1.0:
+            coord = int(coord)
+        
+        return coord
 
 
     def set_origin(self, origin_dict):
@@ -929,6 +997,28 @@ class GridManager:
             print("update {} {} to {}".format(x,y,occupancy))
         self.r.sadd(self.mapname, k)
         self.r.publish(self.channel, k)
+
+
+
+
+    def touch(self, x, y):
+        '''
+        Set 'seen' key for a gridsquare to current time (a la *NIX 'touch')
+        Returns false if the square does not exist
+        '''
+        k = self._genkey(x,y)
+        if self.r.exists(k):
+            self.r.hset(k, 'seen', time.time())
+            return True
+        return False
+
+
+
+    def get_seentime(self, x, y):
+        '''
+        Return a gridsquare's last seen time as time since the UNIX epoch
+        '''
+        return self.r.hget(self._genkey(x,y), 'seen')
 
 
 
@@ -994,6 +1084,47 @@ class GridManager:
 
 
 
+    @requireimage
+    def render(self, name=None):
+        '''
+        Render a bitmap image of the map in Greyscale + Alpha
+
+        Arguments:
+        name  --  Image name to save to, will not save if None
+
+        Returns:
+        PIL Image instance. Save with .save(), .show() is a preview
+        '''
+        w, h = self._get_map_dimensions()
+        if self.DEBUG:
+            print("Image dimensions are {}x by {}y".format(w, h))
+
+        data = np.zeros((h, w, 4), dtype=np.uint8)
+        
+        map_data = self.get_map()
+        
+        for col in xrange(h-1):
+            for row in xrange(w-1):
+                occupancy = map_data[col][row]
+                if occupancy >= 0:
+                    # Greyscale
+                    occupancy = int(2.55 * (100 - occupancy))
+                    data[col, row] = [occupancy]*3 + [255]
+                else:
+                    # Unknown
+                    data[col, row] = [0,255,0,0] # 100% transparent green
+        
+        img = PIL.Image.fromarray(data, 'RGBA')
+        #i = PIL.Image.new(mode='LA', size=(width, height), color=0)
+
+        if name is not None:
+            img.save(name)
+            print("Saved image as '{}'".format(name))
+
+        return img
+
+
+
     def _genkey(self, x, y):
         '''
         Standardised generator for a hash key for a given coord.
@@ -1005,16 +1136,17 @@ class GridManager:
         return self.mapname + ":" + str(self._snap(x)) + ":" + str(self._snap(y))
 
 
-        
+
+
     def _dekey(self, key):
         '''
         Turn a string into a (x,y) pair using the member regex _dekey_re
         and return said tuple
         '''
         try:
-            return map(float, self._dekey_re.findall(key)[0])
+            return tuple(map(float, self._dekey_re.findall(key)[0]))
         except Exception as e:
-            raise KeyError("Could not de-key " + str(key) + "  --  '" + str(e) + "'")
+            raise KeyError("Could not de-key {}  --  '{}'".format(key, e))
 
 
 
@@ -1043,17 +1175,17 @@ class GridManager:
         if expand:
             change = False
             if x > self.bounds['maxx']:
-                self.bounds['maxx'] = float(x)
+                self.bounds['maxx'] = self._snap(float(x))
                 change = True
             if x < self.bounds['minx']:
-                self.bounds['minx'] = float(x)
+                self.bounds['minx'] = self._snap(float(x))
                 change = True
 
             if y > self.bounds['maxy']:
-                self.bounds['maxy'] = float(y)
+                self.bounds['maxy'] = self._snap(float(y))
                 change = True
             if y < self.bounds['miny']:
-                self.bounds['miny'] = float(y)
+                self.bounds['miny'] = self._snap(float(y))
                 change = True
 
             if change:
@@ -1075,14 +1207,17 @@ class GridManager:
 
         for key, val in self.bounds.iteritems():
             try:
-                if float(redis_meta[key]) > val:
+                if abs(float(redis_meta[key])) > abs(float(val)):
                     if self.DEBUG:
-                        print("key {} val {} was bigger in Redis".format(key, val))
+                        print("key '{}' value '{}' was bigger in Redis than cached '{}'"
+                              "".format(key, redis_meta[key], val))
                     self.bounds[key] = redis_meta[key] # case redis was bigger
                     push_back = True
-                elif float(redis_meta[key]) < val:
+                    
+                elif abs(float(redis_meta[key])) < abs(float(val)):
                     self.r.hset(self.mapmeta, key, val) # case we're bigger, push back
                     push_back = True
+                
                 # if same do nothing, we're fine
             except KeyError as e:
                 print(e)
@@ -1091,44 +1226,10 @@ class GridManager:
             self.r.publish(self.channel, "#bounds {}".format(yaml.dump(self.bounds)))
 
 
-    def _snap(self, coord):
-        '''
-        Snap a given coordinate to the grid
-
-        Arguments:
-        coord  --  Arbuitary coordinate (float, int)
-
-        Returns:
-        coord  --  Snapped to grid. int or float, depending on whether the granularity is an
-                   integer or float.
-        '''
-        # See how far it is from the nearest lower point
-        distance = float(coord) % self.granularity
-        
-        # If closer to a higher one, push it up
-        if distance >= self.granularity/2.0:
-            coord += (self.granularity - distance)
-        else:
-            coord -= distance
-
-        # if self.granularity < 1.0:
-        #     # If the granularity is sub-integer, try and kill any floating point artefacts
-        #     # Get order of magnitude:
-        #     om = int(round(math.log10(self.granularity), 0))
-        #     coord = round(coord, -om)
-        # else:
-        #     # If it isn't, ints make all floating point problems go away
-        #     coord = int(coord)
-
-        if self.granularity >= 1.0:
-            coord = int(coord)
-        
-        return coord
-
 
     def _destroy(self):
         '''
-        Delete the known world (Interactive)
+        Delete the known world! (Interactive)
         '''
         if self.wt.confirm("Do you actually want to delete the map?\n\nThis is not undoable!",
                            default='no'):
@@ -1322,27 +1423,16 @@ class ROSGenerator:
         # Units (metres, as far as ROS cares, but not in our case)
         m.info.resolution = og.granularity
 
-        # Pose of the point (0,0)
-        m.info.origin.position.x = og.origin['x']
-        m.info.origin.position.y = og.origin['y']
+        # Pose of the point zeroth datapoint, offset by half a granularity to reflect 
+        # the behaviour of snapping
+        m.info.origin.position.x = og.bounds['minx'] - og.origin['x'] - (float(og.granularity)/2.0)
+        m.info.origin.position.y = og.bounds['miny'] - og.origin['y'] - (float(og.granularity)/2.0)
         m.info.origin.position.z = og.origin['z']
         m.info.origin.orientation.x = og.origin['quat_x']
         m.info.origin.orientation.y = og.origin['quat_y']
         m.info.origin.orientation.z = og.origin['quat_z']
         m.info.origin.orientation.w = og.origin['quat_w']
-        data = np.ndarray((m.info.height, m.info.width), dtype=int)
-        data.fill(-1)
-
-        squares = og._get_map_keys()
-
-        for sq in squares:
-            occ = og._get_keyed(sq)
-            # convert from absolute coordinates to array indicies
-            x, y = map(lambda l: int(l / og.granularity), og._dekey(sq))
-            if occ is None:
-                raise ValueError("Key {} in map has no associated occupancy!"
-                                 "".format(sq))
-            data[y][x] = occ
+        data = og.get_map('N')
 
         m.data = data.flatten().tolist()
 
