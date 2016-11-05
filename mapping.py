@@ -238,8 +238,11 @@ class Mapping(object):
         dx = (x2 - x1) / self.ds.og.granularity
         dy = (y2 - y1) / self.ds.og.granularity
 
-        m = dy/dx  # yay, just like teys said it was in Maths!
-        
+        if dx != 0:
+            m = dy/dx  # yay, just like teys said it was in Maths!
+        else:
+            m = 0.0
+
         print("Gradient {} from dy = {} dx = {}".format(m, dy, dx))
 
         points = []

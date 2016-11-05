@@ -463,7 +463,7 @@ class DataStore:
                     dist = rg.gen_dist(data)
                     dist_pub.publish(dist)
 
-                    rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
+                    #rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
 
 
                 elif item['channel'] == self.goallist:
@@ -489,7 +489,7 @@ class DataStore:
                         path.poses.append(this_pose)
                         
                     goal_pub.publish(path)
-                    rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
+                    #rospy.loginfo(" Redis " + str(item['channel']) + " --> ROS")
 
 
                 elif item['channel'] == self.mapchan:
@@ -513,7 +513,7 @@ class DataStore:
                         y *= width # row major, so scale y onto a flat array
                         og_map.data[int(x+y)] = occ # Toootaly worked first time
 
-                        rospy.loginfo("Map update {} --> {}".format(item['data'], occ))
+                        #rospy.loginfo("Map update {} --> {}".format(item['data'], occ))
 
 
                     else:
