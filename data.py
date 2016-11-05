@@ -1212,7 +1212,7 @@ class GridManager:
                     if self.DEBUG:
                         print("key '{}' value '{}' was bigger in Redis than cached '{}'"
                               "".format(key, redis_meta[key], val))
-                    self.bounds[key] = redis_meta[key] # case redis was bigger
+                    self.bounds[key] = float(redis_meta[key]) # case redis was bigger
                     push_back = True
                     
                 elif abs(float(redis_meta[key])) < abs(float(val)):
