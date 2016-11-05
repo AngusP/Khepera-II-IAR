@@ -136,9 +136,10 @@ class Mapping(object):
                         raise KeyError("Incomplete hashmap published '{}' --> {}"
                                        "".format(msg['data'], data))
 
-                    points = self._activation_to_points(self, data)
+                    points = self._activation_to_points(data)
                     
                     for point in points:
+                        
                         prior = self.ds.og.get(point.x, point.y)
                         if prior is None:
                             prior = 0
@@ -148,10 +149,13 @@ class Mapping(object):
                         if point.val < 60.0:
                             certainty = (point.val - 60.0) / 100.0
 
-                        self.ds.og.update(point.x, point.y, ((prior + point.val) * certianty))
+                        occ = min(100, (prior + point.val) * certainty)
+                        self.ds.og.update(point.x, point.y, occ)
                     
             except KeyError as e:
                 print("!!!!! EXCEPTION - Continuing. {}".format(str(e)))
+            except KeyboardInterrupt:
+                print("Done, stopping...")
     
 
 
@@ -181,9 +185,19 @@ class Mapping(object):
 
             # point[2] is the sensor's coords relative to the robot
             # point[1] is the angle the sensor takes relative to the robot's x axis
+            # We also have to transfer from the bot's reference frame to the fixed frame,
+            # using the handy function provided by utils
 
             pt.x = (distance * math.cos(point[1])) + point[2][0]
             pt.y = (distance * math.sin(point[1])) + point[2][1]
+
+            pt.x, pt.y = utils.relative_to_fixed_frame_tf(
+                data['x'], 
+                data['y'], 
+                data['theta'], 
+                pt.x, 
+                pt.y)
+
             pt.val = distance
 
             points.append(pt)
@@ -191,8 +205,12 @@ class Mapping(object):
         return points
 
 
-    def _activation_to_occ(self, activation):
-        
+    def _rel_to_fixed_frame_tf(self, xabs, yabs, thetaabs, x, y):
+        '''
+        Transform points x, y relative to xabs and yabs with rotation
+        thetaabs relative to the fixed frame.
+        '''
+        raise NotImplementedException
 
 
 if __name__ == "__main__":
