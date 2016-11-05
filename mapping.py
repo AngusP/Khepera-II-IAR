@@ -121,41 +121,52 @@ class Mapping(object):
         keys = set(['x','y','theta','t', 'r0','r1',
                     'r2','r3','r4','r5','r6','r7'])
 
-        for msg in sub.listen():
+        try:
+            for msg in sub.listen():
 
-            if msg['type'] == "subscribe":
-                print("Subscribed successfully. {}".format(msg))
-                continue
+                if msg['type'] == "subscribe":
+                    print("Subscribed successfully. {}".format(msg))
+                    continue
 
-            try:
-                if msg['channel'] == self.ds.listname:
-                    
-                    data = self.ds.r.hgetall(msg['data'])
-                    
-                    if not keys.issubset(set(data.keys())):
-                        raise KeyError("Incomplete hashmap published '{}' --> {}"
-                                       "".format(msg['data'], data))
+                try:
+                    if msg['channel'] == self.ds.listname:
 
-                    points = self._activation_to_points(data)
-                    
-                    for point in points:
-                        
-                        prior = self.ds.og.get(point.x, point.y)
-                        if prior is None:
-                            prior = 0
+                        data = self.ds.r.hgetall(msg['data'])
 
-                        certainty = 0.0 
-                        
-                        if point.val < 60.0:
-                            certainty = (point.val - 60.0) / 100.0
+                        if not keys.issubset(set(data.keys())):
+                            raise KeyError("Incomplete hashmap published '{}' --> {}"
+                                           "".format(msg['data'], data))
 
-                        occ = min(100, (prior + point.val) * certainty)
-                        self.ds.og.update(point.x, point.y, occ)
-                    
-            except KeyError as e:
-                print("!!!!! EXCEPTION - Continuing. {}".format(str(e)))
-            except KeyboardInterrupt:
-                print("Done, stopping...")
+                        points = self._activation_to_points(data)
+
+                        for point in points:
+
+                            prior = self.ds.og.get(point.x, point.y)
+                            if prior is None:
+                                prior = 0
+
+                            certainty = 0.0 
+
+                            if point.val < 60.0:
+                                certainty = (60.0 - point.val) / 100.0
+                            else:
+                                # We consider this point too far to be 
+                                # certianly unoccupied
+                                continue
+
+                            # Basic assurance that we're within [0..100]
+                            delta = (prior - point.val) / 2.0
+                            occ = point.val + delta
+                            occ = max(0, min(100, occ))
+
+                            self.ds.og.update(point.x, point.y, occ)
+
+
+                except KeyError as e:
+                    print("!!!!! EXCEPTION - Continuing. {}".format(str(e)))
+            
+        except KeyboardInterrupt:
+            print("Done, stopping...")
     
 
 
@@ -179,7 +190,7 @@ class Mapping(object):
         for point in pre_points:
             reading = float(data[point[0]])
             distance = utils.ir_to_dist(reading)
-            print("Reading {} yields dist {}".format(reading, distance))
+            # print("Reading {} yields dist {}".format(reading, distance))
 
             pt = Point()
 
@@ -192,9 +203,9 @@ class Mapping(object):
             pt.y = (distance * math.sin(point[1])) + point[2][1]
 
             pt.x, pt.y = utils.relative_to_fixed_frame_tf(
-                data['x'], 
-                data['y'], 
-                data['theta'], 
+                float(data['x']),
+                float(data['y']), 
+                float(data['theta']),
                 pt.x, 
                 pt.y)
 

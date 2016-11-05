@@ -38,8 +38,8 @@ def _relative_to_fixed_frame_tf_UNROUND(xabs, yabs, thetaabs, x, y):
     won't round return variables. May be useful, may cause sh*t to explode
     '''
     
-    tfx = (x * math.cos(thetaabs)) + (y * math.sin(thetaabs))
-    tfy = (x * math.sin(thetaabs)) + (y * math.cos(thetaabs))
+    tfx = (x *  math.cos(thetaabs)) + (y * -math.sin(thetaabs))
+    tfy = (x * -math.sin(thetaabs)) + (y *  math.cos(thetaabs))
     
     tfx += xabs
     tfy += yabs

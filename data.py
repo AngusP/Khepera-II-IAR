@@ -412,11 +412,12 @@ class DataStore:
         # This'll be the only one of our ROS classes that persists
         print("generating map...")
         og_map = rg.gen_map(self.og)
-        map_pub.publish(og_map)
         print("done.")
 
         sub = self.r.pubsub()
         sub.subscribe([self.listname, self.goallist, self.mapchan])
+
+        map_pub.publish(og_map)
 
         # Loop until stopped plotting the path
         for item in sub.listen():
