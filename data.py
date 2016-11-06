@@ -501,14 +501,15 @@ class DataStore:
 
                         toks = item['data'].split(' ')
 
-                        if not len(toks) % 2:
-                            raise DSException("odd number of tokens, eww")
+                        if len(toks) % 2 != 0:
+                            raise DSException("odd number of tokens, eww {}:{}  {}"
+                                              "".format(len(toks), len(toks)%2, toks))
                         
                         toks = zip(toks[::2], toks[1::2])
                         
                         for key, occ in toks:
                             x, y = self.og._dekey(key)
-                            occ = max(-1, min(100, int(occ)))
+                            occ = max(-1, min(100, int(float(occ))))
                             
                             # in-place update this grid in og_map (the ROS OccupancyGrid instance)
                             # the map takes absolute coordinates to array index
@@ -743,10 +744,10 @@ class GridManager:
 
         # Default size
         self.bounds = {
-            'maxx'    : 0.0,
-            'maxy'    : 0.0,
-            'minx'    : 0.0,
-            'miny'    : 0.0
+            'maxx'    :  1000.0,
+            'maxy'    :  1500.0,
+            'minx'    : -1000.0,
+            'miny'    : -1500.0
         }
 
         # If prior config exists, pull it in
@@ -1458,7 +1459,7 @@ class ROSGenerator:
             #print(str(point[0]) + " at " + str(distance))
 
             # Don't render 'infinite' distance
-            if distance > 60.0:
+            if distance > 70.0:
                 continue
             
             pt = Point32()
@@ -1527,7 +1528,7 @@ class ROSGenerator:
         m.info.origin.orientation.y = og.origin['quat_y']
         m.info.origin.orientation.z = og.origin['quat_z']
         m.info.origin.orientation.w = og.origin['quat_w']
-        data = og.get_map('N', 0)
+        data = og.get_map('N')
 
         m.data = data.flatten().tolist()
 

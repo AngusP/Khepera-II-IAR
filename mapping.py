@@ -14,42 +14,20 @@ import sys
 import getopt
 import math
 
-'''
-epoch pose-1478358152.95
-epoch pose-1478358153.07
-epoch pose-1478358153.18
-epoch pose-1478358153.29
-epoch pose-1478358153.4
-epoch pose-1478358153.5
-epoch pose-1478358153.61
-epoch pose-1478358153.72
-epoch pose-1478358153.82
-epoch pose-1478358153.93
-epoch pose-1478358154.04
-epoch pose-1478358154.15
-epoch pose-1478358154.26
-epoch pose-1478358154.38
-epoch pose-1478358154.49
-epoch pose-1478358154.6
-epoch pose-1478358154.71
-'''
-
-# pose-1478358145.72
 testpose = {
-    'r0': '72.0',
-    'r1': '56.0',
-    'r2': '72.0',
-    'r3': '88.0',
-    'r4': '164.0',
-    'r5': '80.0',
-    'r6': '52.0',
+    'r0': '1200.0',
+    'r1': '1200.0',
+    'r2': '20.0',
+    'r3': '20.0',
+    'r4': '1200.0',
+    'r5': '20.0',
+    'r6': '1200.0',
     'r7': '20.0',
-    't': '1478358145.715587',
-    'theta': '-0.885416666666667',
-    'x': '418.9332184831017',
-    'y': '-490.7891549500857'
+    't': '1478446510.160574',
+    'theta': '',
+    'x': '161.64094776032476',
+    'y': '72.77630028283815'
 }
-
 
 
 class Point():
@@ -196,13 +174,17 @@ class Mapping(object):
             spaces = self.raytrace((x,y), (point.x, point.y))
             for space in spaces:
                 sx, sy = (space[0]+x, space[1]+y)
-                pointsl.append((sx, sy, 0))
-
+                prior = self.ds.og.get(sx, sy)
+                
+                if prior is None:
+                    pointsl.append((sx, sy, 0))
+                else:
+                    pointsl.append((sx, sy, 0))
             
-            if point.val > 60.0:
+            if point.val > 70.0:
                 occ = 0
             else:
-                occ = point.val
+                occ = 130 - (point.val * 1.5)
             
             # Basic assurance that we're within [0..100]
             occ = max(0, min(100, occ))
@@ -241,7 +223,7 @@ class Mapping(object):
         # print("dy = {} dx = {}".format(dy, dx))
         points = []
 
-        if dx != 0:
+        if dx != 0 and dy != 0:
             m = dy / dx
         else:
             m = None
@@ -249,20 +231,26 @@ class Mapping(object):
         # print("Func y = {}x".format(m))
 
         if m is not None:
-            if m <= 0.5:
+            if m <= 1.0:
+                print("case m >= 0.5 = {}".format(m))
                 for x in xrange(int(dx+1)):
                     y = self.ds.og._snap(m * x * self.ds.og.granularity)
                     x = self.ds.og._snap(x * self.ds.og.granularity)
                     points.append((x, y))
             else:
-                m = 1-m
+                m = 1/m
+                print("case m < 0.5 = {}".format(m))
                 for y in xrange(int(dy+1)):
-                    y = self.ds.og._snap(y * self.ds.og.granularity)
                     x = self.ds.og._snap(m * y * self.ds.og.granularity)
+                    y = self.ds.og._snap(y * self.ds.og.granularity)
                     points.append((x, y))
         else:
-            for y in xrange(int(dy+1)):
-                points.append((x1, y1+(y*self.ds.og.granularity)))
+            if dx == 0:
+                for y in xrange(int(dy+1)):
+                    points.append((x1, y1+(y*self.ds.og.granularity)))
+            else:
+                for x in xrange(int(dx+1)):
+                    points.append((x1+(x*self.ds.og.granularity), y1))
 
         return points
 
