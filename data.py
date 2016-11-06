@@ -524,7 +524,7 @@ class DataStore:
                                                 "".format(item['channel'], item['data'], type(new_bounds)))
                             
                             # TODO: In-place update, waaaay faster
-                            # 'bounds check' with True, which will resize the 
+                            # 'bounds check' with True, which will resize the bounds
                             self.og._bounds_check(new_bounds['minx'], new_bounds['miny'], True)
                             self.og._bounds_check(new_bounds['maxx'], new_bounds['maxy'], True)
                             
@@ -532,7 +532,10 @@ class DataStore:
                             rospy.logerr("MAP RELOADING")
                             rospy.logwarn("Update occurred outwith bounding box, reloading map")
                             rospy.logwarn("This will take a while...")
-                            og_map = rg.gen_map(self.og)
+                            try:
+                                og_map = rg.gen_map(self.og)
+                            except Exception as e:
+                                rospy.logerr("Exception encountered when reloading: {}".format(e))
                             rospy.logwarn("DONE WITH RELOAD")
 
                     # ALways refresh
@@ -724,10 +727,10 @@ class GridManager:
 
         # Default size
         self.bounds = {
-            'maxx'    :  1000.0,
-            'maxy'    :  1000.0,
-            'minx'    : -1000.0,
-            'miny'    : -1000.0
+            'maxx'    : 0.0,
+            'maxy'    : 0.0,
+            'minx'    : 0.0,
+            'miny'    : 0.0
         }
 
         # If prior config exists, pull it in
@@ -1014,15 +1017,19 @@ class GridManager:
         return self.r.hget(self._genkey(x,y), 'seen')
 
 
-
-    def load(self, f=None):
+    @requireimage
+    def load(self, f=None, xoffset=0, yoffset=0):
         '''
         Load in a map from a given file.
         Provides a simplified model, a space indicates a certainly free space,
         a 'X' indicates a certainly occupied space and a ? indicates uncertainty.
 
+        DOES NOT bother populating known-free places on the map
+
         Arguments:
-        f  --  The name of the file to parse; If none, uses built-in development string
+        f        --  The name of the file to parse; If none, uses built-in development string
+        xoffset  --  Move the map around by x (int, + or -) places (not absolute)
+        yoffset  --  Move the map around by y (int, + or -) places (not absolute)
         '''
 
         print("Loading...")
@@ -1030,31 +1037,57 @@ class GridManager:
         if f is None:
             # Development & Testing map. Craxy indexing transforms into correct quadrant
             f = self._testworld.splitlines()[::-1]
-        else:
-            f = open(f, 'r')
-            f = f.read().splitlines()
 
-        for i, line in enumerate(f):
-            print("")
-            for j, char in enumerate(line):
-                certainty = 0 # Default Unoccupied
-                if char == 'X':
-                    certainty = 100 # Occupied
-                elif char == '?':
-                    certainty = -1  # Unknown
-
+            for i, line in enumerate(f):
                 if self.DEBUG:
-                    # Spew map at user
-                    print(" {}({},{})".format(char,i* self.granularity,j* self.granularity), end='')
+                    print("")
+                for j, char in enumerate(line):
+                    certainty = 0 # Default Unoccupied
+                    if char == 'X':
+                        certainty = 100 # Occupied
+                    elif char == '?':
+                        certainty = -1  # Unknown
 
-                # Multiply by granularity to scale onto native grid resolution
-                self.update(float(j) * self.granularity,
-                            float(i) * self.granularity,
-                            certainty)
-        
-        if type(f) is file:
-            f.close()
-        
+                    if self.DEBUG:
+                        # Spew map at user
+                        print(" {}({},{})".format(char,i* self.granularity,j* self.granularity), end='')
+
+                    # Multiply by granularity to scale onto native grid resolution
+                    self.update(float(j) * self.granularity,
+                                float(i) * self.granularity,
+                                certainty)
+        else:
+            # Load from image
+            image = PIL.Image.open(f)
+            idata = np.array(image.getdata()).reshape(image.size[0], image.size[1], 4)
+
+            xwidth  = image.size[1]
+            yheight = image.size[0]
+
+            # Minimum
+            xmin = xoffset * self.granularity
+            ymin = yoffset * self.granularity
+            self._bounds_check(xmin, ymin, True)
+            
+            # Maximum
+            xmax = xoffset + (xwidth  * self.granularity)
+            ymax = yoffset + (yheight * self.granularity)
+            self._bounds_check(xmax, ymax, True)
+
+            print("xw: {}, yh: {}, min: ({},{}), max: ({},{})"
+                  "".format(xwidth, yheight, xmin, ymin, xmax, ymax))
+
+            for col in xrange(yheight-1):
+                for row in xrange(xwidth-1):
+                    # If alpha, it's unknown and we ignore it
+                    if idata[col][row][3] != 0:
+                        # If not, average R, G and B to give occupancy
+                        occ = (sum(idata[col][row][:3]) / 3.0) / 2.55
+                        # TODO: hack, for speedz
+                        if occ == 0:
+                            continue
+                        self.update(row * self.granularity, col * self.granularity, occ)
+    
         print("")
         print("Done.")
 
