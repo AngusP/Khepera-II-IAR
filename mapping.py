@@ -232,14 +232,14 @@ class Mapping(object):
 
         if m is not None:
             if m <= 1.0:
-                print("case m >= 0.5 = {}".format(m))
+                # print("case m >= 0.5 = {}".format(m))
                 for x in xrange(int(dx+1)):
                     y = self.ds.og._snap(m * x * self.ds.og.granularity)
                     x = self.ds.og._snap(x * self.ds.og.granularity)
                     points.append((x, y))
             else:
                 m = 1/m
-                print("case m < 0.5 = {}".format(m))
+                # print("case m < 0.5 = {}".format(m))
                 for y in xrange(int(dy+1)):
                     x = self.ds.og._snap(m * y * self.ds.og.granularity)
                     y = self.ds.og._snap(y * self.ds.og.granularity)
