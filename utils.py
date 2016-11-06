@@ -25,6 +25,8 @@ def relative_to_fixed_frame_tf(xabs, yabs, thetaabs, x, y):
     Transform points x, y relative to xabs and yabs with rotation
     thetaabs relative to the fixed frame.
 
+    With x being forward and y left, theta is anticlockwise.
+
     e.g. the Khepera's pose is (xabs, yabs, theta), and a distance sensor
     reading is at (x,y) relative to the Khepera's axes
 
@@ -37,16 +39,19 @@ def relative_to_fixed_frame_tf(xabs, yabs, thetaabs, x, y):
     (0.0, 0.0)
     
     >>> relative_to_fixed_frame_tf(100, 0, math.pi, 100, 0)
-    (0.0, -0.0)
+    (0.0, 0.0)
 
     >>> relative_to_fixed_frame_tf(0, 100, math.pi, 0, 100)
     (-0.0, 0.0)
 
     >>> relative_to_fixed_frame_tf(20, 10, math.pi/2, 5, 2.5)
-    (12.5, 15.0)
+    (17.5, 15.0)
 
     >>> relative_to_fixed_frame_tf(-20, -15, 3 * math.pi/2, 10, 5)
-    (-25.0, -5.0)
+    (-15.0, -25.0)
+
+    >>> relative_to_fixed_frame_tf(-10, 8, math.pi/4, 6*math.sin(math.pi/4), -6*math.cos(math.pi/4))
+    (-4.0, 8.0)
     '''
     return tuple(map(lambda x: round(x, 4),
                      _relative_to_fixed_frame_tf_UNROUND(xabs, yabs, thetaabs, x, y)))
@@ -59,12 +64,12 @@ def _relative_to_fixed_frame_tf_UNROUND(xabs, yabs, thetaabs, x, y):
 
 
     2D Transformation
-    |  Cos(a), Sin(a) | . |x|
-    | -Sin(a), Cos(a) |   |y|
+    |  cos(a), sin(a) | . |x|
+    | -sin(a), cos(a) |   |y|
     '''
-    
-    tfx = (x *  math.cos(thetaabs)) + (y * math.sin(thetaabs))
-    tfy = (x * -math.sin(thetaabs)) + (y * math.cos(thetaabs))
+
+    tfx = (x * math.cos(thetaabs)) + (y * -math.sin(thetaabs))
+    tfy = (x * math.sin(thetaabs)) + (y *  math.cos(thetaabs))
     
     tfx += xabs
     tfy += yabs
