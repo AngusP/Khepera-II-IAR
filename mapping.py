@@ -135,8 +135,7 @@ class Mapping(object):
         Subscribe (so run async in a different process) to state updates published
         to Redis and affect the map
 
-        TODO: Populating map with unoccupied space is too slow currently, 
-        investigate possible speedups
+        TODO: FIX to match new message serialised format
         '''
         sub = self.ds.r.pubsub()
         sub.subscribe([self.ds.listname])
@@ -181,7 +180,8 @@ class Mapping(object):
 
         # Robot's position:
         x, y = map(float, [data['x'], data['y']])
-        
+        pointsl = []
+
         # We can immediately declare the spot we're in is unoccupied:
         # self.ds.og.update(x, y, 0)
         
@@ -191,33 +191,80 @@ class Mapping(object):
             if prior is None:
                 prior = 0
 
-            # TODO: This is dayum slow
             # Ray-trace and update points between us 
             # and the object we're seeing
-            # spaces = self.raytrace((x,y), (point.x, point.y))
-            # for space in spaces:
-            #     sx, sy = (space[0]+x, space[1]+y)
-            #     if self.ds.og.get(sx, sy) != 0:
-            #         self.ds.og.update(space[0], space[1], 0)
+            spaces = self.raytrace((x,y), (point.x, point.y))
+            for space in spaces:
+                sx, sy = (space[0]+x, space[1]+y)
+                pointsl.append((sx, sy, 0))
 
             
             if point.val > 60.0:
-                # We consider this point too far to be 
-                # certianly unoccupied
-                continue
-
-            certainty = 100 - 0.5 * point.val
-
-                            
-            #delta = (prior - point.val) / 2.0
-            #occ = point.val + delta
+                occ = 0
+            else:
+                occ = point.val
             
-            occ = certainty
             # Basic assurance that we're within [0..100]
             occ = max(0, min(100, occ))
+            pointsl.append((point.x, point.y, occ))
             
-            self.ds.og.update(point.x, point.y, occ)
+        self.ds.og.multiupdate(pointsl)
 
+
+
+    def raytrace(self, coord1, coord2):
+        '''
+        2D ray-tracing
+
+        Return a list of all points between given coordinate tuples,
+        to the granular scale
+
+        Tests:
+
+        >>> m.raytrace((20,10),(20,40))
+        [(20.0, 0.0), (20.0, 10.0), (20.0, 20.0), (20.0, 30.0)]
+
+        >>> m.raytrace((20,10),(20,40))
+        [(20.0, 10.0), (20.0, 20.0), (20.0, 30.0), (20.0, 40.0)]
+        
+        '''
+        x1, y1 = map(self.ds.og._snap, coord1)
+        x2, y2 = map(self.ds.og._snap, coord2)
+
+        # print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
+        
+        x1, x2, y1, y2 = map(float, (x1,x2,y1,y2))
+
+        dx = (x2 - x1) / self.ds.og.granularity
+        dy = (y2 - y1) / self.ds.og.granularity
+
+        # print("dy = {} dx = {}".format(dy, dx))
+        points = []
+
+        if dx != 0:
+            m = dy / dx
+        else:
+            m = None
+
+        # print("Func y = {}x".format(m))
+
+        if m is not None:
+            if m <= 0.5:
+                for x in xrange(int(dx+1)):
+                    y = self.ds.og._snap(m * x * self.ds.og.granularity)
+                    x = self.ds.og._snap(x * self.ds.og.granularity)
+                    points.append((x, y))
+            else:
+                m = 1-m
+                for y in xrange(int(dy+1)):
+                    y = self.ds.og._snap(y * self.ds.og.granularity)
+                    x = self.ds.og._snap(m * y * self.ds.og.granularity)
+                    points.append((x, y))
+        else:
+            for y in xrange(int(dy+1)):
+                points.append((x1, y1+(y*self.ds.og.granularity)))
+
+        return points
 
 
 
@@ -268,36 +315,6 @@ class Mapping(object):
         return points
 
 
-    def raytrace(self, coord1, coord2):
-        '''
-        Baaaasically 2D ray-tracing
-
-        Return a list of all points between given coordinate tuples,
-        to the granular scale
-        '''
-        x1, y1 = map(self.ds.og._snap, coord1)
-        x2, y2 = map(self.ds.og._snap, coord2)
-
-        # print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
-        
-        x1, x2, x3, x4 = map(float, (x1,x2,y1,y2))
-
-        dx = (x2 - x1) / self.ds.og.granularity
-        dy = (y2 - y1) / self.ds.og.granularity
-
-        if dx != 0:
-            m = dy/dx  # yay, just like teys said it was in Maths!
-        else:
-            m = 0.0
-
-        # print("Gradient {} from dy = {} dx = {}".format(m, dy, dx))
-
-        points = []
-        for x in xrange(int(math.ceil(dx))):
-            y = m * float(x)
-            points.append((int(x+x1), int(y+y1)))
-
-        return points[1:]
 
 
 if __name__ == "__main__":

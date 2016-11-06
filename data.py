@@ -411,6 +411,7 @@ class DataStore:
         # This'll be the only one of our ROS classes that persists
         print("generating map...")
         og_map = rg.gen_map(self.og)
+        width, height = self.og._get_map_dimensions()
         print("done.")
 
         sub = self.r.pubsub()
@@ -498,21 +499,24 @@ class DataStore:
                     # A sharp represents a meta message
                     if not item['data'].startswith("#"):
 
-                        x, y = self.og._dekey(item['data'])
-                        
-                        occ = self.og.get(x,y)
-                        
-                        if occ is None:
-                            raise DSException("Published key {} had no occupancy".format(item['data']))
-                        
-                        # in-place update this grid in og_map (the ROS OccupancyGrid instance)
-                        # the map takes absolute coordinates to array index
-                        x, y = self.og._genindex(x, y)
-                        width, height = self.og._get_map_dimensions()
-                        y *= width # row major, so scale y onto a flat array
-                        og_map.data[int(x+y)] = occ # Toootaly worked first time
+                        toks = item['data'].split(' ')
 
-                        #rospy.loginfo("Map update {} --> {}".format(item['data'], occ))
+                        if not len(toks) % 2:
+                            raise DSException("odd number of tokens, eww")
+                        
+                        toks = zip(toks[::2], toks[1::2])
+                        
+                        for key, occ in toks:
+                            x, y = self.og._dekey(key)
+                            occ = max(-1, min(100, int(occ)))
+                            
+                            # in-place update this grid in og_map (the ROS OccupancyGrid instance)
+                            # the map takes absolute coordinates to array index
+                            x, y = self.og._genindex(x, y)
+                            y *= width # row major, so scale y onto a flat array
+                            og_map.data[int(x+y)] = occ # Toootaly worked first time
+
+                            #rospy.loginfo("Map update {} --> {}".format(item['data'], occ))
 
 
                     else:
@@ -536,6 +540,7 @@ class DataStore:
                                 og_map = rg.gen_map(self.og)
                             except Exception as e:
                                 rospy.logerr("Exception encountered when reloading: {}".format(e))
+                            width, height = self.og._get_map_dimensions()
                             rospy.logwarn("DONE WITH RELOAD")
 
                     # ALways refresh
