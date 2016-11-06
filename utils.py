@@ -59,10 +59,12 @@ def _relative_to_fixed_frame_tf_UNROUND(xabs, yabs, thetaabs, x, y):
 
 
     2D Transformation
-    |  Cos(a), Sin(a) | . |x|
-    | -Sin(a), Cos(a) |   |y|
+    |  cos(a), sin(a) | . |x|
+    | -sin(a), cos(a) |   |y|
     '''
     
+    # TODO: angle is between 180 and -179, normalise it
+
     tfx = (x *  math.cos(thetaabs)) + (y * math.sin(thetaabs))
     tfy = (x * -math.sin(thetaabs)) + (y * math.cos(thetaabs))
     

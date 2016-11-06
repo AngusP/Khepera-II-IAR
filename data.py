@@ -661,6 +661,17 @@ class GridManager:
                      |
           Y <------- Z
         (left)      (up)
+
+
+        Tests:
+        ------
+        
+        Easiest to require 10.0 granularity for all tests
+        
+        >>> ds.og.granularity
+        10.0
+
+        
         '''
         self.DEBUG = debug
 
@@ -929,6 +940,18 @@ class GridManager:
         Returns:
         coord  --  Snapped to grid. int or float, depending on whether the granularity is an
                    integer or float.
+
+
+        Tests:
+
+        >>> ds.og._snap(1)
+        0
+        >>> ds.og._snap(11)
+        10
+        >>> ds.og._snap(4.999)
+        0
+        >>> ds.og._snap(-11)
+        -10
         '''
         # See how far it is from the next point
         distance = float(coord) % self.granularity
@@ -975,7 +998,7 @@ class GridManager:
         occupancy  --  Occupancy certainty, -1 for unknown or [0..100]
 
         BE AWARE this snaps to the grid, 1,1 and 2,2 are not necessarily
-        distinct squaresm depending on the granularity
+        distinct squares depending on the granularity
         '''
 
         # Bump grid size if this is outside current bounding box
@@ -992,9 +1015,42 @@ class GridManager:
         if self.DEBUG:
             print("update {} {} to {}".format(x,y,occupancy))
         self.r.sadd(self.mapname, k)
-        self.r.publish(self.channel, k)
+        self.r.publish(self.channel, " ".join(k, occupancy))
 
 
+
+    def multiupdate(self, pts):
+        '''
+        Update a list of squres in the map.
+        Much more efficient than update() if multiple points need to che altered
+
+        Arguments:
+        pts --  list of (x,y,occ) tuples, 
+
+        BE AWARE this snaps to the grid, 1,1 and 2,2 are not necessarily
+        distinct squares depending on the granularity
+
+        >>> ds.og.multiupdate([(1,2,1000),(3,4,50),(5,6,-1),(40,120,20)])
+        'map:0:0 100 map:0:0 50 map:10:10 -1 map:40:120 20'
+        '''
+        serial = []
+        
+        for pt in pts:
+            self._bounds_check(pt[0],pt[1],True)
+            k = self._genkey(pt[0], pt[1])
+            occ = max(-1, min(100, pt[2]))
+            serial.append(k)
+            serial.append(str(occ))
+            
+            self.r.hmset(k, {
+                'occ'  : int(occ),
+                'seen' : time.time()
+            })
+            self.r.sadd(self.mapname, k)
+
+        serial = " ".join(serial)
+        self.r.publish(self.channel, serial)
+        return serial
 
 
     def touch(self, x, y):
@@ -1486,14 +1542,15 @@ if __name__ == "__main__":
 
     try:
         optlist, args = getopt.getopt(args, 
-                                      'ds:prem:l:', 
+                                      'ds:prem:l:t', 
                                       ['delete',
                                        'server=', 
                                        'plot', 
                                        'rospipe', 
                                        'replay', 
                                        'speed=',
-                                       'load='])
+                                       'load=',
+                                       'test'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-d or --delete   : Destroy all data held in Redis")
@@ -1503,6 +1560,7 @@ if __name__ == "__main__":
         print("-e or --replay   : Take historical data from Redis and re-publish to channel")
         print("-m or --speed    :     - Speed multiplier, default 1.0")
         print("-l or --load     : Load a map (occupancy grid) from file")
+        print("-t or --test     : Run DocTests over DataStore and GridManager")
         sys.exit(2)
 
     server = "localhost"
@@ -1530,7 +1588,6 @@ if __name__ == "__main__":
         elif opt in ('-r', '--rospipe'):
             ds.rospipe()
 
-        
         elif opt in ('-m', '--speed'):
             speed = float(arg)
 
@@ -1539,6 +1596,10 @@ if __name__ == "__main__":
 
         elif opt in ('-l', '--load'):
             ds.og.load(str(arg))
+
+        elif opt in ('-t', '--test'):
+            import doctest
+            doctest.testmod(extraglobs={'ds': ds}) 
 
     if do_replay:
         ds.replay(speed=speed)
