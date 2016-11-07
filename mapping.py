@@ -165,6 +165,8 @@ class Mapping(object):
 
         # We can immediately declare the spot we're in is unoccupied:
         pointsl.add((x,y,0))
+
+        priors = []
         
         for point in points:
             
@@ -175,7 +177,9 @@ class Mapping(object):
             # Ray-trace and update points between us 
             # and the object we're seeing
             spaces = self.raytrace((x,y), (point.x, point.y))
-            for space in spaces:
+            priors = self.ds.og.mget(spaces)
+
+            for space , prior in zip(spaces, priors):
                 sx, sy = (space[0], space[1])
 
                 prior = self.ds.og.get(sx, sy)
@@ -204,7 +208,7 @@ class Mapping(object):
 
 
 
-    def raytrace(self, coord1, coord2):
+    def raytrace(self, coord1, coord2, clamp=None):
         '''
         2D ray-tracing
 
@@ -212,6 +216,11 @@ class Mapping(object):
         to the granular scale
 
         Implementation of Bresenham's Line Algorithm
+
+        Arguments:
+        coord1  --  (x,y) tuple of starting point
+        coord2  --  (x,y) tuple of stopping point
+        clamp   --  Length of longest ray to return (list len) (Optional)
         '''
         
         x1, y1 = map(self.ds.og._snap, coord1)
@@ -249,6 +258,7 @@ class Mapping(object):
         # Iterate over bounding box generating points between start and end
         y = y1
         points = []
+        
         # Only imbetween points, not end or start
         for x in xrange(x1+1, x2-1):
             coord = (y, x) if steep else (x, y)
@@ -261,8 +271,34 @@ class Mapping(object):
 
         if swapped:
             points.reverse()
+
+        if clamp:
+            return points[:clamp]
+
         return points
 
+
+
+    def predict_sensor(self, pose):
+        '''
+        Return anticipated sensor readings given a pose and the occupancy grid.
+
+        Arguments:
+        pose  --  (x,y,theta) pose tuple
+        '''
+        pts = []
+        x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
+        theta = pose[2]
+
+        angles = map(lambda t: t + theta, self.sensor_angles)
+        sensors = map(lambda pt: utils.relative_to_fixed_frame_tf(x, y, theta, pt[0], pt[1]), 
+                      self.sensor_offsets)
+
+        #pipe = self.ds.r.pipeline()
+        
+        print(sensors)
+
+        return pts
 
 
     def _activation_to_points(self, data):
