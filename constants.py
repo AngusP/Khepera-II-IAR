@@ -48,10 +48,7 @@ WHEEL_BASE_M = WHEEL_BASE_MM / 1000.0 # m
 
 
 MEASUREMENT_PERIOD_S = 0.05 # s
-EXPLORATION_CYCLES = 15.0 / MEASUREMENT_PERIOD_S 
-
-#Not exactly as expected as 30 seconds is not just delay, but also computations, hence value below is 15, not 30
-EXPLORATION_CYCLES = 50.0 / MEASUREMENT_PERIOD_S 
+MEASUREMENT_PERIOD_MS = int(MEASUREMENT_PERIOD_S * 1000) # s
 
 
 # SENSOR CONSTANTS
