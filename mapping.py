@@ -272,7 +272,7 @@ class Mapping(object):
         if swapped:
             points.reverse()
 
-        if clamp:
+        if clamp is not None:
             return points[:clamp]
 
         return points
@@ -286,7 +286,6 @@ class Mapping(object):
         Arguments:
         pose  --  (x,y,theta) pose tuple
         '''
-        pts = []
         x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
         theta = pose[2]
 
@@ -294,11 +293,48 @@ class Mapping(object):
         sensors = map(lambda pt: utils.relative_to_fixed_frame_tf(x, y, theta, pt[0], pt[1]), 
                       self.sensor_offsets)
 
-        #pipe = self.ds.r.pipeline()
+        pre_points = zip(sensors, angles)
+        points = set()
         
-        print(sensors)
+        for point in pre_points:
+            p, t = point
+            points.update(set(self.angle_raytrace(p, t, 6)))
 
-        return pts
+        points = list(points)
+        occs = self.ds.og.mget(points)
+
+        ret = []
+        for occ, point in zip(occs, points):
+            if occ > 0:
+                ret.append((point[0], point[1], occ))
+
+        return ret
+
+
+
+    def angle_raytrace(self, start, theta, num):
+        '''
+        Similar to raytrace, though takes a start point and angle, returns
+        a list points on the resulting ray.
+
+        Arguments:
+        start  --  (x,y) coordinate to start projecting from
+        theta  --  Angle to project
+        num    --  Number of points wanted
+        '''
+
+        xstep = math.cos(theta) * self.ds.og.granularity
+        ystep = math.sin(theta) * self.ds.og.granularity
+
+        # print("xs {} ys {}".format(xstep, ystep))
+
+        endx = (xstep * (num+4) * math.sqrt(2))
+        endy = (ystep * (num+4) * math.sqrt(2))
+
+        return self.raytrace(start, (endx, endy), num)
+
+
+
 
 
     def _activation_to_points(self, data):

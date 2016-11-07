@@ -1363,11 +1363,12 @@ class GridManager:
             points = self.r.smembers(self.mapname)
             
             pipe = self.r.pipeline()
+            
             for key in points:
                 pipe.delete(key)
 
-            pipe.r.delete(self.mapname)
-            pipe.r.delete(self.mapmeta)
+            pipe.delete(self.mapname)
+            pipe.delete(self.mapmeta)
             pipe.execute()
 
             print("!!! Deleted the world from Redis !!!")
