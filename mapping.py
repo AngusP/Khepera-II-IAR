@@ -247,10 +247,10 @@ class Mapping(object):
         else:
             if dx == 0:
                 for y in xrange(int(dy+1)):
-                    points.append((x1, y1+(y*self.ds.og.granularity)))
+                    points.append((0, y*self.ds.og.granularity))
             else:
                 for x in xrange(int(dx+1)):
-                    points.append((x1+(x*self.ds.og.granularity), y1))
+                    points.append((x*self.ds.og.granularity, 0))
 
         return points
 
