@@ -86,3 +86,62 @@ Internally we're using Redis to publish and collect data. `data.py` has a method
 [ROS.org](http://ros.org) has detailed docs on installation and dependencies. For the whole ROS pipeline to work, and instance of `roscore` must be running locally, and `rospipe()` will publish to the topics `/statestreampose`, `/statestreamodom` and `/statestreamdist`, as well as publishing a `TR` named `khepera`. Rviz should be able to detect these topics.
 
 
+# Utilities (utils.py)
+
+**Reference Frame Transform**
+
+    utils.relative_to_fixed_frame_tf(fixed_x, fixed_y, relative_theta, relative_x, relative_y)
+
+**IR raw sensor reading to distance**
+
+    utils.ir_to_dist(reading)
+
+
+
+# Occupancy Grid
+
+A `DataStore` instance has it's own instance of a `GridManager`, called `og`. 
+
+
+## Generating a map
+
+The mapper is run asynchronously from other programs, like so:
+
+    $ python mapping.py --map
+
+## Main Methods and Members
+
+**NB:**
+
+Full class names are given, though these methods and members should be accessed 
+though an instance, like so:
+
+    >>> ds = DataStore()
+    >>> ds.push(...)
+    >>> ds.og.get(...) # 'og' is a DataStore's GridManager instance 
+
+**DocStrings** should be consulted for fuller documentation
+
+GridManager.get(x, y)
+: Gives occupancy unoccupied to occupied [0..100], -1 unknown
+
+GridManager.granularity
+: Stores the granular unit size for the Occupancy grid.
+
+GridManager._snap(coord)
+: takes an arbitrarily accurate number and returns the coord of the grid cell it falls within. You probably shouldn't use this (hence the underscore), as `.get()` automatically calls this on it's args.
+
+
+## Deleting data & cleaning up
+
+The occupancy grid can be destroyed (keeping all other data such as poses) using the `_destroy()` method,
+e.g. `ds.og._destroy()`. This **is different** from the `DataStore._destroy()` method that will 
+flush the *entire* database.
+
+The destroy method can be called directly from the command line:
+
+    (VENV) $ python mapping.py --destroy
+
+All listeners and programs using an occupancy grid should be restarted after a destroy.
+
+
