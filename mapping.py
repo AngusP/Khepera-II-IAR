@@ -88,8 +88,8 @@ class Mapping(object):
             0.25 * math.pi,  # Left angled
             0.0,             # Left forward
             0.0,             # Right forward
-            1.75 * math.pi,  # Right angled
-            1.5 * math.pi,   # Right perpendicular
+            -0.25 * math.pi, #1.75 * math.pi,  # Right angled
+            -0.5  * math.pi, #1.5 * math.pi,   # Right perpendicular
             math.pi,         # Back right
             math.pi          # Back left
         ]
@@ -139,7 +139,7 @@ class Mapping(object):
                         self.update(data)
 
                 except KeyError as e:
-                    print("!!!!! EXCEPTION - Continuing. {}".format(str(e)))
+                    print("!!!!! EXCEPTION - Continuing. {} raised {}".format(msg, str(e)))
             
         except KeyboardInterrupt:
             print("Done, stopping...")
@@ -156,12 +156,12 @@ class Mapping(object):
         '''
         points = self._activation_to_points(data)
 
-        # Robot's position:
+        # Robot's _absolute_ position:
         x, y = map(float, [data['x'], data['y']])
-        pointsl = []
+        pointsl = set()
 
         # We can immediately declare the spot we're in is unoccupied:
-        # self.ds.og.update(x, y, 0)
+        pointsl.add((x,y,0))
         
         for point in points:
             
@@ -174,12 +174,16 @@ class Mapping(object):
             spaces = self.raytrace((x,y), (point.x, point.y))
             for space in spaces:
                 sx, sy = (space[0]+x, space[1]+y)
+
                 prior = self.ds.og.get(sx, sy)
                 
                 if prior is None:
-                    pointsl.append((sx, sy, 0))
+                    # Never seen before then assert it's unoccupied
+                    pointsl.add((sx, sy, 0))
                 else:
-                    pointsl.append((sx, sy, 0))
+                    # TODO: More sensible update
+                    # Reduce the prior as we now think it's unoccupied
+                    pointsl.add((sx, sy, prior/2))
             
             if point.val > 70.0:
                 occ = 0
@@ -188,9 +192,9 @@ class Mapping(object):
             
             # Basic assurance that we're within [0..100]
             occ = max(0, min(100, occ))
-            pointsl.append((point.x, point.y, occ))
+            pointsl.add((point.x, point.y, occ))
             
-        self.ds.og.multiupdate(pointsl)
+        self.ds.og.multiupdate(list(pointsl))
 
 
 
@@ -201,58 +205,83 @@ class Mapping(object):
         Return a list of all points between given coordinate tuples,
         to the granular scale
 
-        Tests:
-
-        >>> m.raytrace((20,10),(20,40))
-        [(20.0, 0.0), (20.0, 10.0), (20.0, 20.0), (20.0, 30.0)]
-
-        >>> m.raytrace((20,10),(20,40))
-        [(20.0, 10.0), (20.0, 20.0), (20.0, 30.0), (20.0, 40.0)]
-        
+        Implementation of Bresenham's Line Algorithm
         '''
+        
         x1, y1 = map(self.ds.og._snap, coord1)
         x2, y2 = map(self.ds.og._snap, coord2)
-
-        # print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
         
-        x1, x2, y1, y2 = map(float, (x1,x2,y1,y2))
+        x1, x2, y1, y2 = map(lambda x: int(x/self.ds.og.granularity), (x1,x2,y1,y2))
 
-        dx = (x2 - x1) / self.ds.og.granularity
-        dy = (y2 - y1) / self.ds.og.granularity
+        print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
 
-        # print("dy = {} dx = {}".format(dy, dx))
+        dx = x2 - x1
+        dy = y2 - y1
+        steep = abs(dy) > abs(dx)
+
+        if steep:
+            x1, y1 = y1, x1
+            x2, y2 = y2, x2
+
+        swapped = False
+        if x1 > x2:
+            x1, x2 = x2, x1
+            y1, y2 = y2, y1
+            swapped = True
+
+        # Recalculate gradients
+        dx = x2 - x1
+        dy = y2 - y1
+
+        print("dy = {} dx = {}".format(dy, dx))
+        
+        # Calculate error
+        error = int(dx / 2.0)
+        ystep = 1 if y1 < y2 else -1
+        
+        
+        # Iterate over bounding box generating points between start and end
+        y = y1
         points = []
+        # Only imbetween points, not end or start
+        for x in xrange(x1+1, x2):
+            coord = (y, x) if steep else (x, y)
+            points.append((float(coord[0]) * self.ds.og.granularity,
+                           float(coord[1]) * self.ds.og.granularity))
+            error -= abs(dy)
+            if error < 0:
+                y += ystep
+                error += dx
 
-        if dx != 0 and dy != 0:
-            m = dy / dx
-        else:
-            m = None
-
-        # print("Func y = {}x".format(m))
-
-        if m is not None:
-            if m <= 1.0:
-                # print("case m >= 0.5 = {}".format(m))
-                for x in xrange(int(dx+1)):
-                    y = self.ds.og._snap(m * x * self.ds.og.granularity)
-                    x = self.ds.og._snap(x * self.ds.og.granularity)
-                    points.append((x, y))
-            else:
-                m = 1/m
-                # print("case m < 0.5 = {}".format(m))
-                for y in xrange(int(dy+1)):
-                    x = self.ds.og._snap(m * y * self.ds.og.granularity)
-                    y = self.ds.og._snap(y * self.ds.og.granularity)
-                    points.append((x, y))
-        else:
-            if dx == 0:
-                for y in xrange(int(dy+1)):
-                    points.append((0, y*self.ds.og.granularity))
-            else:
-                for x in xrange(int(dx+1)):
-                    points.append((x*self.ds.og.granularity, 0))
-
+        if swapped:
+            points.reverse()
         return points
+
+        # # print("Func y = {}x".format(m))
+
+        # if m is not None:
+        #     if m <= 1.0:
+        #         print("case m <= 1.0 = {}".format(m))
+        #         for x in xrange(int(dx)):
+        #             y = self.ds.og._snap(m * x * self.ds.og.granularity)
+        #             x = self.ds.og._snap(x * self.ds.og.granularity)
+        #             points.append((x, y))
+        #     else:
+        #         m = 1/m
+        #         print("case m >= 1.0, m = 1/m = {}".format(m))
+        #         for y in xrange(int(dy)):
+        #             x = self.ds.og._snap(m * y * self.ds.og.granularity)
+        #             y = self.ds.og._snap(y * self.ds.og.granularity)
+        #             points.append((x, y))
+        # else:
+        #     if dx == 0:
+        #         print("case dx == 0")
+        #         for y in xrange(int(dy)):
+        #             points.append((0, y*self.ds.og.granularity))
+        #     else:
+        #         print("case dy == 0")
+        #         for x in xrange(int(dx)):
+        #             points.append((x*self.ds.og.granularity, 0))
 
 
 
@@ -311,10 +340,12 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     try:
-        optlist, args = getopt.getopt(args, 's:', ['server='])
+        optlist, args = getopt.getopt(args, 's:md:', ['server=', 'map', 'destroy_map'])
     except getopt.GetoptError:
         print("Invalid Option, correct usage:")
         print("-s or --server   : Hostname of redis server to use. Default localhost")
+        print("-m or --map      : Run map generation program")
+        print("-d or --destroy  : Destroy the map (not whole DB). Interactive.")
         sys.exit(2)
 
     server = "localhost"
@@ -325,6 +356,14 @@ if __name__ == "__main__":
             print("Using Redis server at '" + str(arg) + "'")
             server = str(arg)
 
-    m = Mapping()
+    m = Mapping(host=server)
+
+    # Post-init
+    for opt, arg in optlist:
+        if opt in ('-m', '--map'):
+            m.sub_mapgen()
+        elif opt in('-d', '--destroy_map'):
+            m.ds.og._destroy()
+            sys.exit(0)
 
 
