@@ -78,9 +78,12 @@ class Point():
 
 class Mapping(object):
 
-    def __init__(self, host='localhost'):
+    def __init__(self, host='localhost', ds=None):
         
-        self.ds = DataStore(host=server)
+        if ds is None:
+            self.ds = DataStore(host=server)
+        else:
+            self.ds = ds
 
         # Angles of the sensor from the X axis (in rad)
         self.sensor_angles = [
@@ -143,7 +146,7 @@ class Mapping(object):
             
         except KeyboardInterrupt:
             print("Done, stopping...")
-    
+
 
 
     def update(self, data):
@@ -194,7 +197,10 @@ class Mapping(object):
             occ = max(0, min(100, occ))
             pointsl.add((point.x, point.y, occ))
             
-        self.ds.og.multiupdate(list(pointsl))
+        pointsl = list(pointsl)
+        self.ds.og.multiupdate(pointsl)
+        
+        return pointsl
 
 
 
@@ -213,7 +219,7 @@ class Mapping(object):
         
         x1, x2, y1, y2 = map(lambda x: int(x/self.ds.og.granularity), (x1,x2,y1,y2))
 
-        print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
+        # print("Taking ({},{}) to ({},{})".format(x1,y1,x2,y2))
 
         dx = x2 - x1
         dy = y2 - y1
@@ -233,7 +239,7 @@ class Mapping(object):
         dx = x2 - x1
         dy = y2 - y1
 
-        print("dy = {} dx = {}".format(dy, dx))
+        # print("dy = {} dx = {}".format(dy, dx))
         
         # Calculate error
         error = int(dx / 2.0)
@@ -257,33 +263,6 @@ class Mapping(object):
             points.reverse()
         return points
 
-        # # print("Func y = {}x".format(m))
-
-        # if m is not None:
-        #     if m <= 1.0:
-        #         print("case m <= 1.0 = {}".format(m))
-        #         for x in xrange(int(dx)):
-        #             y = self.ds.og._snap(m * x * self.ds.og.granularity)
-        #             x = self.ds.og._snap(x * self.ds.og.granularity)
-        #             points.append((x, y))
-        #     else:
-        #         m = 1/m
-        #         print("case m >= 1.0, m = 1/m = {}".format(m))
-        #         for y in xrange(int(dy)):
-        #             x = self.ds.og._snap(m * y * self.ds.og.granularity)
-        #             y = self.ds.og._snap(y * self.ds.og.granularity)
-        #             points.append((x, y))
-        # else:
-        #     if dx == 0:
-        #         print("case dx == 0")
-        #         for y in xrange(int(dy)):
-        #             points.append((0, y*self.ds.og.granularity))
-        #     else:
-        #         print("case dy == 0")
-        #         for x in xrange(int(dx)):
-        #             points.append((x*self.ds.og.granularity, 0))
-
-
 
 
     def _activation_to_points(self, data):
@@ -297,7 +276,7 @@ class Mapping(object):
         Array of Points() instances, with coord and distance from bot
         '''
         
-        keys = ['r0','r1','r2','r3','r4','r5','r6','r7']
+        keys = ['r0','r1','r2','r3','r4','r5'] #,'r6','r7']
         pre_points = zip(keys, self.sensor_angles, self.sensor_offsets)
 
         points = []

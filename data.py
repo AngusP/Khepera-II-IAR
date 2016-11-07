@@ -223,6 +223,8 @@ class DataStore:
         # Also publish onto a channel
         self.r.publish(self.listname, mapname)
 
+        return hmap
+
 
     def push_goal(self, path):
         '''
