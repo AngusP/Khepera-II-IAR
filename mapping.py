@@ -173,7 +173,7 @@ class Mapping(object):
             # and the object we're seeing
             spaces = self.raytrace((x,y), (point.x, point.y))
             for space in spaces:
-                sx, sy = (space[0]+x, space[1]+y)
+                sx, sy = (space[0], space[1])
 
                 prior = self.ds.og.get(sx, sy)
                 
@@ -244,7 +244,7 @@ class Mapping(object):
         y = y1
         points = []
         # Only imbetween points, not end or start
-        for x in xrange(x1+1, x2):
+        for x in xrange(x1+1, x2-1):
             coord = (y, x) if steep else (x, y)
             points.append((float(coord[0]) * self.ds.og.granularity,
                            float(coord[1]) * self.ds.og.granularity))
