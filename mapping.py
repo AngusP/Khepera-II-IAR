@@ -190,8 +190,8 @@ class Mapping(object):
                 else:
                     # TODO: More sensible update
                     # Reduce the prior as we now think it's unoccupied
-                    pointsl.add((sx, sy, prior/2))
-            
+                    pointsl.add((sx, sy, prior * 0.7))
+
             if point.val > 70.0:
                 occ = 0
             else:
@@ -249,16 +249,16 @@ class Mapping(object):
         dy = y2 - y1
 
         # print("dy = {} dx = {}".format(dy, dx))
-        
+
         # Calculate error
         error = int(dx / 2.0)
         ystep = 1 if y1 < y2 else -1
-        
-        
+
+
         # Iterate over bounding box generating points between start and end
         y = y1
         points = []
-        
+
         # Only imbetween points, not end or start
         for x in xrange(x1+1, x2-1):
             coord = (y, x) if steep else (x, y)
@@ -286,8 +286,11 @@ class Mapping(object):
         Arguments:
         pose  --  (x,y,theta) pose tuple
         '''
+
         x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
         theta = pose[2]
+
+        # TODO: Is this necessary? Can we not just cast rays at an angle and return a distance per sensor?
 
         angles = map(lambda t: t + theta, self.sensor_angles)
         sensors = map(lambda pt: utils.relative_to_fixed_frame_tf(x, y, theta, pt[0], pt[1]), 
@@ -295,7 +298,7 @@ class Mapping(object):
 
         pre_points = zip(sensors, angles)
         points = set()
-        
+
         for point in pre_points:
             p, t = point
             points.update(set(self.angle_raytrace(p, t, 6)))
@@ -307,6 +310,8 @@ class Mapping(object):
         for occ, point in zip(occs, points):
             if occ > 0:
                 ret.append((point[0], point[1], occ))
+
+        # TODO: Either compare to computed wall locations, or turn into predicted distances
 
         return ret
 
