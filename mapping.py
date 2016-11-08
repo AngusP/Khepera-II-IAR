@@ -165,6 +165,8 @@ class Mapping(object):
 
         # We can immediately declare the spot we're in is unoccupied:
         pointsl.add((x,y,0))
+
+        priors = []
         
         for point in points:
             
@@ -175,7 +177,9 @@ class Mapping(object):
             # Ray-trace and update points between us 
             # and the object we're seeing
             spaces = self.raytrace((x,y), (point.x, point.y))
-            for space in spaces:
+            priors = self.ds.og.mget(spaces)
+
+            for space , prior in zip(spaces, priors):
                 sx, sy = (space[0], space[1])
 
                 prior = self.ds.og.get(sx, sy)
@@ -186,8 +190,8 @@ class Mapping(object):
                 else:
                     # TODO: More sensible update
                     # Reduce the prior as we now think it's unoccupied
-                    pointsl.add((sx, sy, prior/2))
-            
+                    pointsl.add((sx, sy, prior * 0.7))
+
             if point.val > 70.0:
                 occ = 0
             else:
@@ -204,7 +208,7 @@ class Mapping(object):
 
 
 
-    def raytrace(self, coord1, coord2):
+    def raytrace(self, coord1, coord2, clamp=None):
         '''
         2D ray-tracing
 
@@ -212,6 +216,11 @@ class Mapping(object):
         to the granular scale
 
         Implementation of Bresenham's Line Algorithm
+
+        Arguments:
+        coord1  --  (x,y) tuple of starting point
+        coord2  --  (x,y) tuple of stopping point
+        clamp   --  Length of longest ray to return (list len) (Optional)
         '''
         
         x1, y1 = map(self.ds.og._snap, coord1)
@@ -240,15 +249,16 @@ class Mapping(object):
         dy = y2 - y1
 
         # print("dy = {} dx = {}".format(dy, dx))
-        
+
         # Calculate error
         error = int(dx / 2.0)
         ystep = 1 if y1 < y2 else -1
-        
-        
+
+
         # Iterate over bounding box generating points between start and end
         y = y1
         points = []
+
         # Only imbetween points, not end or start
         for x in xrange(x1+1, x2-1):
             coord = (y, x) if steep else (x, y)
@@ -261,7 +271,74 @@ class Mapping(object):
 
         if swapped:
             points.reverse()
+
+        if clamp is not None:
+            return points[:clamp]
+
         return points
+
+
+
+    def predict_sensor(self, pose):
+        '''
+        Return anticipated sensor readings given a pose and the occupancy grid.
+
+        Arguments:
+        pose  --  (x,y,theta) pose tuple
+        '''
+
+        x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
+        theta = pose[2]
+
+        # TODO: Is this necessary? Can we not just cast rays at an angle and return a distance per sensor?
+
+        angles = map(lambda t: t + theta, self.sensor_angles)
+        sensors = map(lambda pt: utils.relative_to_fixed_frame_tf(x, y, theta, pt[0], pt[1]), 
+                      self.sensor_offsets)
+
+        pre_points = zip(sensors, angles)
+        points = set()
+
+        for point in pre_points:
+            p, t = point
+            points.update(set(self.angle_raytrace(p, t, 6)))
+
+        points = list(points)
+        occs = self.ds.og.mget(points)
+
+        ret = []
+        for occ, point in zip(occs, points):
+            if occ > 0:
+                ret.append((point[0], point[1], occ))
+
+        # TODO: Either compare to computed wall locations, or turn into predicted distances
+
+        return ret
+
+
+
+    def angle_raytrace(self, start, theta, num):
+        '''
+        Similar to raytrace, though takes a start point and angle, returns
+        a list points on the resulting ray.
+
+        Arguments:
+        start  --  (x,y) coordinate to start projecting from
+        theta  --  Angle to project
+        num    --  Number of points wanted
+        '''
+
+        xstep = math.cos(theta) * self.ds.og.granularity
+        ystep = math.sin(theta) * self.ds.og.granularity
+
+        # print("xs {} ys {}".format(xstep, ystep))
+
+        endx = (xstep * (num+4) * math.sqrt(2))
+        endy = (ystep * (num+4) * math.sqrt(2))
+
+        return self.raytrace(start, (endx, endy), num)
+
+
 
 
 

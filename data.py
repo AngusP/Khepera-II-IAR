@@ -89,7 +89,6 @@ class DSException(Exception):
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
-
 class DataStore:
 
     '''
@@ -288,12 +287,13 @@ class DataStore:
 
         return ret
 
+
     
     def get_dict(self, start=0, stop=-1):
         '''
         Extends the behaviour of get(), provides a time-keyed
         dictionary of data as opposed to a list
-
+        
         Arguments:
         start  --  First list index
         stop   --  Last list index, -1 means all
@@ -746,9 +746,9 @@ class GridManager:
 
         # Default size
         self.bounds = {
-            'maxx'    :  1000.0,
+            'maxx'    :  1500.0,
             'maxy'    :  1500.0,
-            'minx'    : -1000.0,
+            'minx'    : -1500.0,
             'miny'    : -1500.0
         }
 
@@ -813,23 +813,42 @@ class GridManager:
         BE AWARE coords will silently be snapped to the grid, allowing
         querying at higher resolution than is represented in the map.
         '''
-        return self._get_keyed(self._genkey(x, y))
+        return self._get_keyed([self._genkey(x, y)])[0]
 
 
-    def _get_keyed(self, k):
+
+    def mget(self, pts):
         '''
-        Similar to get(), though takes a string. Suggested you don't use
-        this much as it is breakier. Almost always generate k with 
+        Returns a list of ints representing the occupancies of the points in the argument
+        Makes use of Redis pipelining, so haz all the speeds
+
+        Arguments:
+        pts  --  List of (x,y) tuples
+        '''
+        return self._get_keyed(map(lambda p: self._genkey(p[0],p[1]), pts))
+
+
+    def _get_keyed(self, ks):
+        '''
+        Similar to get(), though takes a list of strings. Suggested you don't use
+        this much as it is breakier. Almost always generate ks with 
         GridManager._genkey(str)
 
         Arguments:
-        k  --  str, name of redis key of grid
+        ks  --  list(str), names of redis keys of grid
         '''
-        occ = self.r.hget(k, 'occ')
-        try:
-            return int(occ)
-        except (ValueError, TypeError, AttributeError):
-            return None
+        pipe = self.r.pipeline()
+        for k in ks:
+            pipe.hget(k, 'occ')
+        occs = pipe.execute()
+
+        def safe_int_cast(val):
+            try:
+                return int(val)
+            except (ValueError, TypeError, AttributeError):
+                return None
+
+        return map(safe_int_cast, occs)
 
 
 
@@ -856,10 +875,15 @@ class GridManager:
         data = np.ndarray((yheight, xwidth), dtype=int)
         data.fill(int(default))
 
-        for k in self._get_map_keys():
+        ks = self._get_map_keys()
+        os = self._get_keyed(ks)
+
+        assert len(os) == len(ks), "Length of key and value lists does not match!"
+
+        for index, k in enumerate(ks):
             x, y = self._dekey(k)
             xi, yi = self._genindex(x, y)
-            data[yi][xi] = self._get_keyed(k)
+            data[yi][xi] = os[index]
 
         if rtype == 'N':
             return data
@@ -1030,7 +1054,7 @@ class GridManager:
     def multiupdate(self, pts):
         '''
         Update a list of squres in the map.
-        Much more efficient than update() if multiple points need to che altered
+        Much more efficient than update() if multiple points need to be altered
 
         Arguments:
         pts --  list of (x,y,occ) tuples, 
@@ -1042,6 +1066,8 @@ class GridManager:
         'map:0:0 100 map:0:0 50 map:10:10 -1 map:40:120 20'
         '''
         serial = []
+
+        pipe = self.r.pipeline()
         
         for pt in pts:
             self._bounds_check(pt[0],pt[1],True)
@@ -1050,14 +1076,16 @@ class GridManager:
             serial.append(k)
             serial.append(str(occ))
             
-            self.r.hmset(k, {
+            pipe.hmset(k, {
                 'occ'  : int(occ),
                 'seen' : time.time()
             })
-            self.r.sadd(self.mapname, k)
+            pipe.sadd(self.mapname, k)
 
         serial = " ".join(serial)
-        self.r.publish(self.channel, serial)
+        pipe.publish(self.channel, serial)
+        
+        pipe.execute()
         return serial
 
 
@@ -1334,11 +1362,14 @@ class GridManager:
         
             points = self.r.smembers(self.mapname)
             
+            pipe = self.r.pipeline()
+            
             for key in points:
-                self.r.delete(key)
-                
-            self.r.delete(self.mapname)
-            self.r.delete(self.mapmeta)
+                pipe.delete(key)
+
+            pipe.delete(self.mapname)
+            pipe.delete(self.mapmeta)
+            pipe.execute()
 
             print("!!! Deleted the world from Redis !!!")
         
