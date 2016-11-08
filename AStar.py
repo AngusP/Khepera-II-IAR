@@ -55,11 +55,13 @@ class AStar(object):
         @param start grid starting point x,y tuple.
         @param end grid ending point x,y tuple.
         """
+
+	reachable = True
         self.grid_height = height
         self.grid_width =  width
         for x in range(self.grid_width):
             for y in range(self.grid_height):
-                if grid.get(x,y) == constants.CELL_UNREACHABLE:
+                if grid.get(x,y) == 1:
                     reachable = False
                 else:
                     reachable = True
@@ -133,22 +135,27 @@ class AStar(object):
         return cells
 
     def get_path(self):
+
+
+	x_neg = self.x_neg
+	y_neg = self.y_neg
+
         cell = self.end
-        path = [Cell(cell.x-self.x_neg, cell.y-self.y_neg, True)]
+        path = [Cell(cell.x - x_neg, cell.y - y_neg, True)]
 
 	print("-------------------------------")
-	print("({},{})".format(cell.x-self.x_neg , cell.y-self.y_neg))
+	print("({},{})".format(cell.x - x_neg, cell.y - y_neg))
         while cell.parent is not self.start:
             cell = cell.parent
-            path.append(Cell(cell.x-self.x_neg, cell.y-self.y_neg, True))
+            path.append(Cell(cell.x - x_neg, cell.y - y_neg, True))
 	
-	    print("({},{})".format(cell.x -self.x_neg, cell.y-self.y_neg))	
+	    print("({},{})".format(cell.x - x_neg, cell.y - y_neg))	
 
 
 	cell = self.start
-	path.append(Cell(cell.x-self.x_neg, cell.y-self.y_neg, True))
+	path.append(Cell(cell.x - x_neg, cell.y - y_neg, True))
 
-	print("({},{})".format(cell.x-self.x_neg , cell.y-self.y_neg))
+	print("({},{})".format(cell.x - x_neg, cell.y - y_neg))
 
         path.reverse()
         return path
