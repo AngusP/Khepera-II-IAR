@@ -143,22 +143,18 @@ class Pathing_State:
 
 	   #self.planning_grid.set(1,1,1)
 	   #self.planning_grid.set(-1,-1,1)
-	   #self.planning_grid.set(5,5,1)
-	   #self.planning_grid.set(3, 3, 0)	
-	   #self.planning_grid.set(3, 2,0)
-	   #self.planning_grid.set(1, 1,0)
-	   #self.planning_grid.set(3, 2,1)	
+	   self.planning_grid.set(5,-10,1)
+
 	   #self.planning_grid.set(2, 2,1)
-	   self.planning_grid.set(2, 2,1)
-	   self.planning_grid.set(4, 4, 0)
-	   self.planning_grid.set(2, 2, 11)
+	   #self.planning_grid.set(4, 4, 0)
+	   #self.planning_grid.set(2, 2, 11)
 
-           self.planning_grid.set(0, -2, 11)
+           #self.planning_grid.set(0, -2, 11)
 
-	   self.planning_grid.set(-1, 1, 1)
-	   self.planning_grid.set(0, 1, 1)
-	   self.planning_grid.set(1, 1, 1)
-	   self.planning_grid.set(2, 1, 1)
+	   #self.planning_grid.set(-1, 1, 1)
+	   #self.planning_grid.set(0, 1, 1)
+	   #self.planning_grid.set(1, 1, 1)
+	   #self.planning_grid.set(2, 1, 1)
 
 	   print("PLANNING GRID")
 
