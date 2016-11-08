@@ -156,16 +156,49 @@ class Pathing_Algorithm:
 	#TODO uncomment for actual operation AND add to have no computation if already in destination cell
 	#pathing_state.active_path = self.aStar.replan(pathing_state.current_cell, Cell(0,0,True) , pathing_state.grid) 	
 	
- 	pathing_state.active_path = self.aStar.replan((0,0), (5,5) , pathing_state.grid)
-	print(pathing_state.active_path)
+
+	start 	= (0,-2)
+	end 	= (3,3)
+
+	x_neg = pathing_state.planning_grid.x_neg
+	y_neg = pathing_state.planning_grid.y_neg
+
+
+	print("REPLANNED {} to {} where (0,0) is actually ({},{})".format(start, end, -x_neg, -y_neg))
+
+
+	start = (start[0]+x_neg, start[1]+y_neg)
+	end = 	(end[0]	 +x_neg, end[1]	 +y_neg)
+
+	
+	
+ 	pathing_state.active_path = self.aStar.replan(start, end , pathing_state.planning_grid)
+	#print(pathing_state.active_path)
 	#TODO remove after debug
-	print("REPLANNED")
+
+
 	
 		
     #return new state
     def new_state(self, nav_state, odo_state, pathing_state):
 	     
 		#TODO check maybe somehow if we are within a cell or something
+
+		#TODO etst cell dimensions and grid, START WITH MOVING THROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH MOVING THROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH MOVING THROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH MOVING THROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH M DETECTING THROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START W DETECTING THROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH DETECTING THROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH  DETECTINGTHROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WIT DETECTINGTHROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH DETECTINGTHROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH DETECTINGTHROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH DETECTINGTHROUGH CELL !!!!!
+		#TODO etst cell dimensions and grid, START WITH DETECTING MOVING THROUGH CELL !!!!!
+
+	
 		
 		self.check_cell_transition(pathing_state, odo_state)
 

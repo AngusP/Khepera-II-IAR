@@ -50,6 +50,8 @@ def main():
 	pathing_state = Pathing_State()
     	pathing = Pathing_Algorithm()
 
+	#TODO remove
+	#sys.exit(0)
     
     	#TODO so where is the gird, its form etc.....
         #TODO figure out a better DONE algorithm (bring back to detecting if we are in the cell)

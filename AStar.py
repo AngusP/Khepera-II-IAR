@@ -41,6 +41,11 @@ class AStar(object):
         self.grid_height = None
         self.grid_width = None
 
+
+	#for altering output and input inside of the algorithm
+	self.x_neg = 0
+	self.y_neg = 0
+
     def init_grid(self, width, height, grid, start, end):
     
         """Prepare grid cells, walls.
@@ -50,15 +55,22 @@ class AStar(object):
         @param start grid starting point x,y tuple.
         @param end grid ending point x,y tuple.
         """
+
+	reachable = True
         self.grid_height = height
         self.grid_width =  width
         for x in range(self.grid_width):
             for y in range(self.grid_height):
-                if grid[x][y] == constants.CELL_UNREACHABLE:
+                if grid.get(x,y) == 1:
                     reachable = False
                 else:
                     reachable = True
                 self.cells.append(Cell(x, y, reachable))
+
+	#TODO check if this produces correct path
+	self.x_neg = grid.x_neg
+	self.y_neg = grid.y_neg
+
         self.start = self.get_cell(*start)
         self.end = self.get_cell(*end)
 
@@ -97,29 +109,53 @@ class AStar(object):
         if cell.x < self.grid_width-1:
             #check if have diagonals on the right
             if cell.y < self.grid_height-1:
-                cells.append(self.get_cell(cell.x+1, cell.y+1))
+		#check if not blocked by 2 other ones (the 90 degree neighbours)
+		if self.get_cell(cell.x+1, cell.y).reachable or self.get_cell(cell.x, cell.y+1).reachable:
+                	cells.append(self.get_cell(cell.x+1, cell.y+1))
+
             if cell.y > 0:
-                cells.append(self.get_cell(cell.x+1, cell.y-1))
+		#check if not blocked by 2 other ones (the 90 degree neighbours)
+		if self.get_cell(cell.x+1, cell.y).reachable or self.get_cell(cell.x, cell.y-1).reachable:
+                	cells.append(self.get_cell(cell.x+1, cell.y-1))
                 
         if cell.x > 0:
             #check if have diagonals on the left                
             if cell.y < self.grid_height-1:
-                cells.append(self.get_cell(cell.x-1, cell.y+1))
+
+		#check if not blocked by 2 other ones (the 90 degree neighbours)
+		if self.get_cell(cell.x-1, cell.y).reachable or self.get_cell(cell.x, cell.y+1).reachable:
+                	cells.append(self.get_cell(cell.x-1, cell.y+1))
+
             if cell.y > 0:
-                cells.append(self.get_cell(cell.x-1, cell.y-1))
+
+		#check if not blocked by 2 other ones (the 90 degree neighbours)
+		if self.get_cell(cell.x-1, cell.y).reachable or self.get_cell(cell.x, cell.y-1).reachable:
+                	cells.append(self.get_cell(cell.x-1, cell.y-1))
                 
         return cells
 
     def get_path(self):
+
+
+	x_neg = self.x_neg
+	y_neg = self.y_neg
+
         cell = self.end
-        path = [Cell(cell.x, cell.y, True)]
+        path = [Cell(cell.x - x_neg, cell.y - y_neg, True)]
+
+	print("-------------------------------")
+	print("({},{})".format(cell.x - x_neg, cell.y - y_neg))
         while cell.parent is not self.start:
             cell = cell.parent
-            path.append(Cell(cell.x, cell.y, True))
+            path.append(Cell(cell.x - x_neg, cell.y - y_neg, True))
+	
+	    print("({},{})".format(cell.x - x_neg, cell.y - y_neg))	
 
 
 	cell = self.start
-	path.append(Cell(cell.x, cell.y, True))
+	path.append(Cell(cell.x - x_neg, cell.y - y_neg, True))
+
+	print("({},{})".format(cell.x - x_neg, cell.y - y_neg))
 
         path.reverse()
         return path
@@ -169,7 +205,7 @@ class AStar(object):
 	if end == start:
 		return [Cell(start[0], start[1], True)]
 
-        self.init_grid(len(grid), len(grid[0]), grid, start, end)
+        self.init_grid(grid.max_x, grid.max_y, grid, start, end)
         self.solve()
 	path = self.get_path()
 
