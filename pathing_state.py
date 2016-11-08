@@ -16,25 +16,37 @@ class Food_Source:
 	self.picked_up = False
 
 class Planning_Grid:
-   def __init__(self, max_x, max_y):
+   def __init__(self):
 	#initially whole grid unoccupied
 	#TODO uncomment
 	#self.grid = numpy.zeros((max_x+10,max_y+10), dtype=int)
 	
-	self.max_x = max_x
-	self.max_y = max_y
+	#the size of the matrix
+	self.max_x = 1
+	self.max_y = 1
 	#TODO remove when done debugging
-	#TODO check format and do not forget to change this to be empty
 
-	self.grid =  	[[0, 0, 0, 0, 0, 0],
-        		 [0, 0, 1, 0, 0, 0],
-        		 [0, 1, 0, 0, 0, 0],
-        		 [0, 0, 0, 0, 0, 0],
-        		 [0, 0, 0, 0, 0, 0],
-        		 [0, 0, 0, 0, 0, 0]]
+	#Only know where we ourselves are
+	self.grid =  	[[0]]
 
 	#how many x-cells in negative direction (0,0) is 0 in None
 
+
+	#CONVENTION IN THIS GRID
+	# -----------------------------------> Y
+	# |
+	# |
+	# |
+	# |
+	# |
+	# |
+	# |
+	# |
+	# |
+	# |
+	# |
+	# | X
+	# \/
 
 	#TODO make it 0 initially
 	self.x_neg = 0
@@ -51,8 +63,56 @@ class Planning_Grid:
 	return self.grid[x][y]
 
    def set(self,x,y, new_occupancy):
-	self.grid[x][y] = new_occupancy
 
+	x_diff = max(x - (self.max_x - self.x_neg -1), -x - self.x_neg)
+	#find if the X value is out of range
+	if x_diff > 0:
+
+		for index in xrange(x_diff):
+			self.max_x += 2
+			self.x_neg += 1
+
+			#expand in max direction
+			self.grid.append([0]*self.max_y)
+			self.grid.insert(0, [0]*self.max_y)
+			print("EXPAND X")
+
+			
+		
+	y_diff = max(y - (self.max_y - self.y_neg -1), -y - self.y_neg)
+	if y_diff > 0:
+		
+		for index in xrange(y_diff):
+			self.max_y += 2
+			self.y_neg += 1
+
+			print("EXPAND Y")
+			#expand along X
+			for row in self.grid:
+
+				#expand every row to allow more positive and negative values
+				row.insert(0, 0)
+				row.append(0)
+
+
+
+
+	print("DIFFERENCES X{} Y{}".format(x_diff, y_diff))
+	#normalize coordinates
+	print(" {} {} = {} DIMENSIONS {} by {}".format(x+self.x_neg,y+self.y_neg,  new_occupancy, self.max_x, self.max_y))
+
+	#print("{} {} reality".format( len(self.grid[4]) , len(self.grid) ))
+
+
+	for row in self.grid:
+			#TODO check 
+			print(row)	
+	
+
+        self.grid[x+self.x_neg][y+self.y_neg] = new_occupancy
+
+    #def print():
+	
 	
 class Pathing_State:
 
@@ -76,15 +136,48 @@ class Pathing_State:
 	   self.food = 0
 
 	   #make a pathing grid
-	   self.planning_grid = Planning_Grid(6,6)
+	   self.planning_grid = Planning_Grid()
+
+
+	   #TODO remove these
+
+	   #self.planning_grid.set(1,1,1)
+	   #self.planning_grid.set(-1,-1,1)
+	   #self.planning_grid.set(5,5,1)
+	   #self.planning_grid.set(3, 3, 0)	
+	   #self.planning_grid.set(3, 2,0)
+	   #self.planning_grid.set(1, 1,0)
+	   #self.planning_grid.set(3, 2,1)	
+	   #self.planning_grid.set(2, 2,1)
+	   self.planning_grid.set(2, 2,1)
+	   self.planning_grid.set(4, 4, 0)
+	   self.planning_grid.set(2, 2, 11)
+
+           self.planning_grid.set(0, -2, 11)
+
+	   self.planning_grid.set(-1, 1, 1)
+	   self.planning_grid.set(0, 1, 1)
+	   self.planning_grid.set(1, 1, 1)
+	   self.planning_grid.set(2, 1, 1)
+
+	   print("PLANNING GRID")
+
+	   for row in self.planning_grid.grid:
+			#TODO check 
+			print(row)
+
+	   
 
     def update_grid(changed_occupancies):
+
+	   #planning_grid.neg_x =
+	
 	   for occ in changed_occupancies:
 
-		#TODO change granularity 
+		#TODO add changing granularity 
 		#normalizing the indexes to start from 0 to 0 etc
-		x = occ[0] + planning.grid.x_neg
-		y = occ[1] + planning.grid.y_neg
+		x = occ[0] 
+		y = occ[1] 
 		planning_grid.set(x, y, occ[2])
 
 

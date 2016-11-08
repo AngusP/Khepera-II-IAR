@@ -156,13 +156,27 @@ class Pathing_Algorithm:
 	#TODO uncomment for actual operation AND add to have no computation if already in destination cell
 	#pathing_state.active_path = self.aStar.replan(pathing_state.current_cell, Cell(0,0,True) , pathing_state.grid) 	
 	
-	start = (0+pathing_state.planning_grid.x_neg,0+pathing_state.planning_grid.y_neg)
-	end = 	(4+pathing_state.planning_grid.x_neg,4+pathing_state.planning_grid.y_neg)
+
+	start 	= (0,-2)
+	end 	= (3,3)
+
+	x_neg = pathing_state.planning_grid.x_neg
+	y_neg = pathing_state.planning_grid.y_neg
+
+
+	print("REPLANNED {} to {} where (0,0) is actually ({},{})".format(start, end, -x_neg, -y_neg))
+
+
+	start = (start[0]+x_neg, start[1]+y_neg)
+	end = 	(end[0]	 +x_neg, end[1]	 +y_neg)
+
+	
 	
  	pathing_state.active_path = self.aStar.replan(start, end , pathing_state.planning_grid)
 	#print(pathing_state.active_path)
 	#TODO remove after debug
-	print("REPLANNED")
+
+
 	
 		
     #return new state
