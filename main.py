@@ -71,21 +71,12 @@ def main():
 	    #check reactive first, then bug
 	    nav_state = nav.new_state(nav_state)
 
-
-
-
         
 	    #if have free movement, use the bug algorithm
 	    if pathing_state.algorithm_activated and nav_state.yielding_control == True:
-		nav_state = pathing.new_state(nav_state, odo_state, pathing_state)
+		nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
 		#if we are done break the control loop, stop the robot and exit
 		if pathing_state.done:
-			print("Brought %d food back to nest" % pathing_state.food)
-			comms.drive(0, 0)
-			comms.blinkyblink()
-
-			
-			
 			#TODO make this go away to go to other nests (or repeatedly go to another one)
 			break
 	
@@ -108,12 +99,12 @@ def main():
 	    if (cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF )  == ord(' '):
 			# if SPACE is pressed
    			print("Detected nest")
+			#now the pathing is definitely active
+			pathing_state.algorithm_activated = True
+			#add current cell as a food source
+			pathing_state.add_food_source()
+			#replan the route
 			pathing.drive_over_food(pathing_state, comms)
-			#replan, maybe a more efficient route now available
-			pathing.replan_sequence(pathing_state)
-
-
-
 
 		
     except TypeError as e:

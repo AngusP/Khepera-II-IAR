@@ -161,19 +161,21 @@ class Pathing_State:
 				closest_food = food_source
 
 	   return closest_food
-	
-    #pick up the food on the spot the command was called 
-    def pick_food_up(self):
-		for food_source in self.food_sources:
-			if food_source.location == self.current_cell:		
-				food_source.picked_up = True
-				self.food += 1
-	   	
-   #TODO sync with angus
-   def snap(value):
-	return (value / 1.0 ) / constants.CELL_DIMENSION 
 
-   def get_cell(self, pose):
+    #TODO make sure no food sources on same grid	
+    #pick up the food on the spot the command was called if there is an unpicked one
+    def pick_food_up(self):
+	for food_source in self.food_sources:
+		if food_source.location == self.current_cell and not food_source.picked_up:		
+			food_source.picked_up = True
+			self.food += 1
+	   	
+    #TODO sync with angus
+    def snap(self, value):
+	return value / constants.CELL_DIMENSION 
+
+    #get the cell coordinates 
+    def get_cell(self, pose):
 
 	#snap coordinates to closest cell
 	x = self.snap(pose[0])
@@ -182,12 +184,26 @@ class Pathing_State:
 	
 	for width in xrange(self.pathing_grid.max_x):
 		for height in xrange(self.pathing_grid.max_y):
-			cell = self.pathing_grid.get(x,y)
+			cell = self.pathing_grid.get(width,height)
 			if cell.get_coordinates() == (x,y):
 				return cell
 
         return None
-    
-    
-    
+
+
+    #drop off food at the nest and finish
+    def	drop_off_food(self):
+
+	#indicate we are at the nest
+	self.food = 0
+	#drop off food
+	self.done = True
+	#reset food sources
+	for food_source in self.food_sources:
+		food_source.picked_up = False
+
+    def are_on_food():
+	closest_food = self.get_closest_food()
+	#return if the closest cell is the one we are on
+	return closest_food.location.get_coordinates() == self.current_cell.get_coordinates()
     

@@ -8,8 +8,8 @@
 #
 
 
-from AStar import AStar
-from AStar import Cell
+from astar import AStar
+from astar import Cell
 from pathing_state import Food_Source
 
 import constants
@@ -38,13 +38,6 @@ class Pathing_Algorithm:
 		    if angle > 180:
 				angle = -(360 - angle)
 		return angle
-
-    #vector difference calculator
-    def vector_diff(self, vector_1, vector_2):
-
-		dx = vector_1[0] - vector_2[0]*1.0
-		dy = vector_1[1] - vector_2[1]*1.0
-		return [dx,dy]
 
 		 
     #get angle while ON the M-line
@@ -99,17 +92,15 @@ class Pathing_Algorithm:
 
     #method to record the grid location of a new food_source
     def drive_over_food(self, pathing_state, comms):
-		#now the pathing is definitely active
-		pathing_state.algorithm_activated = True
-		#add current cell as a food source
-		pathing_state.add_food_source()
+	if pathing_state.are_on_food():
 		#indicate picking up food
 		comms.blinkyblink()
 		#give it time to actually pick up the food
 		time.sleep(0.5)
 		#set food source as picked
 		pathing_state.pick_food_up()
-	
+		#replan, maybe a more efficient route now available
+		pathing.replan_sequence(pathing_state)		
 		
     #when occupancies change, we replan our route 
     def update_pathing_grid(self, pathing_state, changed_occupancies):
@@ -140,19 +131,26 @@ class Pathing_Algorithm:
 	
 		
     #return new state
-    def new_state(self, nav_state, odo_state, pathing_state):
+    def new_state(self, nav_state, odo_state, pathing_state, comms):
 	     
 		#get current grid cell location
 		self.cell_transition(pathing_state, odo_state)
 
+		if not pathing_state.algorithm_activated:
+			return nav_state
+
 		#if at the nest
 		if pathing_state.current_cell.get_coordinates() == (0,0):
+			#drop off food, reset food nodes
+			pathing_state.drop_off_food()
 			#indicate completion
-			pathing_state.done = True
 
-			#TODO replan here when algorithm works fully
+			print("Brought %d food back to nest" % pathing_state.food)
+			comms.drive(0, 0)
+			comms.blinkyblink()
 			return
-			
+
+		self.drive_over_food()			
 			
 		direction = self.get_direction(odo_state, pathing_state)
 	    
