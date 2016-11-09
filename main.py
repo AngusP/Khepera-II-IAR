@@ -28,6 +28,7 @@ import time
 import math
 import matplotlib.pyplot as plt
 from data import DataStore
+from data import GridManager
 
 namebadge = " -- IAR C&C -- "
 helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout> -s <server hostname>'
@@ -52,14 +53,6 @@ def main():
 
 	#TODO remove
 	#sys.exit(0)
-    
-    	#TODO so where is the gird, its form etc.....
-        #TODO figure out a better DONE algorithm (bring back to detecting if we are in the cell)
-        #TODO well, figure out if we really want wall following any more
-        #TODO detect user input for when "food" was found etc.
-        #TODO sequence pathing
-        #TODO store the actual grid
-        #TODO actually set a path
 
         # varaibles to not resend speeds during wall following
         speed_l = 0
@@ -75,7 +68,6 @@ def main():
 
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
-
 	    #check reactive first, then bug
 	    nav_state = nav.new_state(nav_state)
 
@@ -97,16 +89,16 @@ def main():
 			#TODO make this go away to go to other nests (or repeatedly go to another one)
 			break
 	
+
+
+
 	    #only send stuff over serial if new values
 	    if not( speed_l == nav_state.speed_l and speed_r == nav_state.speed_r):
 	    	comms.drive(nav_state.speed_l, nav_state.speed_r)
-
+	    #update the speeds
             speed_l = nav_state.speed_l
             speed_r = nav_state.speed_r
-	    
             ds.push(odo_state, nav_state.dist)
-
-
 
 
 

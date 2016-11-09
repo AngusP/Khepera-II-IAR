@@ -28,6 +28,14 @@ class Cell(object):
         self.h = 0
         self.f = 0
 
+   #return coordinate tuple
+   def get_coodinates(self):
+	return (self.x,self.y)
+
+   #return odometry pose of a cell
+   def get_pose(self)
+	return (self.x*constants.CELL_DIMENSION , self.y.CELL_DIMENSION)
+
 
 class AStar(object):
     def __init__(self):

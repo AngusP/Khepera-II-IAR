@@ -39,7 +39,7 @@ class Pathing_Algorithm:
 				angle = -(360 - angle)
 		return angle
 
-	#vector difference calculator
+    #vector difference calculator
     def vector_diff(self, vector_1, vector_2):
 
 		dx = vector_1[0] - vector_2[0]*1.0
@@ -47,7 +47,7 @@ class Pathing_Algorithm:
 		return [dx,dy]
 
 		 
-	#get angle while ON the M-line
+    #get angle while ON the M-line
     def get_angle_on_m(self, odo_state, direction):
 		
 		# can do trigonometric distance estimation as know cells equally spaced form each other
@@ -63,48 +63,37 @@ class Pathing_Algorithm:
 		return self.normalize_angle(direction_angle)
 	
   
-	
-    #TODO placeholder method, before any linearization etc.
+    #TODO check
     def is_away_from_path(self, direction):
 		#if we are too far away in cells
 		return self.vector_magnitude(direction) > constants.AWAY_FROM_PATH
 
-
-
 	
-    def check_cell_transition(self, pathing_state, odo_state):
+    def cell_transition(self, pathing_state, odo_state):
 
-
-		#if we are in the last cell, we have completed the path
-		if len(pathing_state.active_path) == 1:
-			#indicate completion
-			pathing_state.done = True
-			return
-		
-
-		current_cell 	 = pathing_state.current_cell
-		next_cell    	 = pathing_state.active_path[1]
-		
-		dist_to_next	 = (next_cell.x - odo_state.x, next_cell.y - odo_state.y)
 			
-		grid_detected 	  = current_cell == next_cell
-		odometry_detected = self.vector_magnitude(dist_to_next) < constants.IN_CELL
+		#next_cell_pose = pathing_state.active_path[1].get_pose()
+		current_pose = (odo_state.x), self.snap(odo_state.y)
+		current_cell = pathing_state.get_cell(current_pose)
+		
+		#TODO if cell = None, throw an error
+		#TODO NOTE that the path INCLUDES actual end and start states
 
-
-
-		#so if reached the next cell, well pop the now-previous-one
-		if grid_detected or odometry_detected:
+		if pathing_state.active_path[1] == current_cell:
 			#pop the element at index 0
 			pathing_state.active_path.pop(0)
+			#update current cell
+		
+		#update current cell
+		pathing_state.current_cell = current_cell
 
 
 	
 	
     #method returning out current heading cell	
-    def get_direction(self, pathing_state):
-		current_cell 	 = pathing_state.current_cell
-		head_cell    	 = pathing_state.active_path[0]
-		direction 	 = (head_cell.x - current_cell.x, head_cell.y - current_cell.y)
+    def get_direction(self, odo_state, pathing_state):
+		heading_to    	 = pathing_state.active_path[1].get_pose()
+		direction 	 = (heading_to[0] - odo_state.x, heading_to[1] - odo_state.y)
 		return direction
 
 
@@ -112,101 +101,60 @@ class Pathing_Algorithm:
     def drive_over_food(self, pathing_state, comms):
 		#now the pathing is definitely active
 		pathing_state.algorithm_activated = True
-
 		#add current cell as a food source
-		food_source = pathing_state.current_cell
-		#if found a new food source
-		if food_source not in pathing_state.food_sources:
-			pathing_state.food_sources.append(Food_Source(food_source))
-
-
+		pathing_state.add_food_source()
 		#indicate picking up food
 		comms.blinkyblink()
 		#give it time to actually pick up the food
 		time.sleep(0.5)
-		#records food picked up
-		pathing_state.food += 1
 		#set food source as picked
-		self.set_food_source_picked(pathing_state, food_source)
-
-    #TODO check if works by reference		
-    def set_food_source_picked(self, pathing_state, grid_cell):
-
-		for food_source in pathing_state.food_sources:
-			if food_source.location == grid_cell:		
-				food_source.picked_up = True
+		pathing_state.pick_food_up()
+	
 		
+    #when occupancies change, we replan our route 
+    def update_pathing_grid(self, pathing_state, changed_occupancies):
+	pathing_state.update_grid(changed_occupancies)
+	self.replan_sequence(pathing_state)
 		
-
-
-
-  
-
-    #TODO
-    def update_pathing_grid(self):
-	print('a')
-		
-    
-    #TODO
+    #planning after a piece of food is collected    
     def replan_sequence(self, pathing_state):
-	#TODO make replanning to say a different goal
-	#TODO make it say got to another nest or something if there is another one
-	#TODO check if are in any other node along the path... or fucking not....
-	
-	#TODO uncomment for actual operation AND add to have no computation if already in destination cell
-	#pathing_state.active_path = self.aStar.replan(pathing_state.current_cell, Cell(0,0,True) , pathing_state.grid) 	
-	
 
-	start 	= (0,-2)
-	end 	= (3,3)
+	start = pathing_state.currrent_cell.get_coordinates()
+	end = (0,0)
+	
+	#check if have more food sources to collect
+	return_home = not pathing_state.has_uncollected_food()
+	if not return_home:
+		food = pathing_state.get_closest_food()
+		end  = food.cell.get_coordinates()
 
 	x_neg = pathing_state.planning_grid.x_neg
 	y_neg = pathing_state.planning_grid.y_neg
-
-
-	print("REPLANNED {} to {} where (0,0) is actually ({},{})".format(start, end, -x_neg, -y_neg))
-
 
 	start = (start[0]+x_neg, start[1]+y_neg)
 	end = 	(end[0]	 +x_neg, end[1]	 +y_neg)
 
 	
-	
+	#get new path
  	pathing_state.active_path = self.aStar.replan(start, end , pathing_state.planning_grid)
-	#print(pathing_state.active_path)
-	#TODO remove after debug
-
-
 	
 		
     #return new state
     def new_state(self, nav_state, odo_state, pathing_state):
 	     
-		#TODO check maybe somehow if we are within a cell or something
+		#get current grid cell location
+		self.cell_transition(pathing_state, odo_state)
 
-		#TODO etst cell dimensions and grid, START WITH MOVING THROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH MOVING THROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH MOVING THROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH MOVING THROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH M DETECTING THROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START W DETECTING THROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH DETECTING THROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH  DETECTINGTHROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WIT DETECTINGTHROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH DETECTINGTHROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH DETECTINGTHROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH DETECTINGTHROUGH CELL !!!!!
-		#TODO etst cell dimensions and grid, START WITH DETECTING MOVING THROUGH CELL !!!!!
+		#if at the nest
+		if pathing_state.current_cell.get_coordinates() == (0,0):
+			#indicate completion
+			pathing_state.done = True
 
-	
-		
-		self.check_cell_transition(pathing_state, odo_state)
-
-		#TODO replan here or something
-		if pathing_state.done == True:
+			#TODO replan here when algorithm works fully
 			return
 			
-		direction = self.get_direction(pathing_state)
+			
+		direction = self.get_direction(odo_state, pathing_state)
 	    
                 speed_l = nav_state.speed_l 
 	        speed_r = nav_state.speed_r
@@ -223,7 +171,7 @@ class Pathing_Algorithm:
 			
 
 		#renew our direction
-	        direction  = self.get_direction(pathing_state)
+	        direction  = self.get_direction(odo_state, pathing_state)
 		angle_to_m = self.get_angle_on_m(odo_state, direction)
 		#OUR angle too small
 		if angle_to_m > constants.M_N_ANGLE:		
