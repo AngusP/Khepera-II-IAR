@@ -115,7 +115,7 @@ class Pathing_State:
 
     def update_grid(changed_occupancies):
 
-	   #planning_grid.neg_x =
+	   #TODO make the x/y snap if needed
 	
 	   for occ in changed_occupancies:
 
@@ -171,8 +171,9 @@ class Pathing_State:
 			self.food += 1
 	   	
     #TODO sync with angus
+    # get closest cell dimensions
     def snap(self, value):
-	return value / constants.CELL_DIMENSION 
+	return ( int(value) / constants.CELL_DIMENSION) * constants.CELL_DIMENSION
 
     #get the cell coordinates 
     def get_cell(self, pose):
