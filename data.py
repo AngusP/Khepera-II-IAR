@@ -731,7 +731,7 @@ class GridManager:
         self.mapname = "map"
         self.mapmeta = self.mapname + "-meta"
         self.channel = self.mapname + "-update"
-        
+
         # Default origin (location of the map)
         # wit respect to the fixed reference frame
         self.origin = {
@@ -821,6 +821,9 @@ class GridManager:
         '''
         Returns a list of ints representing the occupancies of the points in the argument
         Makes use of Redis pipelining, so haz all the speeds
+
+        BE AWARE coords will silently be snapped to the grid, allowing
+        querying at higher resolution than is represented in the map.
 
         Arguments:
         pts  --  List of (x,y) tuples

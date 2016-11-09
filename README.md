@@ -123,7 +123,10 @@ though an instance, like so:
 **DocStrings** should be consulted for fuller documentation
 
 GridManager.get(x, y)
-: Gives occupancy unoccupied to occupied [0..100], -1 unknown
+: Gives occupancy - unoccupied to occupied [0..100], -1 unknown
+
+GridManager.mget(l)
+: Gives list of occupancies
 
 GridManager.granularity
 : Stores the granular unit size for the Occupancy grid.
