@@ -226,3 +226,4 @@ class Navigation_Algorithm:
 
 
 	    return result  
+		    
