@@ -39,6 +39,9 @@ class Cell(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+        
+    def get_coordinates(self)
+        return (self.x , self.y)
 
     #TODO note that now we use actual frigging X, Y and granularity
 
