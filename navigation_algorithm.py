@@ -7,175 +7,222 @@
 #  s1346981    Jevgenij Zubovskij
 #
 
-
-from astar import AStar
-from astar import Cell
-from pathing_state import Food_Source
+from navigation_state import Navigation_State
 
 import constants
 import sys
-import math
+
 import time
+import math
 
-class Pathing_Algorithm:
+class Navigation_Algorithm:
 
 
-    def __init__(self, planning_granularity, data_getter):
-                #TODO pass reference to the ds class
-		self.aStar = AStar(planning_granularity, data_getter)
-		self.granularity = planning_granularity
-	
-    #vector magnitude calculator
-    def vector_magnitude(self, vector):
-		return math.sqrt( math.pow(vector[0],2) + math.pow(vector[1],2))
+	# check if we are stuck
+	def is_stuck(self, dist):
+	    #check if we are scraping on the sides
+	    # multiple of 1.2 as 1.0 is handled by following
+	    stuck_cone_left  = dist[1] > constants.CONST_WALL_DIST 
+	    # multiple of 1.2 as 1.0 is handled by following
+	    stuck_cone_right = dist[4] > constants.CONST_WALL_DIST 
+	    #check if we are about to be stuck in the front
+	    stuck_cone_front = dist[2] > constants.CONST_WALL_DIST*0.5 or dist[3]  > constants.CONST_WALL_DIST*0.5
+
+	    return stuck_cone_left or stuck_cone_right or stuck_cone_front 
+
+
+	# check if we "see" the left wall and it is closer than the one on the right
+	def should_follow_left_wall(self, dist, system_state):
+	    within_range =  dist[0] > constants.CONST_WALL_DIST * 0.5
+	    #to not switch wall if two walls nearby
+	    followed_right = system_state == constants.STATE_RIGHT_FOLLOW
+	    return within_range and dist[0] > dist[5] and not followed_right
 		
-	#normalizes angle in degrees to -180 : 180 degrees
-    def normalize_angle(self, angle):
-		if angle < 0:
-		    angle = angle % -360
-		    if angle < -180:
-				angle = 360 + angle
-		else:
-		    angle = angle % 360
-		    if angle > 180:
-				angle = -(360 - angle)
-		return angle
 
-		 
-    #get angle while ON the M-line
-    def get_angle_on_m(self, odo_state, direction):
+	# check if we "see" the right wall and it is closer than the one on the left
+	def should_follow_right_wall(self, dist, system_state):
+	    within_range =  dist[5] > constants.CONST_WALL_DIST * 0.5
+	    followed_left = system_state == constants.STATE_LEFT_FOLLOW
+	    return within_range and not(dist[0] > dist[5]) and not followed_left
+
+	# check if we are over the distance threshold w.r.t. object on the left
+	def too_close_to_left(self, dist):
+
+	    distance_close   = dist[0] > constants.CONST_WALL_DIST
+	    return distance_close 
+
+
+	# check if we are over the distance threshold w.r.t. object on the right
+	def too_close_to_right(self, dist):
+
+	    distance_close   = dist[5] > constants.CONST_WALL_DIST
+	    return distance_close 
+
+
+
+	# check if we are under the distance threshold w.r.t. object on the right
+	def is_away_from_right(self, dist):
+
+	    wall_in_range = dist[5] < constants.CONST_WALL_DIST * 0.8
+	    return wall_in_range
+
+
+	# check if we are under the distance threshold w.r.t. object on the left
+	def is_away_from_left(self, dist):
+
+	    wall_in_range = dist[0] < constants.CONST_WALL_DIST * 0.8
+	    return wall_in_range
+
+
+	# check if there is more space on the right of the robot than on the left
+	def is_more_space_on_right(self, dist):
+
+	    values_on_right = dist[3] + dist[4] + dist[5]
+	    values_on_left  = dist[1] + dist[2] + dist[0]
+
+	    return (values_on_left > values_on_right) 
+
+
+	# check if the system is being unstuck
+	def is_being_unstuck(self, state):
+
+	    return (state is constants.STATE_STUCK_LEFT) or (state is constants.STATE_STUCK_RIGHT)
+
+
+	# check if it is more beneficial to unstuck by turning to the right
+	def should_unstuck_right(self, dist, system_state):
+	    stuck_on_left = system_state == constants.STATE_LEFT_FOLLOW 
+	    return stuck_on_left or self.is_more_space_on_right(dist)
+
+	# check if robot is "bored"
+	def bored(self, boredom_counter):
+	    return boredom_counter >= constants.CONST_WALL_BORED_MAX
+
+	# check if we are handling boredom
+	def is_boredom_handled(self, state):
+	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
+
+
+        def new_state(self, nav_state):
+	                
+	    result = Navigation_State()
+	    result = nav_state
+
+
+ 	    #variable to indicate if reactive avoidance is in control of the robot
+	    result.yielding_control = False
+
+  		#TODO consider boredom as a harmful concept 
+
+            ############################
+            # IF STUCK
+            ############################
+
+            if self.is_stuck(result.dist):      
+
+                 # do not interrupt if already handle
+                 if self.is_being_unstuck(result.system_state):
+			return result
 		
-		# can do trigonometric distance estimation as know cells equally spaced form each other
-		# and know the coordinates of one of their corners
-	
-		direction_angle = math.atan2(direction[1] , direction[0])
-		#if no difference, well then we never left the spot 
-		vector_magnitude = self.vector_magnitude(direction)
-		if vector_magnitude == 0:
-			return 0
-		
-		direction_angle = math.degrees(direction_angle) - self.normalize_angle(math.degrees(odo_state.theta))
-		return self.normalize_angle(direction_angle)
-	
-  
-    #TODO check
-    def is_away_from_path(self, direction):
-		#if we are too far away in cells
-		return self.vector_magnitude(direction) > constants.AWAY_FROM_PATH
-   
-   #snap passed actual X or Y value to a math planning grid granularity
-    def snap(self, value):
-        return ( int(value) / self.granularity) * self.granularity
-	
-    def cell_transition(self, pathing_state, odo_state):
+                 # determine direction of where better to turn to unstuck
+                 if self.should_unstuck_right(result.dist, result.system_state):
 
-			
-		#next_cell_pose = pathing_state.active_path[1].get_pose()
-		current_coordinates = (self.snap(odo_state.x), self.snap(odo_state.y))	
+                      result.system_state = constants.STATE_STUCK_RIGHT
+		      result.speed_l = constants.CONST_SPEED
+		      result.speed_r = -constants.CONST_SPEED		
 
-		if pathing_state.active_path[1].get_coordinates() == current_coordinates:
-			#pop the element at index 0
-			pathing_state.active_path.pop(0)
-			#update current cell
-			pathing_state.current_cell = pathing_state.active_path[0]
-	
-	
-    #method returning out current heading cell	
-    def get_direction(self, odo_state, pathing_state):
-		heading_to    	 = pathing_state.active_path[1].get_coordinates()
-		direction 	 = (heading_to[0] - odo_state.x, heading_to[1] - odo_state.y)
-		return direction
+                 else:
 
+                      result.system_state = constants.STATE_STUCK_LEFT
+		      result.speed_l = -constants.CONST_SPEED
+		      result.speed_r = constants.CONST_SPEED
+                
+		 return result
 
-    #method to record the grid location of a new food_source
-    def drive_over_food(self, pathing_state, comms):
-	if pathing_state.are_on_food():
-		#indicate picking up food
-		comms.blinkyblink()
-		#give it time to actually pick up the food
-		time.sleep(0.5)
-		#set food source as picked
-		pathing_state.pick_food_up()
-		#replan, maybe a more efficient route now available
-		pathing.replan_sequence(pathing_state)		
-		
-    #when occupancies change, we replan our route 
-    def update_pathing_grid(self, pathing_state, changed_occupancies):
-	pathing_state.update_grid(changed_occupancies)
-	self.replan_sequence(pathing_state)
-		
-    #planning after a piece of food is collected    
-    def replan_sequence(self, pathing_state):
+            #####################
+            ##WALL FOLLOWING LEFT
+            #####################
 
-	start = pathing_state.currrent_cell.get_coordinates()
-	end = (0,0)
-	
-	#check if have more food sources to collect
-	return_home = not pathing_state.has_uncollected_food()
-	if not return_home:
-		food = pathing_state.get_closest_food()
-		end  = food.cell.get_coordinates()
+	    #if not stuck 
+            result.yielding_control = True
 
-	#get new path
- 	pathing_state.active_path = self.aStar.replan(start, end)
-	
-		
-    #return new state
-    def new_state(self, nav_state, odo_state, pathing_state, comms):
-	     
-		#get current grid cell location
-		self.cell_transition(pathing_state, odo_state)
+            if self.should_follow_left_wall(result.dist, result.system_state):
 
-		if not pathing_state.algorithm_activated:
-			return nav_state
+		turn_least = constants.CONST_SPEED * constants.TURN_LESS
+		turn_most  = constants.CONST_SPEED * constants.TURN_MORE
+		no_turn    = constants.CONST_SPEED
+		speed_r = result.speed_r
+		speed_l = result.speed_l
 
-		#if at the nest
-		if pathing_state.current_cell.get_coordinates() == (0,0):
-			#drop off food, reset food nodes
-			pathing_state.drop_off_food()
-			#indicate completion
+                # set state accordingly 
+                result.system_state = constants.STATE_LEFT_FOLLOW
 
-			print("Brought %d food back to nest" % pathing_state.food)
-			comms.drive(0, 0)
-			comms.blinkyblink()
-			return
+                # keep the distance within the threshold range
+                if self.too_close_to_left(result.dist) and not (speed_l == turn_most and speed_r == turn_least):
 
-		self.drive_over_food()			
-			
-		direction = self.get_direction(odo_state, pathing_state)
-	    
-                speed_l = nav_state.speed_l 
-	        speed_r = nav_state.speed_r
-		
-		#turn aggressively
-		turn_less = -constants.CONST_SPEED 
-		turn_more = constants.CONST_SPEED 
+                    speed_l = turn_most
+                    speed_r = turn_least
+
+                elif self.is_away_from_left(result.dist) and not (speed_l == turn_least and speed_r == turn_most):
+
+                    speed_l = turn_least
+                    speed_r = turn_most
+
+                elif not (speed_l == no_turn and speed_r == no_turn): 
+
+                    speed_l = no_turn
+                    speed_r = no_turn
+
+ 		result.speed_r = speed_r
+                result.speed_l = speed_l
+
+            #####################
+            ##WALL FOLLOWING RIGHT
+            #####################                       
+            elif self.should_follow_right_wall(result.dist, result.system_state):
+
+                #print("following right")
+
+		turn_least = constants.CONST_SPEED * constants.TURN_LESS
+		turn_most  = constants.CONST_SPEED * constants.TURN_MORE
+		no_turn    = constants.CONST_SPEED
+		speed_r = result.speed_r
+		speed_l = result.speed_l
+
+                # set state accordingly
+                result.system_state = constants.STATE_RIGHT_FOLLOW
+
+                # keep the distance within the threshold range 
+                if self.too_close_to_right(result.dist) and not (speed_l == turn_least and speed_r == turn_most):
+
+                    speed_l = turn_least 
+                    speed_r = turn_most 
+
+                elif self.is_away_from_right(result.dist) and not (speed_l == turn_most and speed_r == turn_least):
+
+                    speed_l = turn_most
+                    speed_r = turn_least
+
+                elif not (speed_l == no_turn and speed_r == no_turn): 
+
+                    speed_l = no_turn
+                    speed_r = no_turn
+
+ 		result.speed_r = speed_r
+                result.speed_l = speed_l
+
+            ######################
+            # IF NONE OF THE ABOVE
+            #####################
+            else:
+                    # reset variables as not doing anything
+                    result.boredom_counter = 0
+
+                    # set state accordingly
+                    result.system_state = constants.STATE_DRIVE_FORWARD
+	            result.speed_l = constants.CONST_SPEED
+		    result.speed_r = constants.CONST_SPEED
 
 
-		#recalculate path if for some reason strayed from it too far
-		if self.is_away_from_path(direction):
-			#so get the new path
-			self.replan_sequence(pathing_state)
-			
 
-		#renew our direction
-	        direction  = self.get_direction(odo_state, pathing_state)
-		angle_to_m = self.get_angle_on_m(odo_state, direction)
-		#OUR angle too small
-		if angle_to_m > constants.M_N_ANGLE:		
-				
-				#no need to check for obstacles as pathing takes cares of it for us
-				speed_r = turn_more
-				speed_l = turn_less	
-
-		#OUR angle too big
-		elif angle_to_m < -constants.M_N_ANGLE:
-				#no need to check for obstacles as pathing takes cares of it for us
-				speed_r = turn_less
-				speed_l = turn_more
-
-		#send out the new speed controls			
-		nav_state.speed_l = speed_l
-		nav_state.speed_r = speed_r 
-		return nav_state
-		    
+	    return result  
