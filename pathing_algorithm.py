@@ -20,8 +20,10 @@ import time
 class Pathing_Algorithm:
 
 
-    def __init__(self):
-		self.aStar = AStar()
+    def __init__(self, planning_granularity, data_getter):
+                #TODO pass reference to the ds class
+		self.aStar = AStar(planning_granularity, data_getter)
+		self.granularity = planning_granularity
 	
     #vector magnitude calculator
     def vector_magnitude(self, vector):
@@ -60,32 +62,27 @@ class Pathing_Algorithm:
     def is_away_from_path(self, direction):
 		#if we are too far away in cells
 		return self.vector_magnitude(direction) > constants.AWAY_FROM_PATH
-
+   
+   #snap passed actual X or Y value to a math planning grid granularity
+    def snap(self, value):
+        return ( int(value) / self.granularity) * self.granularity
 	
     def cell_transition(self, pathing_state, odo_state):
 
 			
 		#next_cell_pose = pathing_state.active_path[1].get_pose()
-		current_pose = (odo_state.x), self.snap(odo_state.y)
-		current_cell = pathing_state.get_cell(current_pose)
-		
-		#TODO if cell = None, throw an error
-		#TODO NOTE that the path INCLUDES actual end and start states
+		current_coordinates = (self.snap(odo_state.x), self.snap(odo_state.y))	
 
-		if pathing_state.active_path[1] == current_cell:
+		if pathing_state.active_path[1].get_coordinates() == current_coordinates:
 			#pop the element at index 0
 			pathing_state.active_path.pop(0)
 			#update current cell
-		
-		#update current cell
-		pathing_state.current_cell = current_cell
-
-
+			pathing_state.current_cell = pathing_state.active_path[0]
 	
 	
     #method returning out current heading cell	
     def get_direction(self, odo_state, pathing_state):
-		heading_to    	 = pathing_state.active_path[1].get_pose()
+		heading_to    	 = pathing_state.active_path[1].get_coordinates()
 		direction 	 = (heading_to[0] - odo_state.x, heading_to[1] - odo_state.y)
 		return direction
 
@@ -119,15 +116,8 @@ class Pathing_Algorithm:
 		food = pathing_state.get_closest_food()
 		end  = food.cell.get_coordinates()
 
-	x_neg = pathing_state.planning_grid.x_neg
-	y_neg = pathing_state.planning_grid.y_neg
-
-	start = (start[0]+x_neg, start[1]+y_neg)
-	end = 	(end[0]	 +x_neg, end[1]	 +y_neg)
-
-	
 	#get new path
- 	pathing_state.active_path = self.aStar.replan(start, end , pathing_state.planning_grid)
+ 	pathing_state.active_path = self.aStar.replan(start, end)
 	
 		
     #return new state
