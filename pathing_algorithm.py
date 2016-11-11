@@ -60,8 +60,8 @@ class Pathing_Algorithm:
   
     #TODO check
     def is_away_from_path(self, direction):
-		#if we are too far away in cells
-		return self.vector_magnitude(direction) > constants.AWAY_FROM_PATH
+		#if we are too far away by 4 cells from the cell it should be heading to
+		return self.vector_magnitude(direction) > self.granularity*4
    
    #snap passed actual X or Y value to a math planning grid granularity
     def snap(self, value):
