@@ -22,3 +22,5 @@ class GenericState(object):
 class OtherState(GenericState):
   def __init__(self):
     GenericState.__init__(self)
+
+#stuff
