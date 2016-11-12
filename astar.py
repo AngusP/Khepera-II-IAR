@@ -40,7 +40,7 @@ class Cell(object):
     def __ne__(self, other):
         return not self.__eq__(other)
         
-    def get_coordinates(self)
+    def get_coordinates(self):
         return (self.x , self.y)
 
     #TODO note that now we use actual frigging X, Y and granularity
@@ -105,7 +105,11 @@ class AStar(object):
 
 
 
-        
+    def is_occupid(self, value):
+	#TODO check
+	if value >= 50:
+		return True
+	return False 
 
     #snap passed actual X or Y value to a math planning grid granularity
     def snap(self, value):
@@ -126,26 +130,44 @@ class AStar(object):
         #get indexes in the gid (so need to convert to indices)
         x_index, y_index = self.get_cell_indexes(x,y)
 
-
+        #print "{} {} access".format(x_index, y_index)
        
         #check if have such a cell in memory
-        if x_index >= self.max_x or y_index >= self.max_y:
-            #TODO implement
-            print "{} {} NONEXISTENT access".format(x_index, y_index)
-            return None
+        if x_index >= self.max_x or x_index < 0 or y_index >= self.max_y or y_index < 0:
+      
+	    #get cell and add to local gache
+	    #occupancy = self.getter.get(x,y)
+	    occupancy = True
 
-            #TODO uncomment
-            #return self.getter.get(x,y)
+
+	    
+	    #TODO uncomment and use
+	    #occupied = self.is_occupid(occupancy)
+	    self.set_cell(x, y, occupancy)
+            return self.get_cell(x,y)
         else:
-            return self.grid[x_index][y_index]
+	    cell = self.grid[x_index][y_index]
+	    if cell is None:
+		#gte cell and add to local gache
+	    	#occupancy = self.getter.get(x,y)
+		occupancy = True
 
+		#TODO uncomment and use
+		#occupied = self.is_occupid(occupancy)
+		self.set_cell(x, y, occupancy)
+
+	    return self.grid[x_index][y_index]
     #note that the arguments are actual X,Y
     def set_cell(self,x,y, reachable):
 
+        x_index, y_index = self.get_cell_indexes(x,y)
+	
+	#if it is withing range, check if have somnething set
+	if not (x_index >= self.max_x or x_index < 0 or y_index >= self.max_y or y_index < 0):
+		if self.grid[x_index][y_index] is not None:
+			#if have something set, have nothing more to do
+			return
 
-        #if already have a cell there, do not add again
-        if self.get_cell(x,y) is not None:
-            return
         #we want to know if we have said index and if not expand grid
         x_index = self.normalize(x)
         y_index = self.normalize(y)
@@ -226,71 +248,78 @@ class AStar(object):
 
         x,y = self.get_cell_indexes( cell.x, cell.y)
 
+	#TODO her and in the getter, sync with angus'es code SO REMOVE THE RANGE LIMITING STATEMENTS
 
         #using self.granularity instead of 1 as we are using granularity (which is in actual mm)
-        if x < self.max_x-1:
-            cells.append(self.get_cell(cell.x+self.granularity, cell.y))
-        if y > 0:
-            cells.append(self.get_cell(cell.x, cell.y-self.granularity))
-        if x > 0:
-            cells.append(self.get_cell(cell.x-self.granularity, cell.y))
-        if y < self.max_y-1:
-            cells.append(self.get_cell(cell.x, cell.y+self.granularity))
 
+	#because I dont want to unindent
+	if True:
+            a = self.get_cell(cell.x+self.granularity, cell.y)
+	    if a is not None:
+            	cells.append(a)
 
-        if x < self.max_x-1:
-            #check if have diagonals on the left
-            
-            if y < self.max_y-1:
-                #check if not blocked by 2 other ones (the 90 degree neighbours)
+            a = self.get_cell(cell.x, cell.y-self.granularity)
+	    if a is not None:
+            	cells.append(a)	    
+
+	    a = self.get_cell(cell.x-self.granularity, cell.y)
+	    if a is not None:
+            	cells.append(a)
+
+	    a = self.get_cell(cell.x, cell.y+self.granularity)
+	    if a is not None:
+            	cells.append(a)
+           
+
+	if True:
+
                 if self.get_cell(cell.x+self.granularity, cell.y).reachable or self.get_cell(cell.x, cell.y+self.granularity).reachable:
-                        cells.append(self.get_cell(cell.x+self.granularity, cell.y+self.granularity))
+	                a = self.get_cell(cell.x+self.granularity, cell.y+self.granularity)
+			if a is not None:
+            			cells.append(a)
 
-            if y > 0:
                 #check if not blocked by 2 other ones (the 90 degree neighbours)
                 if self.get_cell(cell.x+self.granularity, cell.y).reachable or self.get_cell(cell.x, cell.y-self.granularity).reachable:
-                        cells.append(self.get_cell(cell.x+self.granularity, cell.y-self.granularity))
+			a = self.get_cell(cell.x+self.granularity, cell.y-self.granularity)
+			if a is not None:
+            			cells.append(a)
                         
-                
-        if cell.x > 0:
-            #check if have diagonals on the left                
-            if cell.y < self.max_y-1:
+
 
                 #check if not blocked by 2 other ones (the 90 degree neighbours)
                 if self.get_cell(cell.x-self.granularity, cell.y).reachable or self.get_cell(cell.x, cell.y+self.granularity).reachable:
-                        cells.append(self.get_cell(cell.x-self.granularity, cell.y+self.granularity))
+                        a = self.get_cell(cell.x-self.granularity, cell.y+self.granularity)
+			if a is not None:
+            			cells.append(a)
 
-            if cell.y > 0:
                 #check if not blocked by 2 other ones (the 90 degree neighbours)
                 if self.get_cell(cell.x-self.granularity, cell.y).reachable or self.get_cell(cell.x, cell.y-self.granularity).reachable:
-                        cells.append(self.get_cell(cell.x-self.granularity, cell.y-self.granularity))
+                        a = self.get_cell(cell.x-self.granularity, cell.y-self.granularity)
+			if a is not None:
+            			cells.append(a)
 
         #print cells 
         return cells
 
     def get_path(self):
 
-        #TODO remove
-        x_neg = 0
-        y_neg = 0
-
-        print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        #print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
         cell = self.end
-        path = [Cell(cell.x - x_neg, cell.y - y_neg, True)]
+        path = [Cell(cell.x, cell.y, True)]
 
 
-        print cell
+        #print cell
         while cell.parent is not self.start:
             cell = cell.parent
-            print cell
-            path.append(Cell(cell.x - x_neg, cell.y - y_neg, True))   
+            #print cell
+            path.append(Cell(cell.x, cell.y, True))   
 
         cell = self.start
-        print cell
-        path.append(Cell(cell.x - x_neg, cell.y - y_neg, True))
+        #print cell
+        path.append(Cell(cell.x, cell.y, True))
 
         path.reverse()
-        print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"        
+        #print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"        
         return path
 
     def update_cell(self, adj, cell):
@@ -310,12 +339,9 @@ class AStar(object):
         # add starting cell to open heap queue
         heapq.heappush(self.opened, (self.start.f, self.start))
 
-        iteration = 0
         
         while len(self.opened):
-            print "ITERATION {}".format(iteration)
-            iteration +=1
-            
+
             # pop cell from heap queue
             f, cell = heapq.heappop(self.opened)
             # add cell to closed list so we don't process it twice
@@ -339,24 +365,17 @@ class AStar(object):
                         heapq.heappush(self.opened, (adj_cell.f, adj_cell))
 
     #TODO rename grid state to pathing_state
-    def replan(self, start, end):    
-        if end == start:
+    def replan(self, start, end):
+
+	#account for calculations if we are already at the destination
+	start_indexes = self.get_cell_indexes(start[0], start[1])
+	end_indexes   = self.get_cell_indexes(end[0], end[1])
+
+
+        if end == start or start_indexes == end_indexes:
                 return [Cell(start[0], start[1], True)]
 
         self.init_grid(start, end)
-
-
-        #TODO remove this
-        for x in xrange(81):
-            for y in xrange(81):
-                self.set_cell(x, y, True)
-                self.set_cell(-x,-y,True)
-                self.set_cell(-x,y,True)
-                self.set_cell(x,-y,True)
-
-        print self.get_cell(80,80)        
-
-        print self.print_grid()        
         
         self.solve()
         path = self.get_path()
@@ -383,18 +402,6 @@ class AStar(object):
 def main():
 
     a = AStar(10, None)
-
-
-
-
-    #x_index, y_index = a.get_cell_idnexes(0,0)
-
-    #print a.print_grid()
-
-    print a.replan((-10,-10), (80,0))
-
-
-    #print a.get_cell(30,20)
     
 
 if __name__ == "__main__":

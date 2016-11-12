@@ -60,18 +60,26 @@ class Pathing_Algorithm:
   
     #TODO check
     def is_away_from_path(self, direction):
-		#if we are too far away by 4 cells from the cell it should be heading to
+		#if we are too far away by 1 cell from the cell it should be heading to
 		return self.vector_magnitude(direction) > self.granularity*4
    
-   #snap passed actual X or Y value to a math planning grid granularity
+    #snap passed actual X or Y value to a math planning grid granularity
     def snap(self, value):
         return ( int(value) / self.granularity) * self.granularity
 	
     def cell_transition(self, pathing_state, odo_state):
 
+		#print("attempt at cell transition")
 			
 		#next_cell_pose = pathing_state.active_path[1].get_pose()
-		current_coordinates = (self.snap(odo_state.x), self.snap(odo_state.y))	
+		current_coordinates = (self.snap(odo_state.x), self.snap(odo_state.y))
+
+		#we know the cell is unboccupied as we are on it
+		pathing_state.current_cell = Cell(current_coordinates[0], current_coordinates[1] , True)	
+
+		#check if we have anywhere to go in the firts place
+		if len(pathing_state.active_path) == 1 or not pathing_state.algorithm_activated:
+			return 
 
 		if pathing_state.active_path[1].get_coordinates() == current_coordinates:
 			#pop the element at index 0
@@ -89,15 +97,18 @@ class Pathing_Algorithm:
 
     #method to record the grid location of a new food_source
     def drive_over_food(self, pathing_state, comms):
-	if pathing_state.are_on_food():
+	if pathing_state.are_on_food() != None:
 		#indicate picking up food
 		comms.blinkyblink()
 		#give it time to actually pick up the food
-		time.sleep(0.5)
+		comms.drive(0,0)
+		time.sleep(constants.WAIT_PERIOD_S)
+		comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
+		time.sleep(constants.MEASUREMENT_PERIOD_S)
 		#set food source as picked
 		pathing_state.pick_food_up()
 		#replan, maybe a more efficient route now available
-		pathing.replan_sequence(pathing_state)		
+		self.replan_sequence(pathing_state)		
 		
     #when occupancies change, we replan our route 
     def update_pathing_grid(self, pathing_state, changed_occupancies):
@@ -107,14 +118,18 @@ class Pathing_Algorithm:
     #planning after a piece of food is collected    
     def replan_sequence(self, pathing_state):
 
-	start = pathing_state.currrent_cell.get_coordinates()
+	start = pathing_state.current_cell.get_coordinates()
+
+	#start = (5,5)
+
 	end = (0,0)
 	
 	#check if have more food sources to collect
 	return_home = not pathing_state.has_uncollected_food()
 	if not return_home:
 		food = pathing_state.get_closest_food()
-		end  = food.cell.get_coordinates()
+		print "HAVE FOOD TO COLLECT {}".format(food)
+		end  = food.location.get_coordinates()
 
 	#get new path
  	pathing_state.active_path = self.aStar.replan(start, end)
@@ -129,18 +144,25 @@ class Pathing_Algorithm:
 		if not pathing_state.algorithm_activated:
 			return nav_state
 
-		#if at the nest
-		if pathing_state.current_cell.get_coordinates() == (0,0):
-			#drop off food, reset food nodes
-			pathing_state.drop_off_food()
+		#if at the nest and have no more places to go
+		if pathing_state.current_cell.get_coordinates() == (0,0) and len(pathing_state.active_path) == 1:
+
 			#indicate completion
 
 			print("Brought %d food back to nest" % pathing_state.food)
 			comms.drive(0, 0)
-			comms.blinkyblink()
-			return
 
-		self.drive_over_food()			
+			#drop off food, reset food nodes
+			pathing_state.drop_off_food()
+			#indicate visually
+			comms.blinkyblink()
+			comms.drive(0,0)
+			time.sleep(constants.WAIT_PERIOD_S)
+			comms.drive(0,0)
+			time.sleep(constants.MEASUREMENT_PERIOD_S)
+			return nav_state
+
+		self.drive_over_food(pathing_state, comms)			
 			
 		direction = self.get_direction(odo_state, pathing_state)
 	    
@@ -177,5 +199,6 @@ class Pathing_Algorithm:
 		#send out the new speed controls			
 		nav_state.speed_l = speed_l
 		nav_state.speed_r = speed_r 
+
 		return nav_state
 		    

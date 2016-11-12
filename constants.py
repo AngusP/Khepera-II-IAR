@@ -46,8 +46,11 @@ WHEEL_BASE_MM = 56.0 # mm
 WHEEL_BASE_M = WHEEL_BASE_MM / 1000.0 # m
 
 
+#period for waiting when grabbing / uncloading food
+WAIT_PERIOD_S = 2
 
-MEASUREMENT_PERIOD_S = 0.05 # s
+#wait period to wait before sending new serial stuff
+MEASUREMENT_PERIOD_S = 0.1 # s
 MEASUREMENT_PERIOD_MS = int(MEASUREMENT_PERIOD_S * 1000) # s
 
 

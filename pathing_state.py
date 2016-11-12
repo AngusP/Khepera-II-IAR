@@ -15,6 +15,19 @@ class Food_Source:
 	self.location = location_cell
 	self.picked_up = False
 
+
+   def __str__(self):
+	return self.location.__str__() + " " + str(self.picked_up)
+
+   def __eq__(self, other):
+        #reachability should not change during planning, so only X,Y matter for comparison
+	if other is None:
+		return False
+        return self.location == other.location
+
+   def __ne__(self, other):
+        return not self.__eq__(other)
+
 class Pathing_State:
 
     def __init__(self):
@@ -39,8 +52,8 @@ class Pathing_State:
     #add a food source on current grid space
     def add_food_source(self):
 	   food_source = Food_Source(self.current_cell)
-	   if food_source not in pathing_state.food_sources
-	   	self.food_source.append(food_source)
+	   if food_source not in self.food_sources:
+	   	self.food_sources.append(food_source)
 	   
 
     #check if has uncollected food sources
@@ -53,11 +66,11 @@ class Pathing_State:
     #distance between cells
     def cell_distance(self, from_cell, to_cell):
 	   x_diff = from_cell.x - to_cell.x
-	   y_doff = from_cell.y - to_cell.y
+	   y_diff = from_cell.y - to_cell.y
 	   return math.sqrt( math.pow(x_diff,2) + math.pow(y_diff,2))
 
-   #get closest uncollected food source to cell passed as argument
-   def get_closest_food(self):
+    #get closest uncollected food source to cell passed as argument
+    def get_closest_food(self):
 	   
 	   closest_food = None
 	   closest_dist = 0
@@ -65,19 +78,31 @@ class Pathing_State:
 	   for food_source in self.food_sources:
 		if not food_source.picked_up:
 
-			distance = self.cell_distance(self.current_cell, food_source.cell)
-			if closest_food is not None or distance <= closest_dist:
+			distance = self.cell_distance(self.current_cell, food_source.location)
+			if closest_food is None or distance <= closest_dist:
 				closest_food = food_source
 
 	   return closest_food
 	
     #pick up the food on the spot the command was called if there is an unpicked one
     def pick_food_up(self):
+	#print self.current_cell
 	for food_source in self.food_sources:
+
+		#print("FOOD AT")
+		#print(food_source.location)
+		#print(not food_source.picked_up)
 		if food_source.location == self.current_cell and not food_source.picked_up:		
+
 			food_source.picked_up = True
 			self.food += 1
 
+    def print_food(self):
+	print "=========================================="
+	print "FOOD SOURCES"
+	for food in self.food_sources:
+		print food
+	print "=========================================="
 
     #drop off food at the nest and finish
     def	drop_off_food(self):
@@ -87,11 +112,16 @@ class Pathing_State:
 	#drop off food
 	self.done = True
 	#reset food sources
+	self.algorithm_activated = False
+	#self.print_food()
 	for food_source in self.food_sources:
 		food_source.picked_up = False
 
-    def are_on_food():
-	closest_food = self.get_closest_food()
-	#return if the closest cell is the one we are on
-	return closest_food.location.get_coordinates() == self.current_cell.get_coordinates()
+    def are_on_food(self):
+
+	for food_source in self.food_sources:
+		if food_source.location == self.current_cell and not food_source.picked_up:
+			return food_source
+
+	return None		
     

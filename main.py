@@ -49,10 +49,9 @@ def main():
 	nav_state = Navigation_State()
 	nav = Navigation_Algorithm()
 	pathing_state = Pathing_State()
-    	pathing = Pathing_Algorithm()
 
-	#TODO remove
-	#sys.exit(0)
+	#TODO sync with angus' granularity in mm
+    	pathing = Pathing_Algorithm(20, ds)
 
         # varaibles to not resend speeds during wall following
         speed_l = 0
@@ -65,22 +64,29 @@ def main():
 	#begin control loop
         while True:
           
-
+	    
+            #print(pathing_state.current_cell)
+		
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 	    #check reactive first, then bug
 	    nav_state = nav.new_state(nav_state)
 
         
-	    #if have free movement, use the bug algorithm
-	    if pathing_state.algorithm_activated and nav_state.yielding_control == True:
+	    #if have free movement, use the pathing algorithm
+	    if nav_state.yielding_control == True:
 		nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
 		#if we are done break the control loop, stop the robot and exit
 		if pathing_state.done:
-			#TODO make this go away to go to other nests (or repeatedly go to another one)
-			break
-	
+			#TODO add some exploration etc.
 
+			#make a repeated run	
+
+			pathing_state.algorithm_activated = True
+			pathing.replan_sequence(pathing_state)
+			
+
+			
 
 
 	    #only send stuff over serial if new values
@@ -94,17 +100,24 @@ def main():
 
 
             
+	    #TODO make sure that there is a tampling period big enough for odometyr not to mess up
+
+	    #TODO maybe do REDIS-KEY or w/e angus proposed
 	    
 	    # wait for new sensor round and maybe found a new food source
 	    if (cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF )  == ord(' '):
 			# if SPACE is pressed
-   			print("Detected nest")
+   			print("Detected food")
 			#now the pathing is definitely active
 			pathing_state.algorithm_activated = True
 			#add current cell as a food source
 			pathing_state.add_food_source()
 			#replan the route
 			pathing.drive_over_food(pathing_state, comms)
+
+	    #TODO check if this fixes odometry worng length
+
+	    #time.sleep(0.2)
 
 		
     except TypeError as e:
