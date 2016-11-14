@@ -71,6 +71,9 @@ CELL_UNREACHABLE = 1
 #Angle threshold until we begin correcting out orientation along the M-line
 M_N_ANGLE  = 10 # degrees
 
+#maximum boredom round the robot can do
+MAX_BOREDOM = 20
+
 
 
 
