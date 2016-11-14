@@ -103,23 +103,39 @@ class Navigation_Algorithm:
 	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
 
 
-        def new_state(self, nav_state):
+        def new_state(self, nav_state, pathing_state, comms):
 	                
 	    result = Navigation_State()
-	    result = nav_state
+	    result = nav_state 
 
+	    #if bored of a wall, turn away from it
+		wall_following = (result.system_state = constants.STATE_RIGHT_FOLLOW or result.system_state = constants.STATE_LEFT_FOLLOW)
+		#do not let it interfere with the actual return algorithm - only explore when current food collected
+		#also check if on this round have explored to an unknown distance this food round
+		if wall_following and not pathing_state.has_uncolected_food() and pathing_state.exploration_not_done():
+			result.boredom_counter += 1
+			if result.boredom_counter > constants.MAX_BOREDOM:
+				comms.drive(constants.SPEED_CONST,-constants.SPEED_CONST)
+				time.sleep(0.5)
+				#drive forwards until stuck
+				comms.drive(constants.SPEED_CONST, constants.SPEED_CONST)
+				result.boredom = True
+				result.boredom_counter = 0
+				
+			
+				
 
  	    #variable to indicate if reactive avoidance is in control of the robot
 	    result.yielding_control = False
-
-  		#TODO consider boredom as a harmful concept 
+		
 
             ############################
             # IF STUCK
             ############################
 
-            if self.is_stuck(result.dist):      
-
+            if self.is_stuck(result.dist): 
+				#disable boredom
+				result.boredom = False
                  # do not interrupt if already handle
                  if self.is_being_unstuck(result.system_state):
 			return result
@@ -138,6 +154,9 @@ class Navigation_Algorithm:
 		      result.speed_r = constants.CONST_SPEED
                 
 		 return result
+		 #also drive away from the wall if bored
+		 if result.boredom:
+		 	return result
 
             #####################
             ##WALL FOLLOWING LEFT
