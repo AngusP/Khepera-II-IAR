@@ -60,19 +60,11 @@ DIST_CUTOFF = 0.0
 
 #pathing stuff
 
-#TODO syncrhonize with angus' code
-
-CELL_DIMENSION = 10 # mm
-IN_CELL = CELL_DIMENSION / 2 
-AWAY_FROM_PATH = CELL_DIMENSION * 1.5
-CELL_UNREACHABLE = 1
- 
-
 #Angle threshold until we begin correcting out orientation along the M-line
 M_N_ANGLE  = 10 # degrees
 
-#maximum boredom round the robot can do
-MAX_BOREDOM = 20
+#maximum boredom rounds the robot can do
+MAX_BOREDOM = 10
 
 
 

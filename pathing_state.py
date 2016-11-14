@@ -16,15 +16,18 @@ class Food_Source:
 	self.picked_up = False
 
 
+   #custom print
    def __str__(self):
 	return self.location.__str__() + " " + str(self.picked_up)
-
+ 
+   #custom comparator
    def __eq__(self, other):
         #reachability should not change during planning, so only X,Y matter for comparison
 	if other is None:
 		return False
         return self.location == other.location
 
+   #custom comparator
    def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -47,17 +50,21 @@ class Pathing_State:
            self.algorithm_activated = False
 
 	   #idnicating number of food items carried
-	   self.food = 0	   
-	    #indicate have not explored randomly yet this food collecting round
-	   	   self.explored = False
-	   
-	def exploration_not_done(self):
-		return not self.explored
-		
-	def complete_exploration(self):
-		self.explored = False
+	   self.food = 0	
 
-    #add a food source on current grid space
+   
+	   #indicate have not explored randomly yet this food collecting round
+	   self.explored = False
+	   
+    #return if the exploration was done for this round
+    def exploration_not_done(self):
+		return not self.explored
+	
+    #denote we have already explored this round	
+    def complete_exploration(self):
+	        self.explored = True
+
+    #add a food source on current grid space if such does not exist yet
     def add_food_source(self):
 	   food_source = Food_Source(self.current_cell)
 	   if food_source not in self.food_sources:
@@ -73,13 +80,13 @@ class Pathing_State:
 
     #distance between cells
     def cell_distance(self, from_cell, to_cell):
+	   #euclidian distance
 	   x_diff = from_cell.x - to_cell.x
 	   y_diff = from_cell.y - to_cell.y
 	   return math.sqrt( math.pow(x_diff,2) + math.pow(y_diff,2))
-	   
-	def    
+	  
 
-    #get closest uncollected food source to cell passed as argument
+    #get closest uncollected food
     def get_closest_food(self):
 	   
 	   closest_food = None
@@ -87,7 +94,7 @@ class Pathing_State:
 
 	   for food_source in self.food_sources:
 		if not food_source.picked_up:
-
+			#get the closest one
 			distance = self.cell_distance(self.current_cell, food_source.location)
 			if closest_food is None or distance <= closest_dist:
 				closest_food = food_source
@@ -99,25 +106,16 @@ class Pathing_State:
 	#print self.current_cell
 	for food_source in self.food_sources:
 
-		#print("FOOD AT")
-		#print(food_source.location)
-		#print(not food_source.picked_up)
+		#if have food sources in current cell
 		if food_source.location == self.current_cell and not food_source.picked_up:		
-
+			#collect food and record that
 			food_source.picked_up = True
 			self.food += 1
-
-    def print_food(self):
-	print "=========================================="
-	print "FOOD SOURCES"
-	for food in self.food_sources:
-		print food
-	print "=========================================="
 
     #drop off food at the nest and finish
     def	drop_off_food(self):
 
-	#reset exploration on this round
+	#reset exploration for next round
 	self.explored = False
 	#indicate we are at the nest
 	self.food = 0
@@ -129,8 +127,8 @@ class Pathing_State:
 	for food_source in self.food_sources:
 		food_source.picked_up = False
 
+    #return if we in the same cell as a uncollected food source
     def are_on_food(self):
-
 	for food_source in self.food_sources:
 		if food_source.location == self.current_cell and not food_source.picked_up:
 			return food_source

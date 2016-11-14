@@ -6,52 +6,55 @@
 #
 
 import heapq
-#import numpy
+import numpy
 
 class Cell(object):
+    #make a new cell
     def __init__(self, x, y, reachable):
-        """Initialize new cell.
-        @param reachable is cell reachable? not a wall?
-        @param x cell x coordinate
-        @param y cell y coordinate
-        @param g cost to move from the starting cell to this cell.
-        @param h estimation of the cost to move from this cell
-                 to the ending cell.
-        @param f f = g + h
-        """
+
         self.reachable = reachable
+
+	#pose X
         self.x = x
+	#pose Y
         self.y = y
+	#for path calculation
         self.parent = None
+        #cost of moving from satrt cell to this cell
         self.g = 0
+	#heuristic cost from this cell to end cell
         self.h = 0
+	#total cost g+h
         self.f = 0
 
+    #custom print function
     def __str__(self):
         return "({}, {}, {})".format(self.x, self.y, self.reachable)
 
 
+    #custom equality function
     def __eq__(self, other):
         #reachability should not change during planning, so only X,Y matter for comparison
         x_equal = self.x == other.x
         y_equal = self.y == other.y
         return x_equal and y_equal
 
+    #custom inequality function
     def __ne__(self, other):
         return not self.__eq__(other)
-        
+
+    #return pose tuple    
     def get_coordinates(self):
         return (self.x , self.y)
-
-    #TODO note that now we use actual frigging X, Y and granularity
-
 
 class AStar(object):
     def __init__(self, planning_granularity, data_getter):
 
         #granularity in mm at which we plan
         self.granularity = planning_granularity
+	#the getter for unknown cells (ds server)
         self.getter = data_getter
+	#initialize al lvariables
         self.reset()
         
         #CONVENTION IN THIS GRID
@@ -70,15 +73,10 @@ class AStar(object):
         # | X
         # \/
 
-
-
-
-    #TODO remmber that 0,0 will always be at 0,0
-
     def reset(self):
         
-        #Only know where we ourselves are and that cell is unoccupied
-        #self.grid = numpy.zeros((1,1), dtype=int)
+
+        #self.grid = numpy.zeros((1,1), dtype=None)
 
 
         # open list
@@ -87,6 +85,7 @@ class AStar(object):
         # visited cells list
         self.closed = set()
 
+        #only know where we ourselves are and that cell is unoccupied
         self.grid = [[None]]
         
         #the size of the matrix
@@ -104,7 +103,7 @@ class AStar(object):
 
 
 
-
+    #return if the value indicates a threshold where we consider the cell occupid
     def is_occupid(self, value):
 	#TODO check
 	if value >= 50:
@@ -120,17 +119,16 @@ class AStar(object):
         #print self.snap(value) / self.granularity
         return self.snap(value) / self.granularity
 
+    #use pose to get the indexes in the current grid which would get us the cell with that pose
     def get_cell_indexes(self, x,y):
         x_index = self.normalize(x) + self.x_neg
         y_index = self.normalize(y) + self.y_neg
         return (x_index, y_index)
 
-    #note that the arguments are actual X,Y
+    #get cell with the X,Y pose indicated 
     def get_cell(self,x,y):
         #get indexes in the gid (so need to convert to indices)
         x_index, y_index = self.get_cell_indexes(x,y)
-
-        #print "{} {} access".format(x_index, y_index)
        
         #check if have such a cell in memory
         if x_index >= self.max_x or x_index < 0 or y_index >= self.max_y or y_index < 0:
@@ -148,7 +146,7 @@ class AStar(object):
         else:
 	    cell = self.grid[x_index][y_index]
 	    if cell is None:
-		#gte cell and add to local gache
+		#get cell and add to local gache
 	    	#occupancy = self.getter.get(x,y)
 		occupancy = True
 
@@ -157,9 +155,10 @@ class AStar(object):
 		self.set_cell(x, y, occupancy)
 
 	    return self.grid[x_index][y_index]
-    #note that the arguments are actual X,Y
+    #set the occupancy of the cell for indicated X,Y pose
     def set_cell(self,x,y, reachable):
 
+	#get the indexes it would currently occupy
         x_index, y_index = self.get_cell_indexes(x,y)
 	
 	#if it is withing range, check if have somnething set
@@ -200,9 +199,7 @@ class AStar(object):
                                 #expand every row to allow more positive and negative values
                                 row.insert(0, None)
                                 row.append(None)   
-        
-
-        #print self.grid
+       
 
         #re-normalize indexes
         x_index +=self.x_neg
@@ -213,46 +210,32 @@ class AStar(object):
         #print self.grid
 
 
+    #prepare the grid for planning
     def init_grid(self, start, end):
     
-        """Prepare grid cells, walls.
-        @param start grid starting point x,y tuple.
-        @param end grid ending point x,y tuple.
-        """
-
+	#reset variable
         self.reset()
         
         #both start and destination should be reachable
         self.set_cell(start[0], start[1], True)
         self.set_cell(end[0], end[1], True)
 
+	#set path end and start
         self.start = self.get_cell(start[0], start[1])
         self.end   =self.get_cell(end[0], end[1])
 
+    #return H
     def get_heuristic(self, cell):
-        """Compute the heuristic value H for a cell.
-        Distance between this cell and the ending cell multiply by 10.
-        @returns heuristic value H
-        """
+	#calculate heuristic cost - distance between this cell and the ending cell multiply by 10.
         return 10 * (abs(cell.x - self.end.x) + abs(cell.y - self.end.y))
 
     
-
+    #get adjacent cells to cell in argument
     def get_adjacent_cells(self, cell):
-        """Returns adjacent cells to a cell.
-        Clockwise starting from the one on the right.
-        @param cell get adjacent cells for this cell
-        @returns adjacent cells list.
-        """
+
         cells = []
 
-        x,y = self.get_cell_indexes( cell.x, cell.y)
-
-	#TODO her and in the getter, sync with angus'es code SO REMOVE THE RANGE LIMITING STATEMENTS
-
-        #using self.granularity instead of 1 as we are using granularity (which is in actual mm)
-
-	#because I dont want to unindent
+	#get cells at right angles to current cell (make sure they are not None for one reason or another)
 	if True:
             a = self.get_cell(cell.x+self.granularity, cell.y)
 	    if a is not None:
@@ -271,6 +254,7 @@ class AStar(object):
             	cells.append(a)
            
 
+	#get diagonal cells and make sure not to append None ones (which should not hapen)
 	if True:
 
                 if self.get_cell(cell.x+self.granularity, cell.y).reachable or self.get_cell(cell.x, cell.y+self.granularity).reachable:
@@ -297,10 +281,9 @@ class AStar(object):
                         a = self.get_cell(cell.x-self.granularity, cell.y-self.granularity)
 			if a is not None:
             			cells.append(a)
-
-        #print cells 
         return cells
 
+    #return the calcualted path
     def get_path(self):
 
         #print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
@@ -322,23 +305,18 @@ class AStar(object):
         #print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"        
         return path
 
-    def update_cell(self, adj, cell):
-        """Update adjacent cell.
-        @param adj adjacent cell to current cell
-        @param cell current cell being processed
-        """
+    #upradte the movement costs
+    def update_cell(self, adj, cell):	
         adj.g = cell.g + 10
         adj.h = self.get_heuristic(adj)
         adj.parent = cell
         adj.f = adj.h + adj.g
 
+    #path claculator
     def solve(self):
-        """Solve maze, find path to ending cell.
-        @returns path or None if not found.
-        """
+
         # add starting cell to open heap queue
         heapq.heappush(self.opened, (self.start.f, self.start))
-
         
         while len(self.opened):
 
@@ -354,9 +332,8 @@ class AStar(object):
             for adj_cell in adj_cells:
                 if adj_cell.reachable and adj_cell not in self.closed:
                     if (adj_cell.f, adj_cell) in self.opened:
-                        # if adj cell in open list, check if current path is
-                        # better than the one previously found
-                        # for this adj cell.
+                        # if adj cell in open list, check if current path better 
+			# than the previosu one for this adjacent cell.
                         if adj_cell.g > cell.g + 10:
                             self.update_cell(adj_cell, cell)
                     else:
@@ -364,24 +341,30 @@ class AStar(object):
                         # add adj cell to open list
                         heapq.heappush(self.opened, (adj_cell.f, adj_cell))
 
-    #TODO rename grid state to pathing_state
+
+    #replan the path from start to end
     def replan(self, start, end):
 
 	#account for calculations if we are already at the destination
 	start_indexes = self.get_cell_indexes(start[0], start[1])
 	end_indexes   = self.get_cell_indexes(end[0], end[1])
 
-
+	#if are already at the destination, just return a path containing one node
         if end == start or start_indexes == end_indexes:
                 return [Cell(start[0], start[1], True)]
 
+	#initalize the grid
         self.init_grid(start, end)
-        
+        #solve the pathing
         self.solve()
+	#get the path
         path = self.get_path()
+
+	print "REPLANNING"
 
         return path
 
+    #function to conveniently print the grid
     def print_grid(self):
         grid = [[]]
         print "############################################################################"
@@ -399,11 +382,3 @@ class AStar(object):
         #print grid   
         print "############################################################################"
 
-def main():
-
-    a = AStar(10, None)
-    
-
-if __name__ == "__main__":
-    main()
-    

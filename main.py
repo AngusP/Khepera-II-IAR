@@ -39,7 +39,7 @@ wt = whiptail.Whiptail(title=namebadge)
 
 def main():
 
-    cv2.namedWindow("stuff")
+    cv2.namedWindow("window")
     try:
         #flashy to see if robot works
         comms.blinkyblink()
@@ -63,27 +63,21 @@ def main():
 
 	#begin control loop
         while True:
-          
-	    
-            #print(pathing_state.current_cell)
-		
+
+	    #get new sensor readings          		
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
-	    #check reactive first, then bug
-	    nav_state = nav.new_state(nav_state)
 
-        
-	    #if have free movement, use the pathing algorithm
-	    if nav_state.yielding_control == True:
-		nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
-		#if we are done break the control loop, stop the robot and exit
-		if pathing_state.done:
-			#TODO add some exploration etc.
+	    #check reactive controls first
+	    nav_state = nav.new_state(nav_state ,pathing_state, comms)
+	    #then check if pathing algorithm applies        
+	    nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
 
-			#make a repeated run	
-
-			pathing_state.algorithm_activated = True
-			pathing.replan_sequence(pathing_state)
+	    #if we are done break the control loop, stop the robot and exit
+	    if pathing_state.done:
+		  #make a repeated run	
+		  pathing_state.algorithm_activated = True
+		  pathing.replan_sequence(pathing_state)
 			
 
 			
@@ -97,12 +91,6 @@ def main():
             speed_r = nav_state.speed_r
             ds.push(odo_state, nav_state.dist)
 
-
-
-            
-	    #TODO make sure that there is a tampling period big enough for odometyr not to mess up
-
-	    #TODO maybe do REDIS-KEY or w/e angus proposed
 	    
 	    # wait for new sensor round and maybe found a new food source
 	    if (cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF )  == ord(' '):
@@ -114,11 +102,6 @@ def main():
 			pathing_state.add_food_source()
 			#replan the route
 			pathing.drive_over_food(pathing_state, comms)
-
-	    #TODO check if this fixes odometry worng length
-
-	    #time.sleep(0.2)
-
 		
     except TypeError as e:
         comms.drive(0,0)

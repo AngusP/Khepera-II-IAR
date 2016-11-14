@@ -67,9 +67,8 @@ class Pathing_Algorithm:
     def snap(self, value):
         return ( int(value) / self.granularity) * self.granularity
 	
+    #method determining if we have moved to a new cell
     def cell_transition(self, pathing_state, odo_state):
-
-		#print("attempt at cell transition")
 			
 		#next_cell_pose = pathing_state.active_path[1].get_pose()
 		current_coordinates = (self.snap(odo_state.x), self.snap(odo_state.y))
@@ -79,8 +78,9 @@ class Pathing_Algorithm:
 
 		#check if we have anywhere to go in the firts place
 		if len(pathing_state.active_path) == 1 or not pathing_state.algorithm_activated:
-			return 
+			return
 
+		#check if we have advanced along the path
 		if pathing_state.active_path[1].get_coordinates() == current_coordinates:
 			#pop the element at index 0
 			pathing_state.active_path.pop(0)
@@ -102,9 +102,9 @@ class Pathing_Algorithm:
 		comms.blinkyblink()
 		#give it time to actually pick up the food
 		comms.drive(0,0)
+		#wait to simulate picking up food
 		time.sleep(constants.WAIT_PERIOD_S)
 		comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
-		time.sleep(constants.MEASUREMENT_PERIOD_S)
 		#set food source as picked
 		pathing_state.pick_food_up()
 		#replan, maybe a more efficient route now available
@@ -119,16 +119,14 @@ class Pathing_Algorithm:
     def replan_sequence(self, pathing_state):
 
 	start = pathing_state.current_cell.get_coordinates()
-
-	#start = (5,5)
-
 	end = (0,0)
 	
 	#check if have more food sources to collect
 	return_home = not pathing_state.has_uncollected_food()
+
+	#if do have such food sources, then collect them before going home
 	if not return_home:
 		food = pathing_state.get_closest_food()
-		print "HAVE FOOD TO COLLECT {}".format(food)
 		end  = food.location.get_coordinates()
 
 	#get new path
@@ -138,17 +136,17 @@ class Pathing_Algorithm:
     #return new state
     def new_state(self, nav_state, odo_state, pathing_state, comms):
 	     
-		#get current grid cell location
+		#alwayts update location on grid
 		self.cell_transition(pathing_state, odo_state)
 
-		if not pathing_state.algorithm_activated:
+		#if algorithm not active or we do not have control, do not waste computational power
+		if not (pathing_state.algorithm_activated and nav_state.yielding_control):
 			return nav_state
 
 		#if at the nest and have no more places to go
 		if pathing_state.current_cell.get_coordinates() == (0,0) and len(pathing_state.active_path) == 1:
 
-			#indicate completion
-
+			#indicate completion of round
 			print("Brought %d food back to nest" % pathing_state.food)
 			comms.drive(0, 0)
 
@@ -157,13 +155,16 @@ class Pathing_Algorithm:
 			#indicate visually
 			comms.blinkyblink()
 			comms.drive(0,0)
+			#wait to simulate actual dropping of food
 			time.sleep(constants.WAIT_PERIOD_S)
-			comms.drive(0,0)
-			time.sleep(constants.MEASUREMENT_PERIOD_S)
+			#drive forward 
+			comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
 			return nav_state
 
+		#try to collect food
 		self.drive_over_food(pathing_state, comms)			
-			
+		
+		#get current direction vector to heading grid cell	
 		direction = self.get_direction(odo_state, pathing_state)
 	    
                 speed_l = nav_state.speed_l 

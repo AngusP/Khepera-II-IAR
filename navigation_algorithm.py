@@ -102,23 +102,51 @@ class Navigation_Algorithm:
 	def is_boredom_handled(self, state):
 	    return state == constants.STATE_BOREDOM_ROTATE or state == constants.STATE_BOREDOM_DRIVE
 
+	#function to determine if algorithm permits exploration
+	def can_explore(self, result, pathing_state):
+
+	    #key point - maximum exploration until we find the 1st food source
+	    #determine if we are following a wall
+	    wall_following = result.system_state == constants.STATE_RIGHT_FOLLOW or result.system_state == constants.STATE_LEFT_FOLLOW
+	    #determine if have not explored this round yet and done with main part of algorithm
+
+	    #TODO uncomment the food bit maybe
+	    should_explore_pathing = pathing_state.exploration_not_done() and not pathing_state.has_uncollected_food() 
+
+	    #if pathing not activated, we do not care if we have completed the main portion of the algorithm
+	    exploration_beneficial = should_explore_pathing or not pathing_state.algorithm_activated
+	    #return result that if we are wall following and if we would benefit from exploration and are already not doing so
+	    return wall_following and exploration_beneficial and not result.boredom
 
         def new_state(self, nav_state, pathing_state, comms):
 	                
 	    result = Navigation_State()
 	    result = nav_state 
 
-	    #if bored of a wall, turn away from it
-		wall_following = (result.system_state = constants.STATE_RIGHT_FOLLOW or result.system_state = constants.STATE_LEFT_FOLLOW)
-		#do not let it interfere with the actual return algorithm - only explore when current food collected
-		#also check if on this round have explored to an unknown distance this food round
-		if wall_following and not pathing_state.has_uncolected_food() and pathing_state.exploration_not_done():
+
+
+            ############################
+            # HANDLE BOREDOM
+            ############################
+
+	    #TODO check if traiviling off in a random direction is more useful potentially (or make it collect only after it's done with food)
+	    if self.can_explore(result, pathing_state):
+			#keep coubnt of round we followed a wall
 			result.boredom_counter += 1
 			if result.boredom_counter > constants.MAX_BOREDOM:
-				comms.drive(constants.SPEED_CONST,-constants.SPEED_CONST)
-				time.sleep(0.5)
+
+				#drive away from the wall we were hugging
+				if result.system_state == constants.STATE_LEFT_FOLLOW:
+					comms.drive(constants.CONST_SPEED, -constants.CONST_SPEED)
+				else:
+					comms.drive(-constants.CONST_SPEED, constants.CONST_SPEED)
+
+				#let it turn
+				time.sleep(1)
 				#drive forwards until stuck
-				comms.drive(constants.SPEED_CONST, constants.SPEED_CONST)
+				comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
+				print "BORED"
+				#make the boredom driving forward happen, reset boredom counter
 				result.boredom = True
 				result.boredom_counter = 0
 				
@@ -134,10 +162,15 @@ class Navigation_Algorithm:
             ############################
 
             if self.is_stuck(result.dist): 
-				#disable boredom
-				result.boredom = False
-				#make sure to denote exploration end on this round
-				pathing_state.complete_exploration()
+
+		 if result.boredom:
+			print "DONE BEING BORED"
+
+		 #disable boredom
+		 result.boredom = False
+		 #make sure to denote exploration end on this round
+		 pathing_state.complete_exploration()
+
                  # do not interrupt if already handle
                  if self.is_being_unstuck(result.system_state):
 			return result
@@ -156,9 +189,15 @@ class Navigation_Algorithm:
 		      result.speed_r = constants.CONST_SPEED
                 
 		 return result
-		 #also drive away from the wall if bored
-		 if result.boredom:
-		 	return result
+
+
+            ############################
+            # IF BOREDOM
+            ############################
+
+	    #if boredom active, continue driving until we get stuck
+            if result.boredom:
+		 return result
 
             #####################
             ##WALL FOLLOWING LEFT

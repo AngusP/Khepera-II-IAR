@@ -22,7 +22,7 @@ class Navigation_State:
     #IR sensor readings
     dist = [0]*8
     #boredom algorithm, start bored
-    boredom = True
+    boredom = False
     #boredom counter
     boredom_counter = 0
 
