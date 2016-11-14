@@ -23,4 +23,6 @@ class Navigation_State:
     dist = [0]*8
     #boredom algorithm, start bored
     boredom = True
+    #boredom counter
+    boredom_counter = 0
 
