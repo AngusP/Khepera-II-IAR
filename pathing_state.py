@@ -48,6 +48,14 @@ class Pathing_State:
 
 	   #idnicating number of food items carried
 	   self.food = 0	   
+	    #indicate have not explored randomly yet this food collecting round
+	   	   self.explored = False
+	   
+	def exploration_not_done(self):
+		return not self.explored
+		
+	def complete_exploration(self):
+		self.explored = False
 
     #add a food source on current grid space
     def add_food_source(self):
@@ -68,6 +76,8 @@ class Pathing_State:
 	   x_diff = from_cell.x - to_cell.x
 	   y_diff = from_cell.y - to_cell.y
 	   return math.sqrt( math.pow(x_diff,2) + math.pow(y_diff,2))
+	   
+	def    
 
     #get closest uncollected food source to cell passed as argument
     def get_closest_food(self):
@@ -107,6 +117,8 @@ class Pathing_State:
     #drop off food at the nest and finish
     def	drop_off_food(self):
 
+	#reset exploration on this round
+	self.explored = False
 	#indicate we are at the nest
 	self.food = 0
 	#drop off food
