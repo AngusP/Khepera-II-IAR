@@ -28,6 +28,7 @@ import time
 import math
 import matplotlib.pyplot as plt
 from data import DataStore
+from data import GridManager
 
 namebadge = " -- IAR C&C -- "
 helptext = str(sys.argv[0]) + ' -p <serial port> -b <baud rate> -t <timeout> -s <server hostname>'
@@ -38,7 +39,7 @@ wt = whiptail.Whiptail(title=namebadge)
 
 def main():
 
-    cv2.namedWindow("stuff")
+    cv2.namedWindow("window")
     try:
         #flashy to see if robot works
         comms.blinkyblink()
@@ -48,18 +49,9 @@ def main():
 	nav_state = Navigation_State()
 	nav = Navigation_Algorithm()
 	pathing_state = Pathing_State()
-    	pathing = Pathing_Algorithm()
 
-	#TODO remove
-	#sys.exit(0)
-    
-    	#TODO so where is the gird, its form etc.....
-        #TODO figure out a better DONE algorithm (bring back to detecting if we are in the cell)
-        #TODO well, figure out if we really want wall following any more
-        #TODO detect user input for when "food" was found etc.
-        #TODO sequence pathing
-        #TODO store the actual grid
-        #TODO actually set a path
+	#TODO sync with angus' granularity in mm
+    	pathing = Pathing_Algorithm(20, ds)
 
         # varaibles to not resend speeds during wall following
         speed_l = 0
@@ -71,58 +63,45 @@ def main():
 
 	#begin control loop
         while True:
-          
 
+	    #get new sensor readings          		
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 
-	    #check reactive first, then bug
-	    nav_state = nav.new_state(nav_state)
+	    #check reactive controls first
+	    nav_state = nav.new_state(nav_state ,pathing_state, comms)
+	    #then check if pathing algorithm applies        
+	    nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
 
-
-
-
-        
-	    #if have free movement, use the bug algorithm
-	    if pathing_state.algorithm_activated and nav_state.yielding_control == True:
-		nav_state = pathing.new_state(nav_state, odo_state, pathing_state)
-		#if we are done break the control loop, stop the robot and exit
-		if pathing_state.done:
-			print("Brought %d food back to nest" % pathing_state.food)
-			comms.drive(0, 0)
-			comms.blinkyblink()
+	    #if we are done break the control loop, stop the robot and exit
+	    if pathing_state.done:
+		  #make a repeated run	
+		  pathing_state.algorithm_activated = True
+		  pathing.replan_sequence(pathing_state)
+			
 
 			
-			
-			#TODO make this go away to go to other nests (or repeatedly go to another one)
-			break
-	
+
+
 	    #only send stuff over serial if new values
 	    if not( speed_l == nav_state.speed_l and speed_r == nav_state.speed_r):
 	    	comms.drive(nav_state.speed_l, nav_state.speed_r)
-
+	    #update the speeds
             speed_l = nav_state.speed_l
             speed_r = nav_state.speed_r
-	    
             ds.push(odo_state, nav_state.dist)
 
-
-
-
-
-            
 	    
 	    # wait for new sensor round and maybe found a new food source
 	    if (cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF )  == ord(' '):
 			# if SPACE is pressed
-   			print("Detected nest")
+   			print("Detected food")
+			#now the pathing is definitely active
+			pathing_state.algorithm_activated = True
+			#add current cell as a food source
+			pathing_state.add_food_source()
+			#replan the route
 			pathing.drive_over_food(pathing_state, comms)
-			#replan, maybe a more efficient route now available
-			pathing.replan_sequence(pathing_state)
-
-
-
-
 		
     except TypeError as e:
         comms.drive(0,0)

@@ -5,8 +5,8 @@
 #  s1346981    Jevgenij Zubovskij
 #
 
-from AStar import Cell
-import numpy
+from astar import Cell
+import math
 
 
 class Food_Source:
@@ -15,105 +15,22 @@ class Food_Source:
 	self.location = location_cell
 	self.picked_up = False
 
-class Planning_Grid:
-   def __init__(self):
-	#initially whole grid unoccupied
-	#TODO uncomment
-	#self.grid = numpy.zeros((max_x+10,max_y+10), dtype=int)
-	
-	#the size of the matrix
-	self.max_x = 1
-	self.max_y = 1
-	#TODO remove when done debugging
 
-	#Only know where we ourselves are
-	self.grid =  	[[0]]
+   #custom print
+   def __str__(self):
+	return self.location.__str__() + " " + str(self.picked_up)
+ 
+   #custom comparator
+   def __eq__(self, other):
+        #reachability should not change during planning, so only X,Y matter for comparison
+	if other is None:
+		return False
+        return self.location == other.location
 
-	#how many x-cells in negative direction (0,0) is 0 in None
+   #custom comparator
+   def __ne__(self, other):
+        return not self.__eq__(other)
 
-
-	#CONVENTION IN THIS GRID
-	# -----------------------------------> Y
-	# |
-	# |
-	# |
-	# |
-	# |
-	# |
-	# |
-	# |
-	# |
-	# |
-	# |
-	# | X
-	# \/
-
-	#TODO make it 0 initially
-	self.x_neg = 0
-
-	#how many y-cells in negative direction (0,0) is 0 in None
-
-	#TODO make it 0 initially
-	self.y_neg = 0
-
-	#TODO make the pathing grid bigger than the occupancy as sensors sparse
-
-   
-   def get(self,x,y):
-	return self.grid[x][y]
-
-   def set(self,x,y, new_occupancy):
-
-	x_diff = max(x - (self.max_x - self.x_neg -1), -x - self.x_neg)
-	#find if the X value is out of range
-	if x_diff > 0:
-
-		for index in xrange(x_diff):
-			self.max_x += 2
-			self.x_neg += 1
-
-			#expand in max direction
-			self.grid.append([0]*self.max_y)
-			self.grid.insert(0, [0]*self.max_y)
-			print("EXPAND X")
-
-			
-		
-	y_diff = max(y - (self.max_y - self.y_neg -1), -y - self.y_neg)
-	if y_diff > 0:
-		
-		for index in xrange(y_diff):
-			self.max_y += 2
-			self.y_neg += 1
-
-			print("EXPAND Y")
-			#expand along X
-			for row in self.grid:
-
-				#expand every row to allow more positive and negative values
-				row.insert(0, 0)
-				row.append(0)
-
-
-
-
-	print("DIFFERENCES X{} Y{}".format(x_diff, y_diff))
-	#normalize coordinates
-	print(" {} {} = {} DIMENSIONS {} by {}".format(x+self.x_neg,y+self.y_neg,  new_occupancy, self.max_x, self.max_y))
-
-	#print("{} {} reality".format( len(self.grid[4]) , len(self.grid) ))
-
-
-	for row in self.grid:
-			#TODO check 
-			print(row)	
-	
-
-        self.grid[x+self.x_neg][y+self.y_neg] = new_occupancy
-
-    #def print():
-	
-	
 class Pathing_State:
 
     def __init__(self):
@@ -133,54 +50,88 @@ class Pathing_State:
            self.algorithm_activated = False
 
 	   #idnicating number of food items carried
-	   self.food = 0
+	   self.food = 0	
 
-	   #make a pathing grid
-	   self.planning_grid = Planning_Grid()
+   
+	   #indicate have not explored randomly yet this food collecting round
+	   self.explored = False
+	   
+    #return if the exploration was done for this round
+    def exploration_not_done(self):
+		return not self.explored
+	
+    #denote we have already explored this round	
+    def complete_exploration(self):
+	        self.explored = True
 
-
-	   #TODO remove these
-
-	   #self.planning_grid.set(1,1,1)
-	   #self.planning_grid.set(-1,-1,1)
-	   self.planning_grid.set(5,-10,1)
-
-	   #self.planning_grid.set(2, 2,1)
-	   #self.planning_grid.set(4, 4, 0)
-	   #self.planning_grid.set(2, 2, 11)
-
-           #self.planning_grid.set(0, -2, 11)
-
-	   #self.planning_grid.set(-1, 1, 1)
-	   #self.planning_grid.set(0, 1, 1)
-	   #self.planning_grid.set(1, 1, 1)
-	   #self.planning_grid.set(2, 1, 1)
-
-	   print("PLANNING GRID")
-
-	   for row in self.planning_grid.grid:
-			#TODO check 
-			print(row)
-
+    #add a food source on current grid space if such does not exist yet
+    def add_food_source(self):
+	   food_source = Food_Source(self.current_cell)
+	   if food_source not in self.food_sources:
+	   	self.food_sources.append(food_source)
 	   
 
-    def update_grid(changed_occupancies):
+    #check if has uncollected food sources
+    def has_uncollected_food(self):
+	   for food_source in self.food_sources:
+		if not food_source.picked_up:
+			return True
+	   return False
 
-	   #planning_grid.neg_x =
+    #distance between cells
+    def cell_distance(self, from_cell, to_cell):
+	   #euclidian distance
+	   x_diff = from_cell.x - to_cell.x
+	   y_diff = from_cell.y - to_cell.y
+	   return math.sqrt( math.pow(x_diff,2) + math.pow(y_diff,2))
+	  
+
+    #get closest uncollected food
+    def get_closest_food(self):
+	   
+	   closest_food = None
+	   closest_dist = 0
+
+	   for food_source in self.food_sources:
+		if not food_source.picked_up:
+			#get the closest one
+			distance = self.cell_distance(self.current_cell, food_source.location)
+			if closest_food is None or distance <= closest_dist:
+				closest_food = food_source
+
+	   return closest_food
 	
-	   for occ in changed_occupancies:
+    #pick up the food on the spot the command was called if there is an unpicked one
+    def pick_food_up(self):
+	#print self.current_cell
+	for food_source in self.food_sources:
 
-		#TODO add changing granularity 
-		#normalizing the indexes to start from 0 to 0 etc
-		x = occ[0] 
-		y = occ[1] 
-		planning_grid.set(x, y, occ[2])
+		#if have food sources in current cell
+		if food_source.location == self.current_cell and not food_source.picked_up:		
+			#collect food and record that
+			food_source.picked_up = True
+			self.food += 1
 
+    #drop off food at the nest and finish
+    def	drop_off_food(self):
 
+	#reset exploration for next round
+	self.explored = False
+	#indicate we are at the nest
+	self.food = 0
+	#drop off food
+	self.done = True
+	#reset food sources
+	self.algorithm_activated = False
+	#self.print_food()
+	for food_source in self.food_sources:
+		food_source.picked_up = False
 
+    #return if we in the same cell as a uncollected food source
+    def are_on_food(self):
+	for food_source in self.food_sources:
+		if food_source.location == self.current_cell and not food_source.picked_up:
+			return food_source
 
-
-    
-    
-    
+	return None		
     

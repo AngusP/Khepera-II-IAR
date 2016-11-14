@@ -46,8 +46,11 @@ WHEEL_BASE_MM = 56.0 # mm
 WHEEL_BASE_M = WHEEL_BASE_MM / 1000.0 # m
 
 
+#period for waiting when grabbing / uncloading food
+WAIT_PERIOD_S = 2
 
-MEASUREMENT_PERIOD_S = 0.05 # s
+#wait period to wait before sending new serial stuff
+MEASUREMENT_PERIOD_S = 0.1 # s
 MEASUREMENT_PERIOD_MS = int(MEASUREMENT_PERIOD_S * 1000) # s
 
 
@@ -56,14 +59,12 @@ MEASUREMENT_PERIOD_MS = int(MEASUREMENT_PERIOD_S * 1000) # s
 DIST_CUTOFF = 0.0
 
 #pathing stuff
-CELL_DIMENSION = 10 # mm
-IN_CELL = CELL_DIMENSION / 2
-AWAY_FROM_PATH = CELL_DIMENSION * 1.5
-CELL_UNREACHABLE = 1
- 
 
 #Angle threshold until we begin correcting out orientation along the M-line
 M_N_ANGLE  = 10 # degrees
+
+#maximum boredom rounds the robot can do
+MAX_BOREDOM = 10
 
 
 
