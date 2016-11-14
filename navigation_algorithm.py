@@ -136,6 +136,8 @@ class Navigation_Algorithm:
             if self.is_stuck(result.dist): 
 				#disable boredom
 				result.boredom = False
+				#make sure to denote exploration end on this round
+				pathing_state.complete_exploration()
                  # do not interrupt if already handle
                  if self.is_being_unstuck(result.system_state):
 			return result
