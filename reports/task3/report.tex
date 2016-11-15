@@ -11,6 +11,7 @@
 \usepackage{mathtools}
 \usepackage{gensymb}
 \usepackage{float}
+\usepackage{comment}
 
 % DOCUMENT LAYOUT
 \usepackage{geometry}
@@ -120,24 +121,25 @@ TODO
 
 One of the two primary goals is to plan a path for the robot that would allow it to collect the maximum amount of food during a given time period. 
 
-\subsubsection{Planning Space}
+\section{Path Planning Space}
+\label{Planning Space}
 
-\subsubsection{Method Chosen}
+\textit{Planning Space} is a term used in this document to denote the representation of the physical world around the robot that one way or another allows the use of occupancy (mapping) grid usage to consider routes from one pose $(X,Y, \Theta)$ to another one. It therefore is used to calculate said path and afterwards provide the \textit{\S\ref{Path Planning Algorithm}Path Planning Algorithm} with approxpriate inforamtion to guide the robot along said calculated path towards the intended goal.
 
-The two approaches considered when deciding how to configure the planning space were:
+\subsection{Method Chosen}
+
+The main mehtods\cite{path_space} of planning are seen to be used on either of the following:
 
 \begin{itemize}
 	\item \textit{Occupancy Grid}
 	\item \textit{Graph (Topological Map)}
 \end{itemize}
 
-
-
-Now, the difference between these two from the perspective of planning is the efficiency of algorithm working on the data and the pre-processing of the data going to the algorithm. Because an occupancy grid is stored on a \textit{Redis-Server} and it has very fine definition, the number of grid squares (referred to as \textit{Grid Cerlls}) is immense. Therefore, to obtain a graph representation from that, every time a path replanning would have to take place, the conversion would have to take place on a very significant number of points. Therefore, the occupancy grid was chosen due to no conversion needing to be made on the data during runtime for planning, but rather perhaps a small alteration for the planning algorithm.
+However, in reality it was easier to choose than considering advantages of disadvantages of the two choices. Now, the difference between these two from the perspective of planning is the efficiency of algorithm working on the data and the pre-processing of the data going to the algorithm. Because an occupancy grid is stored on a \textit{Redis-Server} and it has very fine definition, the number of grid squares (referred to as \textit{Grid Cerlls}) is immense. Therefore, to obtain a graph representation from that, every time a path replanning would have to take place, the conversion would have to take place on a very significant number of points. Therefore, the occupancy grid was chosen due to no conversion needing to be made on the data during runtime for planning, but rather a small alteration for the \textit{Planning Algorithm} which should not affect the alogirithm's performance.
 
 \subsubsection{Alterations}
 
-It was also decided that the \textit{Planning Grid} would have a granularity equal to or higher than the one of the occupancy grid. The reasons for such a decision are as follows:
+An a lteration worth mentioning is that the granularity of the \textit{Planning Grid (Planning Space)} did not necessarily have to match the granularity of the occupancy grid. However, making the granularity less would just induce more calculations and hence reducing algorithm speed. However,  making the granularity equal to or higher than the one of occupancy grid had the following point of consideration:
 
 \begin{itemize}
 
@@ -147,8 +149,20 @@ It was also decided that the \textit{Planning Grid} would have a granularity equ
 
 \end{itemize}
 
-\subsection{Planning Algorithm}
+It as decided that the rganularity would be available for configuring as a parameter before runtime without really limiting any way because that would diminish the further possible modifications to the aglorithm. However, by defaul it is set to be equal to the granularity of the occupancy grid. 
 
+TODO comment somehow on the rganularity effect on performance (and do tests)
+TODO make sure occupancy grid is already described in a previous section
+
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+
+\subsection{Path-Planning Algorithm}
+\label{Path Planning Algorihtm }
 
 \subsubsection{Research}
 
@@ -159,88 +173,118 @@ Firstly, there are many options for the \textit{Path-Planning Algorithm}
 	\item \textit{Floyd-Warshall Algorithm}\cite{path_warshall} - a many-to-many algorithm for planning routes
 	\item \textit{Djikstra Algorithm}\cite{path_warshall} - a one-to-many algorithm
 	\item \textit{A* Algorithm}\cite{path_astar}	- a one-to-one algorithm
+\end{itemize}
 
-These are some of the most common and roust pathign algorihtms used in pathing. However, even based on the iformation above it can be concluded that Floyd-Warshall algorithm is not waht we were lookign because w have a single strating point - the position of the robot. Moreover, empirical data\cite{path_efficiency} shows that the best-first search algorithm is considerably faster than the Djikstra algorithm and in fact is in general considered the fastest planning algorithm and it's varioations as well as its purest form are used industry-wide in robotics. More reasons for choosing A* can be outlined in \textit{\S\ref{Alterations_Algorithm}}
+These are some of the most common and robust pathign algorihtms used in pathing. However, even based on the iformation above it can be concluded that Floyd-Warshall algorithm is not waht we were lookign because w have a single strating point - the position of the robot. Moreover, empirical data\cite{path_efficiency} shows that the best-first search algorithm is considerably faster than the Djikstra algorithm and in fact is in general considered the fastest planning algorithm and it's varioations as well as its purest form are used industry-wide in robotics. More reasons for choosing A* can be outlined in \textit{\S\ref{Path Planning Algorihtm Alterations}}
 
 \subsubsection{Method Chosen} 
 
 Therefore, A* was chosen to be the algorithm of choice for path calculation to the target grid cell. The pseudocode explaining its basic operation is as follows:
 
+TODO reference pictures
+TODO - make a screenshot and insert it into the document
+
 \begin{figure}
-function A*(start, goal)
-    // The set of nodes already evaluated.
-    closedSet := {}
-    // The set of currently discovered nodes still to be evaluated.
-    // Initially, only the start node is known.
-    openSet := {start}
-    // For each node, which node it can most efficiently be reached from.
-    // If a node can be reached from many nodes, cameFrom will eventually contain the
-    // most efficient previous step.
-    cameFrom := the empty map
+	  \caption{The pseudocode for the A* algorithm used for calculating the path on the occupancy grid between arbitatry start and end points\cite{path_astar_pseudocode}}
+ 	  %\centering
+    	  %\includegraphics[width=0.5\textwidth]{fig_astar_pseudocode}
+\end{figure} 
 
-    // For each node, the cost of getting from the start node to that node.
-    gScore := map with default value of Infinity
-    // The cost of going from start to start is zero.
-    gScore[start] := 0 
-    // For each node, the total cost of getting from the start node to the goal
-    // by passing by that node. That value is partly known, partly heuristic.
-    fScore := map with default value of Infinity
-    // For the first node, that value is completely heuristic.
-    fScore[start] := heuristic_cost_estimate(start, goal)
+TODO -  make this as well and insert pseudocode for path reconstruction
 
-    while openSet is not empty
-        current := the node in openSet having the lowest fScore[] value
-        if current = goal
-            return reconstruct_path(cameFrom, current)
-
-        openSet.Remove(current)
-        closedSet.Add(current)
-        for each neighbor of current
-            if neighbor in closedSet
-                continue		// Ignore the neighbor which is already evaluated.
-            // The distance from start to a neighbor
-            tentative_gScore := gScore[current] + dist_between(current, neighbor)
-            if neighbor not in openSet	// Discover a new node
-                openSet.Add(neighbor)
-            else if tentative_gScore >= gScore[neighbor]
-                continue		// This is not a better path.
-
-            // This path is the best until now. Record it!
-            cameFrom[neighbor] := current
-            gScore[neighbor] := tentative_gScore
-            fScore[neighbor] := gScore[neighbor] + heuristic_cost_estimate(neighbor, goal)
-
-    return failure
-
-function reconstruct_path(cameFrom, current)
-    total_path := [current]
-    while current in cameFrom.Keys:
-        current := cameFrom[current]
-        total_path.append(current)
-    return total_path
+\begin{figure}
+	  \caption{The pseudocode for the A* algorithm path reconstruction\cite{path_astar_grid_no_grid}}
+ 	  %\centering
+    	  %\includegraphics[width=0.5\textwidth]{fig_astar_pseudocode}
 \end{figure} 
 
 \subsubsection{Alterations}
-\label{Alterations_Algorithm}
+\label{Path Planning Algorihtm Alterations}
 
-Moreover, because the testing space is quite sparsely populated and is relatively small, it ws decided to save even more computational time by determining the closest (and thus the one we wish to calculate an exact path to) using simple \textit{Euclidian Distances}.
+Firstly, in order to optimize or rather adapt the algorithm to the taks at hand several alterations needed to be made. Firsly, as we know the pose of each grid cell, it logically follows that the costs of transition between cells would be claculated using \textit{Euclidian Distances}. Therefore, the $\text{cost}(A,B)=\text{dist}(A,B)$ is the cost function betwen any two cells $A$ and $B$. Said value accumulates (same as total cost for a cell) as it is just the path length from the start grid cell to the currently considerd one. However, the \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as fast as possible while findign an adequately short path to the desired destination. Moreover, that allows reducing the (albeit minor) effect of the bottleneck introduced by storign data on a distributed database as distant cells stop being considered for pathing much faster. 
 
+Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_astar_grid_no_grid}  or only movements up, down, left or right\cite{path_astar_grid_no_diagonals}. However, it seemed like a wasted opportunity to not allow the robot to move diagonally. Such cells are referred to as  \textit{Diagonal Cells} - cells diagonal to the currently considered cell - whose adjacent cells we wish to consider for furhter pathing for the remainded of this report and in the code comments. 
+
+Therefore, the code needed to account for diagonal neighbours and in particular scnearios where other neighbouring cells stop us from considerign the daigonal cell due to us being unable to reach it from considered cell. An example is as follows:
+
+TODO draw this on DICE
+
+\begin{figure}
+	  \caption{The center cell is the cell whose adjacent (neighbouring) cells, whereas the top top-left square (A) is the one of the diagonal cells to it and if both B and C are obstructed (obstacles), we do not have any way to get to get to it through them}
+ 	  %\centering
+    	  %\includegraphics[width=0.5\textwidth]{fig_astar_pseudocode}
+\end{figure} 
+
+Moreover, the algorithm also had to be implemented to work on an occupancy grid, which was an easy alteration as the grid's occupancy is stored as two-dimensional array of \textit{Cells} \textit{\S\ref{Code}} and can be indexed by using $(X ,Y)$ coordinates, therefore obtaining oadjacencies was a simple increment of said coordinates compared to the cell under consideration.
+
+Lastly, because the occupancy data is stored on Redis, the implementation obtains unknown occupancies from the server and caches them locally in said two-dimensional array. Furthermore, said array is also dynamycally expanding in both dimensions so as to accomodate any number of cells (limited only by memory capacity) in order to not miss a valid optimal path due to bounded arrays. 
+
+
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+
+
+
+\section{Integration of Path-Planning}
+
+This section is concerned with the intergation of the algorithm and data structures described above into the main control loop and its interaction with previosuly established subsystems\cite{task2_report}
+
+\subsection{Planning Algorithm}
+
+Now, having the path from $A$ to $B$ is used in sequencing actions to fulfill the goal of the task - collect as much food in the given amount of time. Therefore, the food gathering algorithm has priorities in the following form:
+
+\begin{enumerate}
+	\item \textit{Find} the first food source to begin periodic behavior in the following points
+	\item \textit{Collect} closest uncollected food source
+	\item \textit{Explore} once per \textit{Food Collection Round}
+	\item \textit{Return} to the nest and drop off food
+\end{enumerate}
+
+
+TODO set granularity to robot dimension
+
+Where food collection round is delimited by a return to the nest and dropping off currently collected food and therefore the renewl of "collected" food sources. The reason for such sequencing lies in the intent to explore as much as possible unti lwe ahve foudn at least some food. After which said point is no longer considered to be in the list of priorities as it has been fulfilled. After which comes round-based behavior where in each round we aim to collect all the know food for it to not be "renewed" - lost due to food collection round ending. Afterwards wish to try and find new food sources, but only once per food collection round  because do wish to explore and try to find, but do not wish exploration to disrupt actual food collection too much. Lastly, when all is done - drop off the food at the nest.
+
+TODO draw the figure and insert it
+
+\begin{figure}
+	  \caption{The planning algorithm in state-diagram form}
+ 	  %\centering
+    	  %\includegraphics[width=0.5\textwidth]{fig_astar_pseudocode}
+\end{figure} 
+
+Moreover, it is worth mentioning that it uses the same approach to navigate between consecutive cells on the calculated path as \textit{Return Algorithm}\cite{task2_report} - the simple path using vectors and basic tirgonometry, because now the difficult part of the algorithm is in the planner and is as discussed above. 
+
+Lastly, it should be noted that the path is recalculated after either of the following events and aims to fulfill the above priority list:
+
+\begin{itemize}
+
+	\item Food collected from a Food Source
+	\item Food dropped off at nest - round finished
+	\item Path lost - went a distance over the threshold away from the path
 
 \end{itemize}
 
-\subsubsection{Method Chosen}
-\subsubsection{Alterations}
 
 
+\subsubsection{Wall-Leaving - the Return of "Boredom"}
+
+Because the algorithm needs to find new food sources, the boredom mechanism \cite{task1_report} was reinstated into the control loop and is the exploration mechanism. 
+
+\subsubsection{User Input and Alterations}
+
+User input for this task indicates when the robot is on top of a food source. However, this was separated into two key presses because when we first find a food source, there is no odometry or other lozalization error as we know we are physically on top of it. However, when the in the next food collection round we attempts to harvest the same food, errors accumulate, as seen in \textit{Task 2}\cite{task2_report} and therefore need to make sure we reach the food source. Therefore, another key press indicates when the robot is on top of a old food source. Such a distinction is important, because due to aforomentioned accumulation of errors, we are unsure if we are truly on top of the nest, therefore recording it as a new food source would be incorrect and updating the position of the food is not in the scope of the Planning Algorithm. 
+
+Moreover, if the robot does not properly localize for one reason or another (such as errors discussed before) and thinks it has raeached the nest but there is no user input suggesting that is true, it beings to spiral outwards from the spot it things the food is in until user input is encountered. Therefore, ensuring that if the fodo is somewhere in the viscinity, it will be found fairly quickly again. 
 
 
-\subsubsection{Integration}
+\subsubsection{Subsystem Interaction}
 
-
-\subsubsection{Research}
-\subsubsection{Method Chosen}
-\subsubsection{Alterations}
-
+Lastly, the integration of the algorithm into the main system is seamless and practically mimics the integration of the \textit{Return Algorithm}\cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. The difference is now we know where there is a wall and can fully relay the control to the planner, unless we are exploring using "boredom" or are being "unstuck" without fear of the robot crashing into the wall.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -255,6 +299,13 @@ Moreover, because the testing space is quite sparsely populated and is relativel
 \bibitem{task2_report} 
 \par{IAR 2016 Task1 Report} \\
 \textit{Angus Pearson, Jevgenij Zubovskij}
+
+
+
+\bibitem{path_space}
+\par{Map Representation Comparison and Planning (online article)}-
+\textit{http://correll.cs.colorado.edu/?p=965}
+
 
 
 \bibitem{path_warshall} 
@@ -273,19 +324,34 @@ Moreover, because the testing space is quite sparsely populated and is relativel
 \par{Comparative Study of Path Planning Algorithms}
 \textit{http://research.ijcaonline.org/volume39/number5/pxc3877058.pdf}
 
-
-\bibitem{path_astar_pseudo} 
+\bibitem{path_astar_pseudocode} 
 \par{A* Search Algorithm (online article)}
-\textit{https://en.wikipedia.org/wiki/A*_search_algorithm}
+\textit{http://web.mit.edu/eranki/www/tutorials/search/}
+
+
+
+\bibitem{path_astar_grid_no_diagonals} 
+\par{Introduction to A* (online article)}
+\textit{http://theory.stanford.edu/~amitp/GameProgramming/AStarComparison.html}
+
+
+
+\bibitem{path_astar_grid_no_grid} 
+\par{A* Search Alogorith (online article)}
+\textit{https://en.wikipedia.org/wiki/A*\_search\_algorithm}
+
 
 
 
 \end{thebibliography}
 
+\begin{comment}
+
 \newpage
 \begin{appendices}
 \section*{Appendix}
 \subsection{Code Listings}
+\label{Code}
 \lstinputlisting[language=python]{../../main.py}
 \lstinputlisting[language=python]{../../data.py}
 \lstinputlisting[language=python]{../../comms.py}
@@ -300,6 +366,8 @@ Moreover, because the testing space is quite sparsely populated and is relativel
 \lstinputlisting[language=python]{../../constants.py}
 \lstinputlisting{../../requirements.txt}
 \end{appendices}
+
+\end{comment}
 
 
 \end{document}
