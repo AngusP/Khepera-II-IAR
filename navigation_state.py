@@ -21,6 +21,7 @@ class Navigation_State:
     system_state = constants.STATE_DRIVE_FORWARD
     #IR sensor readings
     dist = [0]*8
+
     #boredom algorithm, start bored
     boredom = False
     #boredom counter

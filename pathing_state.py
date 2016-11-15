@@ -55,6 +55,13 @@ class Pathing_State:
    
 	   #indicate have not explored randomly yet this food collecting round
 	   self.explored = False
+
+
+	   #indicate the spirallign around point of interest (food source)
+	   self.spiral = False
+	   self.spiral_counter = 0
+	   self.spiral_source = None
+
 	   
     #return if the exploration was done for this round
     def exploration_not_done(self):
@@ -63,6 +70,22 @@ class Pathing_State:
     #denote we have already explored this round	
     def complete_exploration(self):
 	        self.explored = True
+
+    #function indicatign spiralling start around food source until indicated food was collected (indicated by keypress)
+    def start_spiral(self, food_source):
+		#print "BEGINNING SPIRAL"
+		#set variables
+		self.spiral = True
+		self.spiral_counter = 0
+		self.spiral_source = food_source
+
+    #indicate spiral end around uncollected food source
+    def end_spiral(self):
+		#print "END SPIRAL"
+		#reset varaibles
+		self.spiral = False
+		self.spiral_counter = 0
+		self.spiral_source = None
 
     #add a food source on current grid space if such does not exist yet
     def add_food_source(self):
@@ -103,7 +126,6 @@ class Pathing_State:
 	
     #pick up the food on the spot the command was called if there is an unpicked one
     def pick_food_up(self):
-	#print self.current_cell
 	for food_source in self.food_sources:
 
 		#if have food sources in current cell
@@ -111,6 +133,17 @@ class Pathing_State:
 			#collect food and record that
 			food_source.picked_up = True
 			self.food += 1
+
+    #specific method for spiral food pick up
+    def pick_up_spiral_food(self):
+	for food_source in self.food_sources:
+		#if uncollceted the spiral source food
+		if food_source.location == self.spiral_source.location and not food_source.picked_up:		
+			#collect food and record that
+			food_source.picked_up = True
+			self.food += 1
+	
+	
 
     #drop off food at the nest and finish
     def	drop_off_food(self):

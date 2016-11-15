@@ -10,11 +10,6 @@
 CONST_SPEED = 8
 CONST_WALL_DIST = 200
 
-#BOREDOM CONSTANTS
-
-CONST_WALL_BORED_MAX = 100
-CONST_BORED_TURN_MAX = 20
-
 #TURN SCALING
 
 TURN_LESS = 0.2
@@ -30,10 +25,6 @@ STATE_LEFT_FOLLOW = 4
 STATE_RIGHT_FOLLOW   = 5
 STATE_BOREDOM_ROTATE = 6
 STATE_BOREDOM_DRIVE  = 7
-
-#called 180 because we were going away from the goal and now are turning towards it
-STATE_BUG_180 = 8
-
 
 #ENCODER_CONSTANTS
 
@@ -65,6 +56,9 @@ M_N_ANGLE  = 10 # degrees
 
 #maximum boredom rounds the robot can do
 MAX_BOREDOM = 10
+
+#coeffiecient as to how many round it takes to form a spiral inceremnt speed
+SPIRAL_SPEED_COEFFICIENT = 10
 
 
 

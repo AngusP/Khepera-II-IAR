@@ -7,7 +7,6 @@
 #  s1346981    Jevgenij Zubovskij
 #
 
-from __future__ 		import print_function
 from comms 			import Comms
 
 from odometry_algorithm 	import Odometry_Algorithm
@@ -69,7 +68,7 @@ def main():
   	    nav_state.dist = comms.get_ir()
 
 	    #check reactive controls first
-	    nav_state = nav.new_state(nav_state ,pathing_state, comms)
+	    nav_state = nav.new_state(nav_state ,pathing_state, comms, ds)
 	    #then check if pathing algorithm applies        
 	    nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
 
@@ -77,11 +76,11 @@ def main():
 	    if pathing_state.done:
 		  #make a repeated run	
 		  pathing_state.algorithm_activated = True
+		  pathing_state.done = False
 		  pathing.replan_sequence(pathing_state)
+		  
+		  #print "DONE REPLAN"
 			
-
-			
-
 
 	    #only send stuff over serial if new values
 	    if not( speed_l == nav_state.speed_l and speed_r == nav_state.speed_r):
@@ -92,16 +91,20 @@ def main():
             ds.push(odo_state, nav_state.dist)
 
 	    
-	    # wait for new sensor round and maybe found a new food source
-	    if (cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF )  == ord(' '):
+	    # wait for new sensor round 
+	    key_pressed = cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF
+	    #found a new food source 
+	    if key_pressed  == ord(' '):
 			# if SPACE is pressed
    			print("Detected food")
-			#now the pathing is definitely active
-			pathing_state.algorithm_activated = True
-			#add current cell as a food source
-			pathing_state.add_food_source()
-			#replan the route
 			pathing.drive_over_food(pathing_state, comms)
+
+	    #collected food from current food_source
+	    elif key_pressed  == ord('\r'):
+			# if ENTER pressed
+			#collect the food we spiralled around before
+			pathing.collect_food(pathing_state, comms)
+ 	   
 		
     except TypeError as e:
         comms.drive(0,0)
