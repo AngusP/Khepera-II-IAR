@@ -305,9 +305,16 @@ class AStar(object):
         #print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"        
         return path
 
+    #function returning distance between cells
+    def cell_distance(self, from_cell, to_cell):
+	   #euclidian distance
+	   x_diff = from_cell.x - to_cell.x
+	   y_diff = from_cell.y - to_cell.y
+	   return math.sqrt( math.pow(x_diff,2) + math.pow(y_diff,2))
+
     #upradte the movement costs
     def update_cell(self, adj, cell):	
-        adj.g = cell.g + 10
+        adj.g = cell.g + self.get_distance(adj, cell)
         adj.h = self.get_heuristic(adj)
         adj.parent = cell
         adj.f = adj.h + adj.g
