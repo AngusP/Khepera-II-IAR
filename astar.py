@@ -360,8 +360,6 @@ class AStar(object):
 	#get the path
         path = self.get_path()
 
-	print "REPLANNING"
-
         return path
 
     #function to conveniently print the grid

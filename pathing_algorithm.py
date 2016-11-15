@@ -21,7 +21,7 @@ class Pathing_Algorithm:
 
 
     def __init__(self, planning_granularity, data_getter):
-                #TODO pass reference to the ds class
+
 		self.aStar = AStar(planning_granularity, data_getter)
 		self.granularity = planning_granularity
 	
@@ -60,8 +60,8 @@ class Pathing_Algorithm:
   
     #TODO check
     def is_away_from_path(self, direction):
-		#if we are too far away by 1 cell from the cell it should be heading to
-		return self.vector_magnitude(direction) > self.granularity*4
+		#if we are too far away by several cells from the cell it should be heading to
+		return self.vector_magnitude(direction) > self.granularity*2
    
     #snap passed actual X or Y value to a math planning grid granularity
     def snap(self, value):
@@ -98,6 +98,8 @@ class Pathing_Algorithm:
     #method to record a new food source and collect it, or just collect current one
     def drive_over_food(self, pathing_state, comms):
 
+	#stop first
+	comms.drive(0,0)
 	#now the pathing is definitely active
 	pathing_state.algorithm_activated = True
 	#add current cell as a food source
@@ -107,8 +109,6 @@ class Pathing_Algorithm:
 	if pathing_state.are_on_food() != None:
 		#indicate picking up food
 		comms.blinkyblink()
-		#give it time to actually pick up the food
-		comms.drive(0,0)
 		#wait to simulate picking up food
 		time.sleep(constants.WAIT_PERIOD_S)
 		comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
@@ -117,15 +117,17 @@ class Pathing_Algorithm:
 		#replan, maybe a more efficient route now available
 		self.replan_sequence(pathing_state)
 
+
+		#print "DISCOVERY COLLECT REPLAN"
+
     #method as above, but used for food source we spiralled around before
-    def collect_food(self, pathing_state, comms)
+    def collect_food(self, pathing_state, comms):
 		#if spiralling around an existing food source
-		if pathing_state.spiral and pathing_state.spiral_source != None
-		
+		if pathing_state.spiral and pathing_state.spiral_source != None:
+			#stop first
+			comms.drive(0,0)
 			#indicate picking up food
 			comms.blinkyblink()
-			#give it time to actually pick up the food
-			comms.drive(0,0)
 			#wait to simulate picking up food
 			time.sleep(constants.WAIT_PERIOD_S)
 			comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
@@ -138,9 +140,14 @@ class Pathing_Algorithm:
 			#replan, maybe a more efficient route now available
 			self.replan_sequence(pathing_state)
 
+
+
+			#print "SPIRAL COLLECT REPLAN"
+
     #method to record the grid location of a new food_source
     def drive_around_food(self, pathing_state, comms):
-	if pathing_state.are_on_food() != None:
+	#only drive around food if we have said food and are not already spiralling around some food
+	if pathing_state.are_on_food() != None and not pathing_state.spiral:
 		#record currently considered food source and begin spiralling around it, waiting for E being pressed
 		pathing_state.start_spiral(pathing_state.are_on_food())
 
@@ -161,6 +168,8 @@ class Pathing_Algorithm:
 
 	#get new path
  	pathing_state.active_path = self.aStar.replan(start, end)
+
+	print "REPLANNING {} to {}".format(start, end)
 	
 		
     #return new state
@@ -191,6 +200,7 @@ class Pathing_Algorithm:
 			comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
 			return nav_state
 
+
 		#try to begin collecting food
 		self.drive_around_food(pathing_state, comms)
 
@@ -216,6 +226,8 @@ class Pathing_Algorithm:
 
 		#recalculate path if for some reason strayed from it too far
 		if self.is_away_from_path(direction):
+
+			#print "FAR AWAY REPLAN"
 			#so get the new path
 			self.replan_sequence(pathing_state)
 			

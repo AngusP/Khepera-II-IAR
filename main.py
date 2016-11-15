@@ -7,7 +7,6 @@
 #  s1346981    Jevgenij Zubovskij
 #
 
-from __future__ 		import print_function
 from comms 			import Comms
 
 from odometry_algorithm 	import Odometry_Algorithm
@@ -77,7 +76,10 @@ def main():
 	    if pathing_state.done:
 		  #make a repeated run	
 		  pathing_state.algorithm_activated = True
+		  pathing_state.done = False
 		  pathing.replan_sequence(pathing_state)
+		  
+		  #print "DONE REPLAN"
 			
 
 	    #only send stuff over serial if new values
@@ -92,13 +94,14 @@ def main():
 	    # wait for new sensor round 
 	    key_pressed = cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF
 	    #found a new food source 
-	    if key  == ord(' '):
+	    if key_pressed  == ord(' '):
 			# if SPACE is pressed
    			print("Detected food")
 			pathing.drive_over_food(pathing_state, comms)
 
 	    #collected food from current food_source
-	    elif key  == ord('\r'):
+	    elif key_pressed  == ord('\r'):
+			# if ENTER pressed
 			#collect the food we spiralled around before
 			pathing.collect_food(pathing_state, comms)
  	   

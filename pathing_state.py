@@ -58,7 +58,7 @@ class Pathing_State:
 
 
 	   #indicate the spirallign around point of interest (food source)
-	   self.spiral = True
+	   self.spiral = False
 	   self.spiral_counter = 0
 	   self.spiral_source = None
 
@@ -71,15 +71,17 @@ class Pathing_State:
     def complete_exploration(self):
 	        self.explored = True
 
-    #function indicatign spiralling start around food source until indicated food was collected
+    #function indicatign spiralling start around food source until indicated food was collected (indicated by keypress)
     def start_spiral(self, food_source):
+		#print "BEGINNING SPIRAL"
 		#set variables
 		self.spiral = True
 		self.spiral_counter = 0
 		self.spiral_source = food_source
 
-    #indicate spiral end
-    def end_spiral(self)
+    #indicate spiral end around uncollected food source
+    def end_spiral(self):
+		#print "END SPIRAL"
 		#reset varaibles
 		self.spiral = False
 		self.spiral_counter = 0
