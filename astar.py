@@ -341,7 +341,7 @@ class AStar(object):
                     if (adj_cell.f, adj_cell) in self.opened:
                         # if adj cell in open list, check if current path better 
 			# than the previosu one for this adjacent cell.
-                        if adj_cell.g > cell.g + 10:
+                        if adj_cell.g > cell.g + self.cell_distance(adj, cell):
                             self.update_cell(adj_cell, cell)
                     else:
                         self.update_cell(adj_cell, cell)
