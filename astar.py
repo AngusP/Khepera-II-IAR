@@ -314,7 +314,7 @@ class AStar(object):
 
     #upradte the movement costs
     def update_cell(self, adj, cell):	
-        adj.g = cell.g + self.get_distance(adj, cell)
+        adj.g = cell.g + self.cell_distance(adj, cell)
         adj.h = self.get_heuristic(adj)
         adj.parent = cell
         adj.f = adj.h + adj.g
