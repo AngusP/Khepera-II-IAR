@@ -394,6 +394,7 @@ class Mapping(object):
         return points
 
 
+
     def _euclidean(self, a, b):
         '''
         Calculate the straight-line distance between two (x,y) tuple coordinates
@@ -403,7 +404,68 @@ class Mapping(object):
         return math.sqrt(dx**2 + dy**2)
 
 
-    def match_likelihood(self, reading, predicted):
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+class Particles(object):
+
+    def __init__(self, mapper, numparticles=100, initial_hypothesis=(0,0,0), noise=0):
+        '''
+        Initialise a particle filter (Monte-Carlo) localiser
+        
+        Arguments:
+        numparticles        --  Number of particles to use - more is slower but likely more accurate
+        initial_hypothesis  --  Starting hypothesis three-tuple (x,y,theta)
+        noise               --  Standard deviation of normally distributed noise to add to initial hyp
+        '''
+        self.m = mapper
+        self.particles = []
+        
+        # Stops Python being weird and copying reference
+        for i in xrange(numparticles):
+            hyp = initial_hypothesis
+            if noise != 0:
+                hyp = map(lambda x: x + np.random.normal(0,int(noise)), hyp)
+            self.particles.append(list(hyp))
+        
+        self.__gauss_base = 1.0/(math.sqrt(2*math.pi)*0.5)
+    
+
+    def __repr__(self):
+        return str(self.particles)
+
+
+    def __str__(self):
+        return "{} Particles : {}".format(len(self.particles), self.__repr__())
+
+
+    def motion_update(self):
+        '''
+        Given a control input, move the pixels
+        '''
+        x, y, theta = pose
+        
+        # TODO: Velocities, time deltas, move particle
+        sigma = 1
+
+        new_pose = (x + np.random.normal(scale=sigma),
+                    y + np.random.normal(scale=sigma),
+                    theta + np.random.normal(scale=sigma))
+        return new_pose
+
+
+
+    def sensor_update(self, pose):
+        '''
+        For a pose return expected sensor detections
+        
+        Calls Mapper.predict_sensor(pose)
+        '''
+        return self.m.predict_sensor(pose)
+
+
+    def sensor_likelihood(self, reading, predicted):
         '''
         Returns the likelihood a given set of observations is compared
         to a predicted set from the map.
@@ -416,52 +478,33 @@ class Mapping(object):
             raise TypeError("Dimensionality mismatch, got arg1 {} arg2 {}"
                             "".format(len(reading), len(predicted)))
         
-        d = 0
-        for x, y_withocc in zip(reading, predicted):
-            y, occ = y_withocc
+        l = 0
+        for r, p_withocc in zip(reading, predicted):
+            p, occ = p_withocc
 
-            if y is None or occ is None:
+            if p is None or occ is None:
                 pass
+            
+            l += self._gaussian_p(r,p) * (occ / 100.0)
 
-            d += abs(x-y)**2
-
-        d = math.sqrt(d)
-        return d # TODO: Generate actual likelihood
-
-
-#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+        # Average all likelihoods
+        return l / len(reading)
 
 
 
-class Particles(object):
-
-    def __init__(self, numparticles=100, initial_hypothesis=(0,0,0), noise=0):
+    def _gaussian_p(self, s_reading, p_reading):
         '''
-        Initialise a particle filter (Monte-Carlo) localiser
-        
-        Arguments:
-        numparticles        --  Number of particles to use - more is slower but likely more accurate
-        initial_hypothesis  --  Starting hypothesis three-tuple (x,y,theta)
-        noise               --  Standard deviation of normally distributed noise to add to initial hyp
+        Gaussian Probability
+
+                                      1                (-{[x-mean]^2}/{2var^2})
+        p(x | mean, var) =  ---------------------- * e^
+                             sqrt(2 * var^2 * Pi)
         '''
-        self.particles = []
-        # Stops Python being weird and copying reference
-        for i in xrange(numparticles):
-            hyp = initial_hypothesis
-            if noise != 0:
-                hyp = map(lambda x: x + np.random.normal(0,int(noise)), hyp)
-            self.particles.append(list(hyp))
         
-    
+        mu = p_reading - s_reading
+        exp = -(mu**2)/0.5 
+        return self.__gauss_base * math.exp(exp)
 
-    def __repr__(self):
-        return str(self.particles)
-
-
-    def __str__(self):
-        return "{} Particles : {}".format(len(self.particles), self.__repr__())
-
-    
 
 
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
