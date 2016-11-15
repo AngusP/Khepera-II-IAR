@@ -19,6 +19,12 @@ def ir_to_dist(reading):
                     math.pow(1 + (math.pow((reading / 70.42612),69.9039)), 0.02119919 ))
 
 
+def dist_to_ir(reading):
+    '''
+    x = 79.18232 + (1528.985 - 79.18232)/(1 + (y/1.248597)^2.495803)
+    '''
+    return 79.18232 + (1528.985 - 79.18232)/(1 + math.pow((reading/1.248597),2.495803))
+    
 
 def relative_to_fixed_frame_tf(xabs, yabs, thetaabs, x, y):
     '''

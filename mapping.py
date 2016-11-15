@@ -13,6 +13,7 @@ import utils
 import sys
 import getopt
 import math
+import numpy as np
 
 testpose = {
     'r0': '1200.0',
@@ -285,12 +286,15 @@ class Mapping(object):
 
         Arguments:
         pose  --  (x,y,theta) pose tuple
+
+        Returns:
+
+        List of (distance, occupancy) or if the ray did not hit anything, (None, None)
+        for each sensor.
         '''
 
         x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
         theta = pose[2]
-
-        # TODO: Is this necessary? Can we not just cast rays at an angle and return a distance per sensor?
 
         angles = map(lambda t: t + theta, self.sensor_angles)
         sensors = map(lambda pt: utils.relative_to_fixed_frame_tf(x, y, theta, pt[0], pt[1]), 
@@ -298,20 +302,22 @@ class Mapping(object):
 
         pre_points = zip(sensors, angles)
         points = set()
+        ret = []
 
         for point in pre_points:
             p, t = point
-            points.update(set(self.angle_raytrace(p, t, 6)))
+            pixels = list(set(self.angle_raytrace(p, t, 6)))
+            occs = self.ds.og.mget(pixels)
+            min_dist = None
+            this_occ = None
+            for pixel, occ in zip(pixels, occs):
+                if occ > 0:
+                    d = self._euclidean((x,y), (pixel[0],pixel[1]))
+                    if d < min_dist or min_dist is None:
+                        min_dist = d
+                        this_occ = occ
 
-        points = list(points)
-        occs = self.ds.og.mget(points)
-
-        ret = []
-        for occ, point in zip(occs, points):
-            if occ > 0:
-                ret.append((point[0], point[1], occ))
-
-        # TODO: Either compare to computed wall locations, or turn into predicted distances
+            ret.append((min_dist, this_occ))
 
         return ret
 
@@ -388,6 +394,120 @@ class Mapping(object):
         return points
 
 
+
+    def _euclidean(self, a, b):
+        '''
+        Calculate the straight-line distance between two (x,y) tuple coordinates
+        '''
+        dx = abs(a[0] - b[0])
+        dy = abs(a[1] - b[1])
+        return math.sqrt(dx**2 + dy**2)
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+class Particles(object):
+
+    def __init__(self, mapper, numparticles=100, initial_hypothesis=(0,0,0), noise=0):
+        '''
+        Initialise a particle filter (Monte-Carlo) localiser
+        
+        Arguments:
+        numparticles        --  Number of particles to use - more is slower but likely more accurate
+        initial_hypothesis  --  Starting hypothesis three-tuple (x,y,theta)
+        noise               --  Standard deviation of normally distributed noise to add to initial hyp
+        '''
+        self.m = mapper
+        self.particles = []
+        
+        # Stops Python being weird and copying reference
+        for i in xrange(numparticles):
+            hyp = initial_hypothesis
+            if noise != 0:
+                hyp = map(lambda x: x + np.random.normal(0,int(noise)), hyp)
+            self.particles.append(list(hyp))
+        
+        self.__gauss_base = 1.0/(math.sqrt(2*math.pi)*0.5)
+    
+
+    def __repr__(self):
+        return str(self.particles)
+
+
+    def __str__(self):
+        return "{} Particles : {}".format(len(self.particles), self.__repr__())
+
+
+    def motion_update(self):
+        '''
+        Given a control input, move the pixels
+        '''
+        x, y, theta = pose
+        
+        # TODO: Velocities, time deltas, move particle
+        sigma = 1
+
+        new_pose = (x + np.random.normal(scale=sigma),
+                    y + np.random.normal(scale=sigma),
+                    theta + np.random.normal(scale=sigma))
+        return new_pose
+
+
+
+    def sensor_update(self, pose):
+        '''
+        For a pose return expected sensor detections
+        
+        Calls Mapper.predict_sensor(pose)
+        '''
+        return self.m.predict_sensor(pose)
+
+
+    def sensor_likelihood(self, reading, predicted):
+        '''
+        Returns the likelihood a given set of observations is compared
+        to a predicted set from the map.
+
+        Arguments:
+        reading    --  List of N dimension actual readings
+        predicted  --  N dimensional list of tuple redicted readings (rdg, occ)
+        '''
+        if len(reading) != len(predicted):
+            raise TypeError("Dimensionality mismatch, got arg1 {} arg2 {}"
+                            "".format(len(reading), len(predicted)))
+        
+        l = 0
+        for r, p_withocc in zip(reading, predicted):
+            p, occ = p_withocc
+
+            if p is None or occ is None:
+                pass
+            
+            l += self._gaussian_p(r,p) * (occ / 100.0)
+
+        # Average all likelihoods
+        return l / len(reading)
+
+
+
+    def _gaussian_p(self, s_reading, p_reading):
+        '''
+        Gaussian Probability
+
+                                      1                (-{[x-mean]^2}/{2var^2})
+        p(x | mean, var) =  ---------------------- * e^
+                             sqrt(2 * var^2 * Pi)
+        '''
+        
+        mu = p_reading - s_reading
+        exp = -(mu**2)/0.5 
+        return self.__gauss_base * math.exp(exp)
+
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 if __name__ == "__main__":

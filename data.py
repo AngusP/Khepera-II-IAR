@@ -25,7 +25,6 @@ import utils
 
 
 
-
 # Check for ROS (http://ros.org/) support
 try:
     import rospy
@@ -137,12 +136,14 @@ class DataStore:
         self.listname = "statestream"
         self.goallist = "goalstream"
         self.mapchan  = self.og.channel
+        self.partchan = "particlestream"
         # ROS Topics
         self.posetopic = self.listname + "pose"
         self.odomtopic = self.listname + "odom"
         self.disttopic = self.listname + "dist"
         self.goaltopic = self.listname + "goal"
         self.maptopic  = self.listname + "map"
+        self.parttopic = self.listname + "map"
 
         # Test Redis connection
         if not self.r.ping():
@@ -247,6 +248,10 @@ class DataStore:
             self.r.rpush(self.goallist, pointname)
 
         self.r.publish(self.goallist, self.goallist)
+
+
+    def push_particles(self):
+        raise NotImplementedError()
 
 
     def sub(self):
@@ -548,6 +553,11 @@ class DataStore:
 
                     # ALways refresh
                     map_pub.publish(og_map)
+
+
+                elif item['channel'] == self.partchan:
+                    print("New particles")
+                    
 
                 else:
                     # If we get an unexpected channel, complain loudly.... Thish should never happen
