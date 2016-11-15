@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import math
 import time
 import yaml
+import json
 import pprint
 import re
 
@@ -30,7 +31,7 @@ try:
     import rospy
     ros = True
     from std_msgs.msg import String
-    from geometry_msgs.msg import PoseWithCovariance, PoseStamped, Point32
+    from geometry_msgs.msg import PoseWithCovariance, PoseStamped, Pose, Point32, PoseArray
     from nav_msgs.msg import Odometry, Path, OccupancyGrid
     from sensor_msgs.msg import PointCloud, ChannelFloat32
     import tf
@@ -410,6 +411,7 @@ class DataStore:
         pose_pub = rospy.Publisher(self.posetopic, PoseStamped, queue_size=100)
         odom_pub = rospy.Publisher(self.odomtopic, Odometry, queue_size=100)
         dist_pub = rospy.Publisher(self.disttopic, PointCloud, queue_size=100)
+        part_pub = rospy.Publisher(self.parttopic, PoseArray, queue_size=100)
         goal_pub = rospy.Publisher(self.goaltopic, Path, queue_size=10)
         map_pub  = rospy.Publisher(self.maptopic,  OccupancyGrid, queue_size=100)
         tbr = tf.TransformBroadcaster()
@@ -556,8 +558,13 @@ class DataStore:
 
 
                 elif item['channel'] == self.partchan:
-                    print("New particles")
                     
+                    # Pull from list of the same name
+                    particles = self.r.lrange(self.partchan, 0, -1)
+                    map(json.loads, particles)
+                    poses = rg.gen_particles(particles)
+                    part_pub.publish(poses)
+
 
                 else:
                     # If we get an unexpected channel, complain loudly.... Thish should never happen
@@ -1453,6 +1460,28 @@ class ROSGenerator:
         odom.pose = opose
 
         return odom
+
+
+    def gen_particles(self, particles):
+        poses = PoseArray()
+        poses.header.frame_id = "map"
+        poses.header.stamp = rospy.Time.now()
+
+        for particle in particles:
+            pose  = Pose()
+            pose.position.x = float(particle[0])
+            pose.position.y = float(particle[1])
+            pose.position.z = 0.0
+
+            quat = tf.transformations.quaternion_from_euler(0.0, 0.0, 
+                                                            float(particle[2])) 
+            pose.orientation.x = quat[0]
+            pose.orientation.y = quat[1]
+            pose.orientation.z = quat[2]
+            pose.orientation.w = quat[3]
+            poses.data.append(pose)
+
+        return poses
 
 
     def gen_dist(self, data):

@@ -8,12 +8,13 @@
 #
 
 from __future__ import print_function
-from data import DataStore
+from data import DataStore, DSException
 import utils
 import sys
 import getopt
 import math
 import numpy as np
+import json
 
 testpose = {
     'r0': '1200.0',
@@ -75,6 +76,11 @@ class Point():
         return "({},{}) {}".format(self.x, self.y, self.val)
 
     __repr__ = __str__
+
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 
 
 class Mapping(object):
@@ -404,11 +410,46 @@ class Mapping(object):
         return math.sqrt(dx**2 + dy**2)
 
 
+
+
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
+
+class Particle():
+    
+    def __init__(self, pose, weight):
+        '''
+        Point with a value.
+        Built-in methods will all operate over val
+        '''
+        self.x, self.y, self.theta = pose
+        self.weight = weight
+
+    def __repr__(self):
+        return "({},{},{}):{}".format(self.x, self.y, self.theta, self.weight)
+
+    __str__ = __repr__
+
+    def __iter__(self):
+        yield self.x
+        yield self.y
+        yield self.theta
+
+
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+
+
 class Particles(object):
+    '''
+    Adaptive Monte-Carlo Localisation (Particle Filter)
+    '''
 
     def __init__(self, mapper, numparticles=100, initial_hypothesis=(0,0,0), noise=0):
         '''
@@ -422,47 +463,121 @@ class Particles(object):
         self.m = mapper
         self.particles = []
         
+        self.control = None
+        self.dt = None
+
+        #Redis channel
+        self.partchan = "particlestream"
+        
         # Stops Python being weird and copying reference
         for i in xrange(numparticles):
             hyp = initial_hypothesis
             if noise != 0:
                 hyp = map(lambda x: x + np.random.normal(0,int(noise)), hyp)
-            self.particles.append(list(hyp))
+            self.particles.append(Particle(hyp, 1))
         
         self.__gauss_base = 1.0/(math.sqrt(2*math.pi)*0.5)
-    
-
-    def __repr__(self):
-        return str(self.particles)
 
 
     def __str__(self):
-        return "{} Particles : {}".format(len(self.particles), self.__repr__())
+        return "{} Particles : {}".format(len(self.particles), self.particles)
 
 
-    def motion_update(self):
+    def __iter__(self):
         '''
-        Given a control input, move the pixels
+        Iterate over particles
         '''
-        x, y, theta = pose
+        for particle in self.particles:
+            yield particle
+
+
+    def __getitem__(self, key):
+        '''
+        Allows indexing the class
+        '''
+        return self.particles.__getitem__(key)
+
+
+    def __len__(self):
+        '''
+        Get number of particles (len)
+        '''
+        return self.particles.__len__()
+
+
+    def push_params(self, dt, ds, dtheta):
+        '''
+        Give the Particle Filter the change in time
+        since it was last run and the control change
+
+        Arguments:
+        dt      --  Delta time, seconds
+        ds      --  Delta displaement, 's'
+        dtheta  --  Delta rotation, 'theta'
+        '''
+        self.dt = dt
+        self.control = (ds/dt, dtheta/dt) # Velocity, angular velocity
+
+
+    def update(self):
+        '''
+        Main particle localisation godmethod
+        '''
+        if self.dt is None or self.control is None:
+            raise DSException("Tried to update particles before calling push_params()")
         
-        # TODO: Velocities, time deltas, move particle
-        sigma = 1
+        v, w = self.control
+        v_dt = v * self.dt
+        w_dt = w * self.dt
 
-        new_pose = (x + np.random.normal(scale=sigma),
-                    y + np.random.normal(scale=sigma),
-                    theta + np.random.normal(scale=sigma))
-        return new_pose
+        sigma = (math.sqrt(v**2 + w**2)/6.0) * self.dt
 
 
+        def motion_update(particle):
+            '''
+            Given a control input, move the pixels
+            
+            Arguments:
+            particle  -- Particle() instance
+            '''
+            x, y, theta = tuple(particle)
+            
+            new_pose = (x + np.random.normal(v_dt * math.cos(theta), scale=sigma),
+                        y + np.random.normal(v_dt * math.sin(theta), scale=sigma),
+                        theta + np.random.normal(w_dt, scale=sigma))
+            return new_pose
 
-    def sensor_update(self, pose):
-        '''
-        For a pose return expected sensor detections
+
+        def sensor_update(pose):
+            '''
+            For a pose return expected sensor detections
+            
+            Calls Mapper.predict_sensor(pose)
+            '''
+            return self.m.predict_sensor(pose)
+
         
-        Calls Mapper.predict_sensor(pose)
-        '''
-        return self.m.predict_sensor(pose)
+        for p in self.particles:
+            p.x, p.y, p.theta = motion_update(p)
+
+        
+        # Push new particles to Redis
+        pipe = self.m.ds.r.pipeline()
+        pipe.delete(self.partchan)
+
+        for i, particle in enumerate(self):
+            pipe.lpush(self.partchan, json.dumps(list(particle)))
+
+        # Announce new particles are available
+        pipe.publish(self.partchan, "{} {}".format(self.partchan, len(self.particles)))
+        pipe.execute()
+
+
+    '''
+    The Particles class is callable, which will incur an update
+    '''
+    __call__ = update
+
 
 
     def sensor_likelihood(self, reading, predicted):
@@ -489,6 +604,14 @@ class Particles(object):
 
         # Average all likelihoods
         return l / len(reading)
+
+
+
+    def particle_varience(self):
+        '''
+        Returns the varience of all the particles
+        '''
+        raise NotImplementedError()
 
 
 
@@ -533,6 +656,7 @@ if __name__ == "__main__":
             server = str(arg)
 
     m = Mapping(host=server)
+    pf = Particles(m)
 
     # Post-init
     for opt, arg in optlist:
