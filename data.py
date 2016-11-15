@@ -144,7 +144,7 @@ class DataStore:
         self.disttopic = self.listname + "dist"
         self.goaltopic = self.listname + "goal"
         self.maptopic  = self.listname + "map"
-        self.parttopic = self.listname + "particles
+        self.parttopic = self.listname + "particles"
 
         # Test Redis connection
         if not self.r.ping():
