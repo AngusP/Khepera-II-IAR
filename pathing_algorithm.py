@@ -95,8 +95,15 @@ class Pathing_Algorithm:
 		return direction
 
 
-    #method to record the grid location of a new food_source
+    #method to record a new food source and collect it, or just collect current one
     def drive_over_food(self, pathing_state, comms):
+
+	#now the pathing is definitely active
+	pathing_state.algorithm_activated = True
+	#add current cell as a food source
+	pathing_state.add_food_source()
+	#replan the route
+
 	if pathing_state.are_on_food() != None:
 		#indicate picking up food
 		comms.blinkyblink()
@@ -108,12 +115,35 @@ class Pathing_Algorithm:
 		#set food source as picked
 		pathing_state.pick_food_up()
 		#replan, maybe a more efficient route now available
-		self.replan_sequence(pathing_state)		
+		self.replan_sequence(pathing_state)
+
+    #method as above, but used for food source we spiralled around before
+    def collect_food(self, pathing_state, comms)
+		#if spiralling around an existing food source
+		if pathing_state.spiral and pathing_state.spiral_source != None
 		
-    #when occupancies change, we replan our route 
-    def update_pathing_grid(self, pathing_state, changed_occupancies):
-	pathing_state.update_grid(changed_occupancies)
-	self.replan_sequence(pathing_state)
+			#indicate picking up food
+			comms.blinkyblink()
+			#give it time to actually pick up the food
+			comms.drive(0,0)
+			#wait to simulate picking up food
+			time.sleep(constants.WAIT_PERIOD_S)
+			comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
+
+			#pick the food up
+			pathing_state.pick_spiral_food_up()
+			#indicate no longer spiralling around it
+			pathing_state.end_spiral()
+
+			#replan, maybe a more efficient route now available
+			self.replan_sequence(pathing_state)
+
+    #method to record the grid location of a new food_source
+    def drive_around_food(self, pathing_state, comms):
+	if pathing_state.are_on_food() != None:
+		#record currently considered food source and begin spiralling around it, waiting for E being pressed
+		pathing_state.start_spiral(pathing_state.are_on_food())
+
 		
     #planning after a piece of food is collected    
     def replan_sequence(self, pathing_state):
@@ -161,8 +191,17 @@ class Pathing_Algorithm:
 			comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
 			return nav_state
 
-		#try to collect food
-		self.drive_over_food(pathing_state, comms)			
+		#try to begin collecting food
+		self.drive_around_food(pathing_state, comms)
+
+		# do not interrupt the spiral around found food source
+		if pathing_state.spiral:	
+			pathing_state.spiral_counter += 1
+			#make it got in a spiral
+			nav_state.speed_l = pathing_state.spiral_counter / constants.SPIRAL_SPEED_COEFFICIENT
+			nav_state.speed_r = constants.CONST_SPEED 
+			return nav_state
+	
 		
 		#get current direction vector to heading grid cell	
 		direction = self.get_direction(odo_state, pathing_state)
