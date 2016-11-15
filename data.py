@@ -424,7 +424,7 @@ class DataStore:
         print("done.")
 
         sub = self.r.pubsub()
-        sub.subscribe([self.listname, self.goallist, self.mapchan])
+        sub.subscribe([self.listname, self.goallist, self.mapchan, self.partchan])
 
         map_pub.publish(og_map)
 
@@ -561,7 +561,7 @@ class DataStore:
                     
                     # Pull from list of the same name
                     particles = self.r.lrange(self.partchan, 0, -1)
-                    map(json.loads, particles)
+                    particles = map(json.loads, particles)
                     poses = rg.gen_particles(particles)
                     part_pub.publish(poses)
 
@@ -1479,7 +1479,7 @@ class ROSGenerator:
             pose.orientation.y = quat[1]
             pose.orientation.z = quat[2]
             pose.orientation.w = quat[3]
-            poses.data.append(pose)
+            poses.poses.append(pose)
 
         return poses
 
