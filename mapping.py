@@ -473,7 +473,8 @@ class Particles(object):
         self.partchan = "particlestream"
 
         # Hyperparameter (aka magic number)
-        self.DRIFT_SMOOTHING = 20.0
+        self.DRIFT_SMOOTHING = 150.0
+        self.DRIFT_ROTATIONAL_SMOOTHING = 1.0
         '''
         DRIFT_SMOOTHING is the reciportical multiplier;
         higher numbers reduce the magnitude of the change.
@@ -558,7 +559,7 @@ class Particles(object):
 
             new_pose = (x + np.random.normal(v_dt * math.cos(theta), scale=sigma),
                         y + np.random.normal(v_dt * math.sin(theta), scale=sigma),
-                        theta + np.random.normal(w_dt, scale=sigma))
+                        theta + np.random.normal(w_dt, scale=sigma/(2.0*self.DRIFT_ROTATIONAL_SMOOTHING)))
             return new_pose
 
 
