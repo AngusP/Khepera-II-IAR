@@ -11,6 +11,7 @@
 \usepackage{mathtools}
 \usepackage{gensymb}
 \usepackage{float}
+\usepackage{algorithmic}
 
 % DOCUMENT LAYOUT
 \usepackage{geometry}
@@ -79,6 +80,7 @@
 }
 
 
+
 %     %%%%%%%%%%%%%%%
 %
 %     D O C U M E N T
@@ -100,8 +102,8 @@ Given a \textit{Khepera II} robot with no prior knowledge of it's environment, a
 assumption that it's world is deterministic (TODO: There's a better word for that), we are able 
 to develop the agency required by the task of exploring, discovering food and returning it to the 
 robot's nest. This is built atop an \textit{A*} planning system, stochastic \textit{Adaptive Monte Carlo 
-Localisation}\cite{principlesrobot} and dyanmical \textit{Occupancy Grid} generation architecture,
-the combination of which constitute a SLAM system.
+Localisation}\cite{principlesrobot} to correct compound localisation error, and a dyanmical 
+\textit{Occupancy Grid} generation architecture, the combination of which constitute a SLAM system.
 
 Our existing Architecture from IAR Assignments 1\cite{task1_report} \& 2\cite{task2_report} is further
 extended, building upon the \textit{Bug2} behaviour, Redis datastore and ROS/Rviz real-time 
@@ -109,6 +111,66 @@ visualisation.
 
 \end{abstract}
 
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+\section{Adaptive Monte-Carlo Localisation}\label{sec:amcl}
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.7\textwidth]{../assets/plots/figure_1-3.png}
+  \end{center}
+  \caption{
+    \label{fig:odometry_drift}
+    Illustration of Odometry error. The robot was following the border of a simple square
+    environment, but the trace of it's path shows a spiral instead. Axes are ${(x,y)}$
+    coordinates in mm.
+  }
+\end{figure}
+
+The existing system carried forward from \textit{Task 2}\cite{task2_report} maintained a pose estimate
+that at each control loop epoch was updated by a discrete sensor model for the \textit{Khepera's} 
+odometry. This model has no facility to model the compound error inherent to dead-reckoning with
+odometry and as the robot continues to move in it's environment, the pose belief quicky diverges
+from reeality. As the task requires multiple excursions and returns to within 10cm of the nest,
+this simple method alone is ineffective for localising the robot.
+
+The \textit{Adaptive Monte Carlo Localisation} Algorithm as outlined in 
+\textit{Probabilistic Robotics}\cite{probabilisticrobot} provides a stochastic method of correcting
+for compound error and localising on an Occupancy Grid.
+
+\vspace{1em}
+\textbf{\large Algorithm AMCL${(X_{t-1}, u_t, z_t)}$:}
+\algsetup{indent=2em}
+\begin{algorithmic}
+  \STATE{$\bar{X_{t}}=X_{t}=\emptyset$}
+  \FOR{$m=1$ \TO $M$}
+  \STATE $x_{t}^{[m]}= \textrm{motion\_update}(u_{t},x_{(t-1)}^{[m]})$
+  \STATE $w_{t}^{[m]}= \textrm{sensor\_update}(z_{t},x_{t}^{[m]})$
+  \STATE $\bar{X_{t}}=\bar{X_{t}}+\langle x_{t}^{[m]},w_{t}^{[m]}\rangle $
+  \ENDFOR
+  \FOR{$m=1$ \TO $M$}
+  \STATE $\textrm{draw } x_{t}^{[m]} \textrm{ from } \bar{X_{t}} \textrm{ with probability } \propto w_{t}^{[m]}$
+  \STATE $X_{t}=X_{t}+x_{t}^{[m]}$
+  \ENDFOR
+  \RETURN $X_{t}$
+  \vspace{1em}
+\end{algorithmic}
+
+Figure \ref{fig:particle-disperse} illustrates how particles progressively diverge from the initial 
+hypothesis, ${X_0}$. In our case, dynamical mapping affords a completely certain initial hypothesis
+given the co-ordinate system is relative to said starting position; This prevents the need to
+evenly distribute the particles over the environment at startup
+
+\begin{figure}
+  \includegraphics[width=\textwidth]{../assets/particle-disperse-random.png}
+  \caption{
+    \label{fig:particle-disperse}
+    Dispertion of Particles by Monte Carlo method, from left to right with increasing time and 
+    a particularly high gain (i.e. each epoch disperses the particles greatly, assuming very large error)
+  }
+\end{figure}
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -296,7 +358,7 @@ Therefore, ensuring that SLAM and A* are the main control element in the system,
 
 
 TODO make sure angus has a pic of waht an occupancy grid is
-TODO comment somehow on the rganularity effect on performance (and do tests)
+TODO comment somehow on the ganularity effect on performance (and do tests)
 TODO make sure occupancy grid is already described in a previous section
 TODO reference pictures
 TODO set granularity to robot dimension
