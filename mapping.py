@@ -14,6 +14,7 @@ import sys
 import getopt
 import math
 import numpy as np
+import random
 import json
 
 testpose = {
@@ -159,7 +160,8 @@ class Mapping(object):
     def update(self, data):
         '''
         Apply updates to map from published hints.
-        NOTE THAT key checking won'y be done here, that's your job dear reader.
+        NOTE THAT key existance checking won't be done here, 
+        that's your job dear reader.
 
         Arguments:
         data  --  full statestream pose and ranges
@@ -505,18 +507,20 @@ class Particles(object):
         return self.particles.__len__()
 
 
-    def push_params(self, dt, ds, dtheta):
+    def push_params(self, dt, ds, dtheta, readings):
         '''
         Give the Particle Filter the change in time
         since it was last run and the control change
 
         Arguments:
-        dt      --  Delta time, seconds
-        ds      --  Delta displaement, 's'
-        dtheta  --  Delta rotation, 'theta'
+        dt        --  Delta time, seconds
+        ds        --  Delta displaement, 's'
+        dtheta    --  Delta rotation, 'theta'
+        readings  --  Array of 8 sensor readings (raw)
         '''
         self.dt = dt
         self.control = (ds/dt, dtheta/dt) # Velocity, angular velocity
+        self.sensor_readings = readings
 
 
     def update(self):
@@ -552,14 +556,18 @@ class Particles(object):
             '''
             For a pose return expected sensor detections
             
-            Calls Mapper.predict_sensor(pose)
+            Calls Mapper.predict_sensor(pose) and calculates a weight
+            given the actial readings
             '''
-            return self.m.predict_sensor(pose)
-
+            predicted = self.m.predict_sensor(pose)
+            return self.sensor_likelihood(self.sensor_readings, predicted)
+        
         
         for p in self.particles:
             p.x, p.y, p.theta = motion_update(p)
+            p.weight = sensor_update(tuple(p))
 
+        
         
         # Push new particles to Redis
         pipe = self.m.ds.r.pipeline()
@@ -573,10 +581,12 @@ class Particles(object):
         pipe.execute()
 
 
-    '''
-    The Particles class is callable, which will incur an update
-    '''
-    __call__ = update
+
+    def __call__(self):
+        '''
+        The Particles class is callable, which will incur an update
+        '''
+        return self.update()
 
 
 
@@ -598,21 +608,34 @@ class Particles(object):
             p, occ = p_withocc
 
             if p is None or occ is None:
-                pass
+                continue
+
+            print("{}, {}, {}".format(r, p, occ))
             
-            l += self._gaussian_p(r,p) * (occ / 100.0)
+            if occ != -1:
+                mul = occ / 100.0
+            else:
+                mul = 1.0
+
+            l += self._gaussian_p(r,p) * mul
 
         # Average all likelihoods
         return l / len(reading)
 
 
 
-    def particle_varience(self):
+    def random_sample(self):
         '''
-        Returns the varience of all the particles
+        Using Weighted Reservoir Sampling Algorithm
+        Return randomly sampled particle
         '''
-        raise NotImplementedError()
+        keep = self[0]
+        np.random.normal(0.5,0.125)
+        for i, particle in enumerate(self):
+            if random.random() <= 1.0/(i+2.0):
+                keep = particle
 
+        return keep
 
 
     def _gaussian_p(self, s_reading, p_reading):
