@@ -135,6 +135,8 @@ The main mehtods\cite{path_space} of planning are seen to be used on either of t
 	\item \textit{Graph (Topological Map)}
 \end{itemize}
 
+TODO make sure angus has a pic of waht an occupancy grid is
+
 However, in reality it was easier to choose than considering advantages of disadvantages of the two choices. Now, the difference between these two from the perspective of planning is the efficiency of algorithm working on the data and the pre-processing of the data going to the algorithm. Because an occupancy grid is stored on a \textit{Redis-Server} and it has very fine definition, the number of grid squares (referred to as \textit{Grid Cerlls}) is immense. Therefore, to obtain a graph representation from that, every time a path replanning would have to take place, the conversion would have to take place on a very significant number of points. Therefore, the occupancy grid was chosen due to no conversion needing to be made on the data during runtime for planning, but rather a small alteration for the \textit{Planning Algorithm} which should not affect the alogirithm's performance.
 
 \subsubsection{Alterations}
@@ -207,12 +209,18 @@ Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_as
 
 Therefore, the code needed to account for diagonal neighbours and in particular scnearios where other neighbouring cells stop us from considerign the daigonal cell due to us being unable to reach it from considered cell. An example is as follows:
 
-TODO draw this on DICE
+TODO draw this on DICE and insert
+
+TODO insert from dropbox and ask angus to help with caption
+
+
+TODO check if it gets stuck
 
 \begin{figure}
-	  \caption{The center cell is the cell whose adjacent (neighbouring) cells, whereas the top top-left square (A) is the one of the diagonal cells to it and if both B and C are obstructed (obstacles), we do not have any way to get to get to it through them}
+	  \caption{The center cell is the cell whose adjacent (neighbouring) cells, whereas the top top-left square (A) is the one of the diagonal 
+			cells to it and if both B and C are obstructed (obstacles), we do not have any way to get to get to it through them. The bottom one shows what kind of movement this aims to prevent, in particular - moving along the red arrow, through two occupied cells because the cell behing them is free. Such a Movement, however, is possible inly one of them is occupied in which case reactive control will guide it along the object edge}
  	  %\centering
-    	  %\includegraphics[width=0.5\textwidth]{fig_astar_pseudocode}
+    	  %\includegraphics[width=0.5\textwidth]{fig_astar_pathreturn}
 \end{figure} 
 
 Moreover, the algorithm also had to be implemented to work on an occupancy grid, which was an easy alteration as the grid's occupancy is stored as two-dimensional array of \textit{Cells} \textit{\S\ref{Code}} and can be indexed by using $(X ,Y)$ coordinates, therefore obtaining oadjacencies was a simple increment of said coordinates compared to the cell under consideration.
@@ -227,34 +235,43 @@ Lastly, because the occupancy data is stored on Redis, the implementation obtain
 
 
 
-
-
 \section{Integration of Path-Planning}
 
 This section is concerned with the intergation of the algorithm and data structures described above into the main control loop and its interaction with previosuly established subsystems\cite{task2_report}
 
 \subsection{Planning Algorithm}
 
+This algorithm is also referred to as \textit{Planner} and is responsible for maximizing the food collection rate by sequencing events governing said rate.
+
+\subsubsection{Wall-Leaving - the Return of "Boredom"}
+
+Because the algorithm needs to find new food sources, the boredom mechanism \cite{task1_report} was reinstated into the control loop and is the exploration mechanism. 
+
+\subsubsection{Algorithm Principle}
+\label{Planning Principle}
+
 Now, having the path from $A$ to $B$ is used in sequencing actions to fulfill the goal of the task - collect as much food in the given amount of time. Therefore, the food gathering algorithm has priorities in the following form:
 
 \begin{enumerate}
 	\item \textit{Find} the first food source to begin periodic behavior in the following points
-	\item \textit{Collect} closest uncollected food source
 	\item \textit{Explore} once per \textit{Food Collection Round}
-	\item \textit{Return} to the nest and drop off food
+	\item \textit{Collect} closest uncollected known / recorded food source
+	\item \textit{Return} to the nest and drop off collected food
 \end{enumerate}
 
 
 TODO set granularity to robot dimension
 
-Where food collection round is delimited by a return to the nest and dropping off currently collected food and therefore the renewl of "collected" food sources. The reason for such sequencing lies in the intent to explore as much as possible unti lwe ahve foudn at least some food. After which said point is no longer considered to be in the list of priorities as it has been fulfilled. After which comes round-based behavior where in each round we aim to collect all the know food for it to not be "renewed" - lost due to food collection round ending. Afterwards wish to try and find new food sources, but only once per food collection round  because do wish to explore and try to find, but do not wish exploration to disrupt actual food collection too much. Lastly, when all is done - drop off the food at the nest.
+Where food collection round is delimited by a return to the nest and dropping off currently collected food and therefore the renewl of "collected" food sources. The reason for such sequencing lies in the intent to explore as much as possible unti lwe ahve foudn at least some food. After which said point is no longer considered to be in the list of priorities as it has been fulfilled. After which comes round-based behavior where in each round we aim to collect all the know food for it to not be "renewed" - lost due to food collection round ending. Afterwards wish to try and find new food sources, but only once per food collection round  because do wish to explore and try to find, but do not wish exploration to disrupt actual food collection too much. Lastly, when all is done - drop off the food at the nest. But really exploration is like the boredom algorithm - it is random and only once per round, therefore it's 1-time top priority.
 
-TODO draw the figure and insert it
+TODO draw the figure and insert it ( is in google drive)
 
 \begin{figure}
-	  \caption{The planning algorithm in state-diagram form}
+	  \caption{The planning algorithm - the \textit{Planner} in state-diagram form, this decision making tree is 
+           implored on overy single iteration of the control loop and determines the action the system is to follow}
+	  \label{fig_planning_internal}
  	  %\centering
-    	  %\includegraphics[width=0.5\textwidth]{fig_astar_pseudocode}
+    	  %\includegraphics[width=0.5\textwidth]{fig_planning_flow}
 \end{figure} 
 
 Moreover, it is worth mentioning that it uses the same approach to navigate between consecutive cells on the calculated path as \textit{Return Algorithm}\cite{task2_report} - the simple path using vectors and basic tirgonometry, because now the difficult part of the algorithm is in the planner and is as discussed above. 
@@ -269,23 +286,36 @@ Lastly, it should be noted that the path is recalculated after either of the fol
 
 \end{itemize}
 
+TODO check if makes sense
 
+Lastly, one assumption that was made, that no two food sources can exist in the same grid cell.
 
-\subsubsection{Wall-Leaving - the Return of "Boredom"}
-
-Because the algorithm needs to find new food sources, the boredom mechanism \cite{task1_report} was reinstated into the control loop and is the exploration mechanism. 
-
-\subsubsection{User Input and Alterations}
+\subsection{User Input and Alterations}
 
 User input for this task indicates when the robot is on top of a food source. However, this was separated into two key presses because when we first find a food source, there is no odometry or other lozalization error as we know we are physically on top of it. However, when the in the next food collection round we attempts to harvest the same food, errors accumulate, as seen in \textit{Task 2}\cite{task2_report} and therefore need to make sure we reach the food source. Therefore, another key press indicates when the robot is on top of a old food source. Such a distinction is important, because due to aforomentioned accumulation of errors, we are unsure if we are truly on top of the nest, therefore recording it as a new food source would be incorrect and updating the position of the food is not in the scope of the Planning Algorithm. 
 
 Moreover, if the robot does not properly localize for one reason or another (such as errors discussed before) and thinks it has raeached the nest but there is no user input suggesting that is true, it beings to spiral outwards from the spot it things the food is in until user input is encountered. Therefore, ensuring that if the fodo is somewhere in the viscinity, it will be found fairly quickly again. 
 
 
-\subsubsection{Subsystem Interaction}
+TODO insert from dropbox 
 
-Lastly, the integration of the algorithm into the main system is seamless and practically mimics the integration of the \textit{Return Algorithm}\cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. The difference is now we know where there is a wall and can fully relay the control to the planner, unless we are exploring using "boredom" or are being "unstuck" without fear of the robot crashing into the wall.
+\begin{figure}
+	  \caption{The effects of user input on the \textit{Planner}, pressing \textit{Space} results in a new food source being 
+		recorded in the current grid cell (if it was not found there before) whereas pressing \textit{Enter} tells the Plannes
+		 that we are at the location of an already previously visited \textit{Food Source}}
+ 	  %\centering
+    	  %\includegraphics[width=0.5\textwidth]{fig_planning_flow}
+\end{figure} 
 
+
+
+\subsection{Subsystem Interaction}
+
+Lastly, the integration of the algorithm into the main system is seamless and practically mimics the integration of the \textit{Return Algorithm}\cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. The difference is now we know where there is a wall and can fully relay the control to the planner, unless we are exploring using "boredom"\cite{task2_report} or are being "unstuck"\cite{task2_report} without fear of the robot crashing into the wall. 
+
+Therefore, ensuring that SLAM and A* are the main control element in the system, unless we need to avoid collision. A further note is that the above distinction is not as clear in the \textit{\S\ref{Code} Code} because of the location of methods, however, the end result (and aim) is best summarize by the related diagram \ref{fig_planning_internal}.
+
+Unfortunately, a picture does not introduce much mroe than saying : unless about to collide with an obstacle, the Planner determines further actions because due to mapping, unlike with the \textit{Return Algorithm}\cite{task2_report} we no longer need to stick to walls as we have mapping and know (or will know) where such are and can plan with them in mind.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
