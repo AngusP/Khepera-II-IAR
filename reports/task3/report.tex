@@ -175,7 +175,7 @@ in Figure \ref{fig:occupancygrid}.
 
 \section{Adaptive Monte-Carlo Localisation}\label{sec:amcl}
 
-\begin{figure}[t]
+\begin{figure}[p]
   \begin{center}
     \includegraphics[width=0.7\textwidth]{../assets/plots/figure_1-3.png}
   \end{center}
@@ -195,30 +195,32 @@ diverges from reality. As the task requires multiple excursions and returns to w
 this simple method alone is ineffective for localising the robot. THis inherent drift is illustrated by
 Figure \ref{fig:odometry_drift}.
 
-The \textit{Adaptive Monte Carlo Localisation} Algorithm as outlined in 
+The \textit{Adaptive Monte-Carlo Localisation} Algorithm as outlined in 
 \textit{Probabilistic Robotics}\cite{probabilisticrobot} provides a stochastic method of correcting
 for compound error and localising on an Occupancy Grid:
 
-  \textbf{\large Algorithm AMCL${(X_{t-1}, u_t, z_t)}$:}
-  \algsetup{indent=2em}
-  \begin{algorithmic}
-    \STATE{$\bar{X_{t}}=X_{t}=\emptyset$}
-    \FOR{$m=1$ \TO $M$}
-    \STATE $x_{t}^{[m]}= \textrm{motion\_update}(u_{t},x_{(t-1)}^{[m]})$
-    \STATE $w_{t}^{[m]}= \textrm{sensor\_update}(z_{t},x_{t}^{[m]})$
-    \STATE $\bar{X_{t}}=\bar{X_{t}}+\langle x_{t}^{[m]},w_{t}^{[m]}\rangle $
-    \ENDFOR
-    \FOR{$m=1$ \TO $M$}
-    \STATE $\textrm{draw } x_{t}^{[m]} \textrm{ from } \bar{X_{t}} \textrm{ with probability } \propto w_{t}^{[m]}$
-    \STATE $X_{t}=X_{t}+x_{t}^{[m]}$
-    \ENDFOR
-    \RETURN $X_{t}$
-  \end{algorithmic}
+\newpage
+\textbf{\large Algorithm AMCL${(X_{t-1}, u_t, z_t)}$:}
+\algsetup{indent=2em}
+\begin{algorithmic}
+  \STATE{$\bar{X_{t}}=X_{t}=\emptyset$}
+  \FOR{$m=1$ \TO $M$}
+  \STATE $x_{t}^{[m]}= \textrm{motion\_update}(u_{t},x_{(t-1)}^{[m]})$
+  \STATE $w_{t}^{[m]}= \textrm{sensor\_update}(z_{t},x_{t}^{[m]})$
+  \STATE $\bar{X_{t}}=\bar{X_{t}}+\langle x_{t}^{[m]},w_{t}^{[m]}\rangle $
+  \ENDFOR
+  \FOR{$m=1$ \TO $M$}
+  \STATE $\textrm{draw } x_{t}^{[m]} \textrm{ from } \bar{X_{t}} \textrm{ with probability } \propto w_{t}^{[m]}$
+  \STATE $X_{t}=X_{t}+x_{t}^{[m]}$
+  \ENDFOR
+  \RETURN $X_{t}$
+\end{algorithmic}
 
-Particles are drawn from the prior set using the \textit{Weighted Reservoir Sampling Algorithm},
-the effect of which is that particles with greater weight (i.e. more probable hypotheses)
-have a greater chance of occurring once or multiple times in the new set of particles. Note that
-the number of particles remains the same at all times.
+Particles are drawn from the prior set ${X_{t-1}}$ of size $M$ using the \textit{Weighted Reservoir 
+Sampling Algorithm}\cite{reservoirsample}, the effect of which is that particles with greater 
+weight ${w_t^{[m]}}$ (i.e. the more probable hypotheses) have a greater chance of persisting once 
+or multiple times in the new set of particles ${X_t}$. Note that the number of particles remains 
+the same at all times.
 
 TODO: How many particles we used
 
@@ -228,7 +230,7 @@ given the co-ordinate system is relative to said starting position; This prevent
 evenly distribute the particles over the environment at startup, so confidence in early localisations
 is high with no multimodal properties.
 
-\begin{figure}[t]
+\begin{figure}[p]
   \includegraphics[width=\textwidth]{../assets/particle-disperse-random.png}
   \caption{
     \label{fig:particle-disperse}
@@ -240,8 +242,8 @@ is high with no multimodal properties.
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-
-\section{Planning and Sequencing}
+\newpage
+\section{Planning}
 
 Using SLAM, we can now proceed to the primary goal - gathering the maximum amount of food per unit time. For that we need to be able to plan out actions, which involves calculating routes to navigate the world and sequincing them accordingly.
 
@@ -309,16 +311,14 @@ These are some of the most common and robust pathing algorihtms used in pathing.
 Therefore, A* was chosen to be the algorithm of choice for path calculation to the target grid cell. The pseudocode explaining its basic operation is as follows:
 
 \begin{figure}[H]
-	  \caption{The A* algorithm pseudocode\cite{path_astar_pseudocode} adapted to use the \textit{Planning Space} chosen - an occupancy grid }
- 	  \centering 
-	  \lstinputlisting[language=python]{../../astar_pseudo.py}
+	  \centering 
+	  \lstinputlisting[language=python]{../../astar_pseudo.py}\caption{The A* algorithm pseudocode\cite{path_astar_pseudocode} adapted to use the \textit{Planning Space} chosen - an occupancy grid }
 \end{figure} 
 
 
 \begin{figure}[H]
-	  \caption{The A* algorithm path reconstruction pseudocode\cite{path_astar_grid_no_grid} adapted to use the \textit{Planning Space} chosen - an occupancy grid }
  	  \centering
-          \lstinputlisting[language=python]{../../astar_path_reconstruction.py}
+          \lstinputlisting[language=python]{../../astar_path_reconstruction.py}\caption{The A* algorithm path reconstruction pseudocode\cite{path_astar_grid_no_grid} adapted to use the \textit{Planning Space} chosen - an occupancy grid }
 \end{figure} 
 
 \subsubsection{Alterations}
@@ -332,9 +332,9 @@ Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_as
 
 
 \begin{figure}[H]
-	  \caption{The \textbf{left} figure shows the $central$ cell (square) is the so called \textit{Considered Cell} whose neighbours we are trying to obtain to plan a path. The \textbf{left} figure shows that we cannot consider the \textit{Diagonal Cell} $A$ as a valid neighbour because it is blocked by $B$ and $C$ making the movement along the red arrow as seen in the \textbf{right} figure impossible}
- 	  \centering
+	  \centering
 	  \includegraphics[width=30em]{../assets/fig_astar_diagonal.jpg}
+          \caption{The \textbf{left} figure shows the $central$ cell (square) is the so called \textit{Considered Cell} whose neighbours we are trying to obtain to plan a path. The \textbf{left} figure shows that we cannot consider the \textit{Diagonal Cell} $A$ as a valid neighbour because it is blocked by $B$ and $C$ making the movement along the red arrow as seen in the \textbf{right} figure impossible}
 \end{figure} 
 
 
@@ -366,9 +366,9 @@ Thus, we aim to find some food source first to start collecting food as soon as 
 
 
 \begin{figure}[H]
-	  \caption{The planning algorithm - the \textit{Planner} in state-diagram form, this decision making tree is implored on overy iteration of the control loop and determines the action the system is to follow}
- 	  \centering
+	  \centering
 	  \includegraphics[width=30em]{../assets/fig_planner.jpg}
+          \caption{The planning algorithm - the \textit{Planner} in state-diagram form, this decision making tree is implored on overy iteration of the control loop and determines the action the system is to follow}
 \end{figure} 
 
 The robot aims to collect the closest food first (bases on Euclidian distances). The movement between cells is moevement along the vector between their recorded coordinates by adjusting the angle along the \textit{Vector of Approach}, same as \textit{Return Algorithm}\cite{task2_report}. Moreover, sometimes unxecpected events can happen that coud lead the robot away from said approach vector. Hence, the next destination is decided (as per above priority list) when the following events happen:
@@ -397,7 +397,6 @@ Moreover, it also motivated the introduction of a \textit{Spiral} mechanism whic
 The user input indicates important information related to food collection. In particular pressing keys has the following effect
 
 \begin{itemize}
-
 	\item \textit{Space} - indicates that the robot has found a new food source
 	\item \textit{Enter} - indicates that have sucessfully revisited a previosly recorded food source (stopping the \textit{Spiral})
 
@@ -432,13 +431,10 @@ TODO insert stuff from google drive
 TODO: Empirical results
 
 
-TODO rule the world
+TODO Rule the world
 
 
 
-
-
-\newpage
 \begin{thebibliography}{}
 
 \bibitem{task1_report} 
@@ -453,7 +449,7 @@ TODO rule the world
 
 
 \bibitem{principlesrobot} % The bug one
-\par{Principles of Robot Motion: Theory, Algorithms, and Implementation \S2.1 `Bug Algorithms'}\\
+\par{Principles of Robot Motion: Theory, Algorithms, and Implementation \S2.1 `Bug Algorithms'}
 \\
 \textit{Howie Choset}
 
@@ -462,6 +458,13 @@ TODO rule the world
 \par{Probabilistic Robotics (Intelligent Robotics and Autonomous Agents), MIT Press, 2005}
 \\
 \textit{Thrun, Sebastian and Burgard, Wolfram and Fox, Dieter}
+
+
+\bibitem{reservoirsample}
+\par{Reservoir Sampling, Dictionary of Algorithms and Data Structures}
+\\
+\textit{Black, Paul E. (26 January 2015)}
+
 
 \bibitem{raytracealgo}
 \par{A Linear Algorithm for Incremental Digital Display of Circular Arcs}
