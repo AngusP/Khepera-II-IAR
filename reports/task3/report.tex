@@ -116,9 +116,67 @@ TODO: Empirical results
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
+\section{Dynamical Occupancy Grid}
+
+We build up a map (occupancy grid) of the environment as the robot explores. At time 0, the map
+is empty. In this implementation, the dimensions of the grid are effectively infinite, as there are
+mechanisms allowing for automatic expansion in the even of the robot leaving the soft boundaries of
+the grid. The grid is stored as a hashmap in Redis, not a 2D array, with missing keys being assumed 
+unoccupied.
+
+As a grid resize effectively invalidates any 2D cached array version of the map, all clients 
+would be required to re-sync with Redis. To mitigate this, the grid's initial soft-dimensions
+are large, as a cache reload is time-expensive.
+
+The Occupancy grid is probabilistic, meaning each cell's occupancy is an integer in the range 
+${[0..100]}$, with $0$ indicating certainly unoccupied, and $100$ indicating a certain occupation.
+
+\subsection{Ray Tracing}
+
+As the \textit{Khepera's} IR Range sensors give us the distance between the sensor and an object,
+we can first transform this information from the robot's reference frame to the global (map)
+reference frame, using a \textit{Transformation Matrix}:
+
+\begin{equation}
+  \begin{pmatrix}
+    x_{map} \\
+    y_{map}
+  \end{pmatrix} = 
+  \begin{pmatrix} 
+    cos\Theta & sin\Theta \\
+    -sin\Theta & cos\Theta
+  \end{pmatrix}
+  \cdot
+  \begin{pmatrix}
+    x_{robot} \\
+    y_{robot}
+  \end{pmatrix}
+\end{equation}
+
+Then using \textit{Bresenham's Line Algorithm}\cite{raytracealgo} we can raytrace between the
+robot's position and the cell that we are seeing an object in; All the cells on this ray are 
+updated -- If we've never seen before, they're marked as unoccupied, or if they are already 
+marked in the map, the cell's value is updated to $0.7\times$ its value, given we now believe
+it to be unoccupied. An occupancy grid of the task environment evolved by this process is shown 
+in Figure \ref{fig:occupancygrid}.
+
+\begin{figure}[h]
+  \includegraphics[width=\textwidth]{../assets/early-occupancy-grid-rviz.png}
+  \caption{
+    \label{fig:occupancygrid}
+    Occupancy grid, with overlaid pose (large red arrow) and Odometry Trail (smaller magenta arrows).
+    Black indicates occupancy, white free space. Grey regions are not present in the Occupancy Grid.
+  }
+\end{figure}
+
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
 \section{Adaptive Monte-Carlo Localisation}\label{sec:amcl}
 
-\begin{figure}
+\begin{figure}[t]
   \begin{center}
     \includegraphics[width=0.7\textwidth]{../assets/plots/figure_1-3.png}
   \end{center}
@@ -133,38 +191,45 @@ TODO: Empirical results
 The existing system carried forward from \textit{Task 2}\cite{task2_report} maintained a pose estimate
 that at each control loop epoch was updated by a discrete sensor model for the \textit{Khepera's} 
 odometry. This model has no facility to model the compound error inherent to dead-reckoning with
-odometry and as the robot continues to move in it's environment, the pose belief quicky diverges
-from reeality. As the task requires multiple excursions and returns to within 10cm of the nest,
-this simple method alone is ineffective for localising the robot.
+odometry and as the robot continues to move in it's environment the belief about where the robot is quicky 
+diverges from reality. As the task requires multiple excursions and returns to within 10cm of the nest,
+this simple method alone is ineffective for localising the robot. THis inherent drift is illustrated by
+Figure \ref{fig:odometry_drift}.
 
 The \textit{Adaptive Monte Carlo Localisation} Algorithm as outlined in 
 \textit{Probabilistic Robotics}\cite{probabilisticrobot} provides a stochastic method of correcting
-for compound error and localising on an Occupancy Grid.
+for compound error and localising on an Occupancy Grid:
 
-\vspace{1em}
-\textbf{\large Algorithm AMCL${(X_{t-1}, u_t, z_t)}$:}
-\algsetup{indent=2em}
-\begin{algorithmic}
-  \STATE{$\bar{X_{t}}=X_{t}=\emptyset$}
-  \FOR{$m=1$ \TO $M$}
-  \STATE $x_{t}^{[m]}= \textrm{motion\_update}(u_{t},x_{(t-1)}^{[m]})$
-  \STATE $w_{t}^{[m]}= \textrm{sensor\_update}(z_{t},x_{t}^{[m]})$
-  \STATE $\bar{X_{t}}=\bar{X_{t}}+\langle x_{t}^{[m]},w_{t}^{[m]}\rangle $
-  \ENDFOR
-  \FOR{$m=1$ \TO $M$}
-  \STATE $\textrm{draw } x_{t}^{[m]} \textrm{ from } \bar{X_{t}} \textrm{ with probability } \propto w_{t}^{[m]}$
-  \STATE $X_{t}=X_{t}+x_{t}^{[m]}$
-  \ENDFOR
-  \RETURN $X_{t}$
-  \vspace{1em}
-\end{algorithmic}
+  \textbf{\large Algorithm AMCL${(X_{t-1}, u_t, z_t)}$:}
+  \algsetup{indent=2em}
+  \begin{algorithmic}
+    \STATE{$\bar{X_{t}}=X_{t}=\emptyset$}
+    \FOR{$m=1$ \TO $M$}
+    \STATE $x_{t}^{[m]}= \textrm{motion\_update}(u_{t},x_{(t-1)}^{[m]})$
+    \STATE $w_{t}^{[m]}= \textrm{sensor\_update}(z_{t},x_{t}^{[m]})$
+    \STATE $\bar{X_{t}}=\bar{X_{t}}+\langle x_{t}^{[m]},w_{t}^{[m]}\rangle $
+    \ENDFOR
+    \FOR{$m=1$ \TO $M$}
+    \STATE $\textrm{draw } x_{t}^{[m]} \textrm{ from } \bar{X_{t}} \textrm{ with probability } \propto w_{t}^{[m]}$
+    \STATE $X_{t}=X_{t}+x_{t}^{[m]}$
+    \ENDFOR
+    \RETURN $X_{t}$
+  \end{algorithmic}
+
+Particles are drawn from the prior set using the \textit{Weighted Reservoir Sampling Algorithm},
+the effect of which is that particles with greater weight (i.e. more probable hypotheses)
+have a greater chance of occurring once or multiple times in the new set of particles. Note that
+the number of particles remains the same at all times.
+
+TODO: How many particles we used
 
 Figure \ref{fig:particle-disperse} illustrates how particles progressively diverge from the initial 
 hypothesis, ${X_0}$. In our case, dynamical mapping affords a completely certain initial hypothesis
 given the co-ordinate system is relative to said starting position; This prevents the need to
-evenly distribute the particles over the environment at startup
+evenly distribute the particles over the environment at startup, so confidence in early localisations
+is high with no multimodal properties.
 
-\begin{figure}
+\begin{figure}[t]
   \includegraphics[width=\textwidth]{../assets/particle-disperse-random.png}
   \caption{
     \label{fig:particle-disperse}
@@ -172,6 +237,7 @@ evenly distribute the particles over the environment at startup
     a particularly high gain (i.e. each epoch disperses the particles greatly, assuming very large error)
   }
 \end{figure}
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -394,6 +460,11 @@ TODO insert stuff from google drive
 \par{Probabilistic Robotics (Intelligent Robotics and Autonomous Agents), MIT Press, 2005}
 \\
 \textit{Thrun, Sebastian and Burgard, Wolfram and Fox, Dieter}
+
+\bibitem{raytracealgo}
+\par{A Linear Algorithm for Incremental Digital Display of Circular Arcs}
+\\
+\textit{Commun. ACM, J Bresenham, Feb. 1977}
 
 \bibitem{path_space}
 \par{Map Representation Comparison and Planning (online article)}
