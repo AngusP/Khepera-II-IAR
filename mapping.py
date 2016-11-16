@@ -472,8 +472,14 @@ class Particles(object):
         #Redis channel
         self.partchan = "particlestream"
 
-        # Hyperparameters (aka magic numbers)
-        self.DRIFT_AGRESSION = 20.0
+        # Hyperparameter (aka magic number)
+        self.DRIFT_SMOOTHING = 20.0
+        '''
+        DRIFT_SMOOTHING is the reciportical multiplier;
+        higher numbers reduce the magnitude of the change.
+        Really important to how quickly hypotheses
+        diverge.
+        '''
         
         # Stops Python being weird and copying reference
         for i in xrange(numparticles):
@@ -538,8 +544,8 @@ class Particles(object):
         v_dt = v * self.dt
         w_dt = w * self.dt
 
-        sigma = (math.sqrt(v**2 + w**2)/self.DRIFT_AGRESSION) * self.dt
-
+        sigma = (math.sqrt(v**2 + w**2)/self.DRIFT_SMOOTHING) * self.dt
+        sigma += 0.0001
 
         def motion_update(particle):
             '''
@@ -549,10 +555,10 @@ class Particles(object):
             particle  -- Particle() instance
             '''
             x, y, theta = tuple(particle)
-            
+
             new_pose = (x + np.random.normal(v_dt * math.cos(theta), scale=sigma),
                         y + np.random.normal(v_dt * math.sin(theta), scale=sigma),
-                        theta + np.random.normal(w_dt, scale=sigma/math.pi))
+                        theta + np.random.normal(w_dt, scale=sigma))
             return new_pose
 
 
