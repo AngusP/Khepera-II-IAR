@@ -89,7 +89,7 @@ class DSException(Exception):
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
-class DataStore:
+class DataStore(object):
 
     '''
     Primary Data Munging class, handles chatter with Redis and ROS.
@@ -650,7 +650,7 @@ class DataStore:
 
 
 
-class GridManager:
+class GridManager(object):
 
     '''
     Handles the Occupancy Grid's mechanics, as it's a more complex datastructure.
@@ -1408,7 +1408,7 @@ class GridManager:
 
 
 @requireros
-class ROSGenerator:
+class ROSGenerator(object):
 
     '''
     Assistant class, generates ROS Classes to be published to a 

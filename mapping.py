@@ -33,7 +33,7 @@ testpose = {
 }
 
 
-class Point():
+class Point(object):
     
     def __init__(self, x=None, y=None, val=None):
         '''
@@ -419,7 +419,7 @@ class Mapping(object):
 
 
 
-class Particle():
+class Particle(object):
     
     def __init__(self, pose, weight):
         '''
@@ -428,6 +428,7 @@ class Particle():
         '''
         self.x, self.y, self.theta = pose
         self.weight = weight
+        self.uid = self.__hash__()
 
     def __repr__(self):
         return "({},{},{}):{}".format(self.x, self.y, self.theta, self.weight)
@@ -470,6 +471,9 @@ class Particles(object):
 
         #Redis channel
         self.partchan = "particlestream"
+
+        # Hyperparameters (aka magic numbers)
+        self.DRIFT_AGRESSION = 20.0
         
         # Stops Python being weird and copying reference
         for i in xrange(numparticles):
@@ -534,7 +538,7 @@ class Particles(object):
         v_dt = v * self.dt
         w_dt = w * self.dt
 
-        sigma = (math.sqrt(v**2 + w**2)/6.0) * self.dt
+        sigma = (math.sqrt(v**2 + w**2)/self.DRIFT_AGRESSION) * self.dt
 
 
         def motion_update(particle):
@@ -548,7 +552,7 @@ class Particles(object):
             
             new_pose = (x + np.random.normal(v_dt * math.cos(theta), scale=sigma),
                         y + np.random.normal(v_dt * math.sin(theta), scale=sigma),
-                        theta + np.random.normal(w_dt, scale=sigma))
+                        theta + np.random.normal(w_dt, scale=sigma/math.pi))
             return new_pose
 
 
@@ -567,7 +571,13 @@ class Particles(object):
             p.x, p.y, p.theta = motion_update(p)
             p.weight = sensor_update(tuple(p))
 
-        
+        newparticles = []
+
+        for i in xrange(len(self)):
+            r, i = self.weighted_random_sample()
+            newparticles.append(Particle((r.x, r.y, r.theta), r.weight))
+
+        self.particles = newparticles
         
         # Push new particles to Redis
         pipe = self.m.ds.r.pipeline()
@@ -608,6 +618,9 @@ class Particles(object):
             p, occ = p_withocc
 
             if p is None or occ is None:
+                # Here we have no prediction
+                # so we assume the sensor is right
+                l += 1
                 continue
 
             print("{}, {}, {}".format(r, p, occ))
@@ -624,18 +637,24 @@ class Particles(object):
 
 
 
-    def random_sample(self):
+    def weighted_random_sample(self):
         '''
         Using Weighted Reservoir Sampling Algorithm
-        Return randomly sampled particle
+        Return randomly sampled particle.
+
+        Due to weights, some bias against first particle exists
         '''
         keep = self[0]
-        np.random.normal(0.5,0.125)
+        keepth = 0
+        
         for i, particle in enumerate(self):
-            if random.random() <= 1.0/(i+2.0):
+            weight = abs(i + 2 + 1.0/particle.weight)
+            
+            if random.randint(0, int(weight)) == 0:
                 keep = particle
+                keepth = i
 
-        return keep
+        return keep, keepth
 
 
     def _gaussian_p(self, s_reading, p_reading):
