@@ -14,6 +14,7 @@ import sys
 import getopt
 import math
 import numpy as np
+import random
 import json
 
 testpose = {
@@ -32,7 +33,7 @@ testpose = {
 }
 
 
-class Point():
+class Point(object):
     
     def __init__(self, x=None, y=None, val=None):
         '''
@@ -159,7 +160,8 @@ class Mapping(object):
     def update(self, data):
         '''
         Apply updates to map from published hints.
-        NOTE THAT key checking won'y be done here, that's your job dear reader.
+        NOTE THAT key existance checking won't be done here, 
+        that's your job dear reader.
 
         Arguments:
         data  --  full statestream pose and ranges
@@ -417,7 +419,7 @@ class Mapping(object):
 
 
 
-class Particle():
+class Particle(object):
     
     def __init__(self, pose, weight):
         '''
@@ -426,6 +428,7 @@ class Particle():
         '''
         self.x, self.y, self.theta = pose
         self.weight = weight
+        self.uid = self.__hash__()
 
     def __repr__(self):
         return "({},{},{}):{}".format(self.x, self.y, self.theta, self.weight)
@@ -468,6 +471,16 @@ class Particles(object):
 
         #Redis channel
         self.partchan = "particlestream"
+
+        # Hyperparameter (aka magic number)
+        self.DRIFT_SMOOTHING = 100.0
+        self.DRIFT_ROTATIONAL_SMOOTHING = 1.0
+        '''
+        DRIFT_SMOOTHING is the reciportical multiplier;
+        higher numbers reduce the magnitude of the change.
+        Really important to how quickly hypotheses
+        diverge.
+        '''
         
         # Stops Python being weird and copying reference
         for i in xrange(numparticles):
@@ -505,19 +518,43 @@ class Particles(object):
         return self.particles.__len__()
 
 
-    def push_params(self, dt, ds, dtheta):
+    def push_params(self, dt, ds, dtheta, readings):
         '''
         Give the Particle Filter the change in time
         since it was last run and the control change
 
         Arguments:
-        dt      --  Delta time, seconds
-        ds      --  Delta displaement, 's'
-        dtheta  --  Delta rotation, 'theta'
+        dt        --  Delta time, seconds
+        ds        --  Delta displaement, 's'
+        dtheta    --  Delta rotation, 'theta'
+        readings  --  Array of 8 sensor readings (raw)
         '''
         self.dt = dt
         self.control = (ds/dt, dtheta/dt) # Velocity, angular velocity
+        self.sensor_readings = readings
 
+
+    def whereami(self):
+        '''
+        USE THIS ONE
+        
+        Returns the pose of the robot derived from
+        the particles
+        '''
+        avg_x = 0
+        avg_y = 0
+        avg_theta = 0
+        sum_wgts = 0
+
+        for p in self:
+            avg_x += p.x * p.weight
+            avg_y += p.y * p.weight
+            avg_theta += p.theta * p.weight
+            sum_wgts += p.weight
+        
+        return (avg_x/sum_wgts, avg_y/sum_wgts, avg_theta/sum_wgts), sum_wgts/len(self)
+
+        
 
     def update(self):
         '''
@@ -530,8 +567,8 @@ class Particles(object):
         v_dt = v * self.dt
         w_dt = w * self.dt
 
-        sigma = (math.sqrt(v**2 + w**2)/6.0) * self.dt
-
+        sigma = (math.sqrt(v**2 + w**2)/self.DRIFT_SMOOTHING) * self.dt
+        sigma += 0.0001
 
         def motion_update(particle):
             '''
@@ -541,10 +578,10 @@ class Particles(object):
             particle  -- Particle() instance
             '''
             x, y, theta = tuple(particle)
-            
+
             new_pose = (x + np.random.normal(v_dt * math.cos(theta), scale=sigma),
                         y + np.random.normal(v_dt * math.sin(theta), scale=sigma),
-                        theta + np.random.normal(w_dt, scale=sigma))
+                        theta + np.random.normal(w_dt, scale=sigma/(2.0*self.DRIFT_ROTATIONAL_SMOOTHING)))
             return new_pose
 
 
@@ -552,14 +589,25 @@ class Particles(object):
             '''
             For a pose return expected sensor detections
             
-            Calls Mapper.predict_sensor(pose)
+            Calls Mapper.predict_sensor(pose) and calculates a weight
+            given the actial readings
             '''
-            return self.m.predict_sensor(pose)
-
+            # TODO: Validate predict_sensor
+            predicted = self.m.predict_sensor(pose)
+            return self.sensor_likelihood(self.sensor_readings, predicted)
+        
         
         for p in self.particles:
             p.x, p.y, p.theta = motion_update(p)
+            p.weight = sensor_update(tuple(p))
 
+        newparticles = []
+
+        for i in xrange(len(self)):
+            r, i = self.weighted_random_sample()
+            newparticles.append(Particle((r.x, r.y, r.theta), r.weight))
+
+        self.particles = newparticles
         
         # Push new particles to Redis
         pipe = self.m.ds.r.pipeline()
@@ -573,10 +621,12 @@ class Particles(object):
         pipe.execute()
 
 
-    '''
-    The Particles class is callable, which will incur an update
-    '''
-    __call__ = update
+
+    def __call__(self):
+        '''
+        The Particles class is callable, which will incur an update
+        '''
+        return self.update()
 
 
 
@@ -598,21 +648,41 @@ class Particles(object):
             p, occ = p_withocc
 
             if p is None or occ is None:
-                pass
-            
-            l += self._gaussian_p(r,p) * (occ / 100.0)
+                # Here we have no prediction
+                # so we assign an average probability
+                l += 0.5
+                continue
+
+            if occ != -1:
+                mul = occ / 100.0
+            else:
+                mul = 1.0
+
+            l += self._gaussian_p(r,p) * mul
 
         # Average all likelihoods
         return l / len(reading)
 
 
 
-    def particle_varience(self):
+    def weighted_random_sample(self):
         '''
-        Returns the varience of all the particles
-        '''
-        raise NotImplementedError()
+        Using Weighted Reservoir Sampling Algorithm
+        Return randomly sampled particle.
 
+        Due to weights, some bias against first particle exists
+        '''
+        keep = self[0]
+        keepth = 0
+        
+        for i, particle in enumerate(self):
+            weight = abs(i + 2 + 1.0/particle.weight)
+            
+            if random.randint(0, int(weight)) == 0:
+                keep = particle
+                keepth = i
+
+        return keep, keepth
 
 
     def _gaussian_p(self, s_reading, p_reading):
