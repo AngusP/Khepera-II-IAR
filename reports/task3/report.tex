@@ -11,7 +11,6 @@
 \usepackage{mathtools}
 \usepackage{gensymb}
 \usepackage{float}
-\usepackage{comment}
 
 % DOCUMENT LAYOUT
 \usepackage{geometry}
@@ -97,11 +96,7 @@
 
 
 \begin{abstract}
- 
-
-TODO
-
-
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum viverra gravida sem eu tristique. Aliquam erat volutpat. Praesent sed odio posuere orci efficitur imperdiet id non metus. Aliquam semper enim quis nisi sollicitudin bibendum. Nullam consectetur a felis luctus blandit. In imperdiet nibh eget risus vulputate placerat. Etiam eleifend, mauris at elementum ultrices, nisi diam gravida erat, sed tincidunt erat libero ut diam. Mauris suscipit nisl lorem, at semper turpis pellentesque nec. Mauris posuere nibh at nunc vestibulum vehicula. Vivamus sed accumsan ligula. Nam consectetur iaculis enim vitae blandit.
 \end{abstract}
 
 
@@ -152,7 +147,7 @@ Therefore, formign a local cache of the Redis server data suitable for path sear
 
 
 \subsection{Path Planning Algorithm}
-\label{Path Planning Algorihtm }
+\label{Path Planning Algorithm}
 
 This method should allow the robot to navigate the mapped space between any two unoccupied \textit{(Grid) Cells} \textit{\S\ref{Code}} of the planning space (grid). 
 
@@ -190,9 +185,9 @@ Therefore, A* was chosen to be the algorithm of choice for path calculation to t
 \subsubsection{Alterations}
 \label{Path Planning Algorihtm Alterations}
 
-The chosen \textit{\S\ref{Path Planning Algorihtm} Path Planning Algorihtm - A*} uses the movement and \textit{Heuristic Cost} to estimate the total cost of  including cell into the claculated path. Therefore, as we know the pose of each grid cell, \textit{Euclidian Distances} were chosen to be a measure of (transition) cost between cells making it the cost function betwen any two cells $A$ and $B$. The \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as fast as possible while findign an adequately short path to the desired destination whcih also reduces the amount of server requests for unknown occupancies. On a side note, the movement cost is simply the sum euclidian distances between nodes along the (considered) path involvind said cell.
+The chosen \textit{Path Planning Algorihtm - A*} (\S\ref{Path Planning Algorithm}) uses the movement and \textit{Heuristic Cost} to estimate the total cost of  including cell into the claculated path. Therefore, as we know the pose of each grid cell, \textit{Euclidian Distances} were chosen to be a measure of (transition) cost between cells making it the cost function betwen any two cells $A$ and $B$. The \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as fast as possible while findign an adequately short path to the desired destination whcih also reduces the amount of server requests for unknown occupancies. On a side note, the movement cost is simply the sum euclidian distances between nodes along the (considered) path involvind said cell.
 
-Secondly, the A* pseudocode had to be adapted to work on a grid instead of a graph which was solved by a simple function obtaining its neighbours by using the considered cell's pose to get its adjacent ones from the \textit{\S\ref{Path Planning Space}Occupancy Grid}.
+Secondly, the A* pseudocode had to be adapted to work on a grid instead of a graph which was solved by a simple function obtaining its neighbours by using the considered cell's pose to get its adjacent ones from the \textit{\S\ref{Path Planning Space} Occupancy Grid}.
 
 Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_astar_grid_no_grid}  or only movements up, down, left or right\cite{path_astar_grid_no_diagonals}. However, it seemed like a wasted opportunity to not allow the robot to move diagonally. Such cells are referred to as  \textit{Diagonal Cells} - cells diagonal to the currently considered cell - whose adjacent cells we wish to consider for furhter pathing for the remainded of this report and in the code comments. Moreover, it had to be also accounter for scenarios where the diagonal cell is blocked by two of its neighbours and the diagonal cell can no longer participate in path calculation as shown in the following figure.
 
@@ -309,47 +304,55 @@ TODO insert stuff from google drive
 \textit{Angus Pearson, Jevgenij Zubovskij}
 
 \bibitem{task2_report} 
-\par{IAR 2016 Task1 Report} \\
+\par{IAR 2016 Task2 Report} \\
 \textit{Angus Pearson, Jevgenij Zubovskij}
 
 
 
 \bibitem{path_space}
-\par{Map Representation Comparison and Planning (online article)}-
+\par{Map Representation Comparison and Planning (online article)}
+\\
 \textit{http://correll.cs.colorado.edu/?p=965}
 
 
 
 \bibitem{path_warshall} 
 \par{Theory of Algorithms (lecture)}
+\\
 \textit{http://cs.winona.edu/lin/cs440/ch08-2.pdf}
 
 \bibitem{path_djikstra} 
 \par{Greedy Algorithms (online article)}
+\\
 \textit{http://www.geeksforgeeks.org/greedy-algorithms-set-6-dijkstras-shortest-path-algorithm/}
 
 \bibitem{path_astar}
 \par{A* Comparison (online article)}
+\\
 \textit{http://theory.stanford.edu/~amitp/GameProgramming/AStarComparison.html}
 
 \bibitem{path_efficiency} 
 \par{Comparative Study of Path Planning Algorithms}
+\\
 \textit{http://research.ijcaonline.org/volume39/number5/pxc3877058.pdf}
 
 \bibitem{path_astar_pseudocode} 
 \par{A* Search Algorithm (online article)}
+\\
 \textit{http://web.mit.edu/eranki/www/tutorials/search/}
 
 
 
 \bibitem{path_astar_grid_no_diagonals} 
 \par{Introduction to A* (online article)}
+\\
 \textit{http://theory.stanford.edu/~amitp/GameProgramming/AStarComparison.html}
 
 
 
 \bibitem{path_astar_grid_no_grid} 
 \par{A* Search Alogorith (online article)}
+\\
 \textit{https://en.wikipedia.org/wiki/A*\_search\_algorithm}
 
 
@@ -357,17 +360,16 @@ TODO insert stuff from google drive
 
 \end{thebibliography}
 
-\begin{comment}
-
 \newpage
-\begin{appendices}
 \section*{Appendix}
 \subsection{Code Listings}
 \label{Code}
 \lstinputlisting[language=python]{../../main.py}
 \lstinputlisting[language=python]{../../data.py}
 \lstinputlisting[language=python]{../../comms.py}
+\lstinputlisting[language=python]{../../mapping.py}
 \lstinputlisting[language=python]{../../state.py}
+\lstinputlisting[language=python]{../../utils.py}
 \lstinputlisting[language=python]{../../pathing_state.py}
 \lstinputlisting[language=python]{../../pathing_algorithm.py}
 \lstinputlisting[language=python]{../../astar.py}
@@ -377,9 +379,8 @@ TODO insert stuff from google drive
 \lstinputlisting[language=python]{../../odometry_state.py}
 \lstinputlisting[language=python]{../../constants.py}
 \lstinputlisting{../../requirements.txt}
-\end{appendices}
+\lstinputlisting{../../redis-min.conf}
 
-\end{comment}
 
 
 \end{document}
