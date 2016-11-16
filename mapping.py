@@ -473,7 +473,7 @@ class Particles(object):
         self.partchan = "particlestream"
 
         # Hyperparameter (aka magic number)
-        self.DRIFT_SMOOTHING = 150.0
+        self.DRIFT_SMOOTHING = 100.0
         self.DRIFT_ROTATIONAL_SMOOTHING = 1.0
         '''
         DRIFT_SMOOTHING is the reciportical multiplier;
@@ -534,6 +534,28 @@ class Particles(object):
         self.sensor_readings = readings
 
 
+    def whereami(self):
+        '''
+        USE THIS ONE
+        
+        Returns the pose of the robot derived from
+        the particles
+        '''
+        avg_x = 0
+        avg_y = 0
+        avg_theta = 0
+        sum_wgts = 0
+
+        for p in self:
+            avg_x += p.x * p.weight
+            avg_y += p.y * p.weight
+            avg_theta += p.theta * p.weight
+            sum_wgts += p.weight
+        
+        return (avg_x/sum_wgts, avg_y/sum_wgts, avg_theta/sum_wgts), sum_wgts/len(self)
+
+        
+
     def update(self):
         '''
         Main particle localisation godmethod
@@ -570,6 +592,7 @@ class Particles(object):
             Calls Mapper.predict_sensor(pose) and calculates a weight
             given the actial readings
             '''
+            # TODO: Validate predict_sensor
             predicted = self.m.predict_sensor(pose)
             return self.sensor_likelihood(self.sensor_readings, predicted)
         
@@ -626,12 +649,10 @@ class Particles(object):
 
             if p is None or occ is None:
                 # Here we have no prediction
-                # so we assume the sensor is right
-                l += 1
+                # so we assign an average probability
+                l += 0.5
                 continue
 
-            print("{}, {}, {}".format(r, p, occ))
-            
             if occ != -1:
                 mul = occ / 100.0
             else:
