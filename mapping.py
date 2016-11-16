@@ -8,12 +8,14 @@
 #
 
 from __future__ import print_function
-from data import DataStore
+from data import DataStore, DSException
 import utils
 import sys
 import getopt
 import math
 import numpy as np
+import random
+import json
 
 testpose = {
     'r0': '1200.0',
@@ -31,7 +33,7 @@ testpose = {
 }
 
 
-class Point():
+class Point(object):
     
     def __init__(self, x=None, y=None, val=None):
         '''
@@ -75,6 +77,11 @@ class Point():
         return "({},{}) {}".format(self.x, self.y, self.val)
 
     __repr__ = __str__
+
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 
 
 class Mapping(object):
@@ -153,7 +160,8 @@ class Mapping(object):
     def update(self, data):
         '''
         Apply updates to map from published hints.
-        NOTE THAT key checking won'y be done here, that's your job dear reader.
+        NOTE THAT key existance checking won't be done here, 
+        that's your job dear reader.
 
         Arguments:
         data  --  full statestream pose and ranges
@@ -404,11 +412,47 @@ class Mapping(object):
         return math.sqrt(dx**2 + dy**2)
 
 
+
+
 #       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
+
+class Particle(object):
+    
+    def __init__(self, pose, weight):
+        '''
+        Point with a value.
+        Built-in methods will all operate over val
+        '''
+        self.x, self.y, self.theta = pose
+        self.weight = weight
+        self.uid = self.__hash__()
+
+    def __repr__(self):
+        return "({},{},{}):{}".format(self.x, self.y, self.theta, self.weight)
+
+    __str__ = __repr__
+
+    def __iter__(self):
+        yield self.x
+        yield self.y
+        yield self.theta
+
+
+
+
+#       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+
+
+
 class Particles(object):
+    '''
+    Adaptive Monte-Carlo Localisation (Particle Filter)
+    '''
 
     def __init__(self, mapper, numparticles=100, initial_hypothesis=(0,0,0), noise=0):
         '''
@@ -422,47 +466,168 @@ class Particles(object):
         self.m = mapper
         self.particles = []
         
+        self.control = None
+        self.dt = None
+
+        #Redis channel
+        self.partchan = "particlestream"
+
+        # Hyperparameter (aka magic number)
+        self.DRIFT_SMOOTHING = 100.0
+        self.DRIFT_ROTATIONAL_SMOOTHING = 1.0
+        '''
+        DRIFT_SMOOTHING is the reciportical multiplier;
+        higher numbers reduce the magnitude of the change.
+        Really important to how quickly hypotheses
+        diverge.
+        '''
+        
         # Stops Python being weird and copying reference
         for i in xrange(numparticles):
             hyp = initial_hypothesis
             if noise != 0:
                 hyp = map(lambda x: x + np.random.normal(0,int(noise)), hyp)
-            self.particles.append(list(hyp))
+            self.particles.append(Particle(hyp, 1))
         
         self.__gauss_base = 1.0/(math.sqrt(2*math.pi)*0.5)
-    
-
-    def __repr__(self):
-        return str(self.particles)
 
 
     def __str__(self):
-        return "{} Particles : {}".format(len(self.particles), self.__repr__())
+        return "{} Particles : {}".format(len(self.particles), self.particles)
 
 
-    def motion_update(self):
+    def __iter__(self):
         '''
-        Given a control input, move the pixels
+        Iterate over particles
         '''
-        x, y, theta = pose
+        for particle in self.particles:
+            yield particle
+
+
+    def __getitem__(self, key):
+        '''
+        Allows indexing the class
+        '''
+        return self.particles.__getitem__(key)
+
+
+    def __len__(self):
+        '''
+        Get number of particles (len)
+        '''
+        return self.particles.__len__()
+
+
+    def push_params(self, dt, ds, dtheta, readings):
+        '''
+        Give the Particle Filter the change in time
+        since it was last run and the control change
+
+        Arguments:
+        dt        --  Delta time, seconds
+        ds        --  Delta displaement, 's'
+        dtheta    --  Delta rotation, 'theta'
+        readings  --  Array of 8 sensor readings (raw)
+        '''
+        self.dt = dt
+        self.control = (ds/dt, dtheta/dt) # Velocity, angular velocity
+        self.sensor_readings = readings
+
+
+    def whereami(self):
+        '''
+        USE THIS ONE
         
-        # TODO: Velocities, time deltas, move particle
-        sigma = 1
-
-        new_pose = (x + np.random.normal(scale=sigma),
-                    y + np.random.normal(scale=sigma),
-                    theta + np.random.normal(scale=sigma))
-        return new_pose
-
-
-
-    def sensor_update(self, pose):
+        Returns the pose of the robot derived from
+        the particles
         '''
-        For a pose return expected sensor detections
+        avg_x = 0
+        avg_y = 0
+        avg_theta = 0
+        sum_wgts = 0
+
+        for p in self:
+            avg_x += p.x * p.weight
+            avg_y += p.y * p.weight
+            avg_theta += p.theta * p.weight
+            sum_wgts += p.weight
         
-        Calls Mapper.predict_sensor(pose)
+        return (avg_x/sum_wgts, avg_y/sum_wgts, avg_theta/sum_wgts), sum_wgts/len(self)
+
+        
+
+    def update(self):
         '''
-        return self.m.predict_sensor(pose)
+        Main particle localisation godmethod
+        '''
+        if self.dt is None or self.control is None:
+            raise DSException("Tried to update particles before calling push_params()")
+        
+        v, w = self.control
+        v_dt = v * self.dt
+        w_dt = w * self.dt
+
+        sigma = (math.sqrt(v**2 + w**2)/self.DRIFT_SMOOTHING) * self.dt
+        sigma += 0.0001
+
+        def motion_update(particle):
+            '''
+            Given a control input, move the pixels
+            
+            Arguments:
+            particle  -- Particle() instance
+            '''
+            x, y, theta = tuple(particle)
+
+            new_pose = (x + np.random.normal(v_dt * math.cos(theta), scale=sigma),
+                        y + np.random.normal(v_dt * math.sin(theta), scale=sigma),
+                        theta + np.random.normal(w_dt, scale=sigma/(2.0*self.DRIFT_ROTATIONAL_SMOOTHING)))
+            return new_pose
+
+
+        def sensor_update(pose):
+            '''
+            For a pose return expected sensor detections
+            
+            Calls Mapper.predict_sensor(pose) and calculates a weight
+            given the actial readings
+            '''
+            # TODO: Validate predict_sensor
+            predicted = self.m.predict_sensor(pose)
+            return self.sensor_likelihood(self.sensor_readings, predicted)
+        
+        
+        for p in self.particles:
+            p.x, p.y, p.theta = motion_update(p)
+            p.weight = sensor_update(tuple(p))
+
+        newparticles = []
+
+        for i in xrange(len(self)):
+            r, i = self.weighted_random_sample()
+            newparticles.append(Particle((r.x, r.y, r.theta), r.weight))
+
+        self.particles = newparticles
+        
+        # Push new particles to Redis
+        pipe = self.m.ds.r.pipeline()
+        pipe.delete(self.partchan)
+
+        for i, particle in enumerate(self):
+            pipe.lpush(self.partchan, json.dumps(list(particle)))
+
+        # Announce new particles are available
+        pipe.publish(self.partchan, "{} {}".format(self.partchan, len(self.particles)))
+        pipe.execute()
+
+
+
+    def __call__(self):
+        '''
+        The Particles class is callable, which will incur an update
+        '''
+        return self.update()
+
 
 
     def sensor_likelihood(self, reading, predicted):
@@ -483,13 +648,41 @@ class Particles(object):
             p, occ = p_withocc
 
             if p is None or occ is None:
-                pass
-            
-            l += self._gaussian_p(r,p) * (occ / 100.0)
+                # Here we have no prediction
+                # so we assign an average probability
+                l += 0.5
+                continue
+
+            if occ != -1:
+                mul = occ / 100.0
+            else:
+                mul = 1.0
+
+            l += self._gaussian_p(r,p) * mul
 
         # Average all likelihoods
         return l / len(reading)
 
+
+
+    def weighted_random_sample(self):
+        '''
+        Using Weighted Reservoir Sampling Algorithm
+        Return randomly sampled particle.
+
+        Due to weights, some bias against first particle exists
+        '''
+        keep = self[0]
+        keepth = 0
+        
+        for i, particle in enumerate(self):
+            weight = abs(i + 2 + 1.0/particle.weight)
+            
+            if random.randint(0, int(weight)) == 0:
+                keep = particle
+                keepth = i
+
+        return keep, keepth
 
 
     def _gaussian_p(self, s_reading, p_reading):
@@ -533,6 +726,7 @@ if __name__ == "__main__":
             server = str(arg)
 
     m = Mapping(host=server)
+    pf = Particles(m)
 
     # Post-init
     for opt, arg in optlist:
