@@ -87,7 +87,7 @@
 
 
 \begin{document}
-\title{IAR Task 3 Report}
+\title{IAR Task 3 Final Report}
 \author{Angus Pearson -- s1311631\\ Jevgenij Zubovskij -- s1346981}
 \date{\today}
 \maketitle
@@ -96,11 +96,23 @@
 
 
 \begin{abstract}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum viverra gravida sem eu tristique. Aliquam erat volutpat. Praesent sed odio posuere orci efficitur imperdiet id non metus. Aliquam semper enim quis nisi sollicitudin bibendum. Nullam consectetur a felis luctus blandit. In imperdiet nibh eget risus vulputate placerat. Etiam eleifend, mauris at elementum ultrices, nisi diam gravida erat, sed tincidunt erat libero ut diam. Mauris suscipit nisl lorem, at semper turpis pellentesque nec. Mauris posuere nibh at nunc vestibulum vehicula. Vivamus sed accumsan ligula. Nam consectetur iaculis enim vitae blandit.
+Given a \textit{Khepera II} robot with no prior knowledge of it's environment, and under the 
+assumption that it's world is deterministic (TODO: There's a better word for that), we are able 
+to develop the agency required by the task of exploring, discovering food and returning it to the 
+robot's nest. This is built atop an \textit{A*} planning system, stochastic \textit{Adaptive Monte Carlo 
+Localisation}\cite{principlesrobot} and dyanmical \textit{Occupancy Grid} generation architecture,
+the combination of which constitute a SLAM system.
+
+Our existing Architecture from IAR Assignments 1\cite{task1_report} \& 2\cite{task2_report} is further
+extended, building upon the \textit{Bug2} behaviour, Redis datastore and ROS/Rviz real-time 
+visualisation.
+
+TODO: Empirical results
 \end{abstract}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 
 \section{Planning and Sequencing}
 
@@ -300,14 +312,26 @@ TODO insert stuff from google drive
 \begin{thebibliography}{}
 
 \bibitem{task1_report} 
-\par{IAR 2016 Task1 Report} \\
+\par{IAR 2016 Task1 Report}
+\\
 \textit{Angus Pearson, Jevgenij Zubovskij}
 
 \bibitem{task2_report} 
-\par{IAR 2016 Task2 Report} \\
+\par{IAR 2016 Task2 Report}
+\\
 \textit{Angus Pearson, Jevgenij Zubovskij}
 
 
+\bibitem{principlesrobot} % The bug one
+\par{Principles of Robot Motion: Theory, Algorithms, and Implementation \S2.1 `Bug Algorithms'}\\
+\\
+\textit{Howie Choset}
+
+
+\bibitem{probabilisticrobot} % The AMCL one
+\par{Probabilistic Robotics (Intelligent Robotics and Autonomous Agents), MIT Press, 2005}
+\\
+\textit{Thrun, Sebastian and Burgard, Wolfram and Fox, Dieter}
 
 \bibitem{path_space}
 \par{Map Representation Comparison and Planning (online article)}
