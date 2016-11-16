@@ -107,7 +107,6 @@ Our existing Architecture from IAR Assignments 1\cite{task1_report} \& 2\cite{ta
 extended, building upon the \textit{Bug2} behaviour, Redis datastore and ROS/Rviz real-time 
 visualisation.
 
-TODO: Empirical results
 \end{abstract}
 
 
@@ -119,9 +118,9 @@ TODO: Empirical results
 Using SLAM, we can now proceed to the primary goal - gathering the maximum amount of food per unit time. For that we need to be able to plan out actions, which involves calculating routes to navigate the world and sequincing them accordingly.
 
 \subsection{Path Planning Space}
-\label{Planning Space}
+\label{Path_Planning_Space}
 
-\textit{(Path) Planning Space} is a term used  in this document to denote the representation of the physical world in one manner or another that allows the calculation of routes routes from one pose $(X,Y, \Theta)$ to another one. This is the basis on which calculations methods are chosen \textit{\S\ref{Path Planning Algorithm}Path Planning Algorithm}. 
+\textit{(Path) Planning Space} is a term used  in this document to denote the representation of the physical world in one manner or another that allows the calculation of routes routes from one pose $(X,Y, \Theta)$ to another one. This is the basis on which calculations methods are chosen \textit{\S\ref{Path_Planning_Algorithm}Path Planning Algorithm}. 
 
 \subsubsection{Method Chosen}
 
@@ -159,7 +158,7 @@ Therefore, formign a local cache of the Redis server data suitable for path sear
 
 
 \subsection{Path Planning Algorithm}
-\label{Path Planning Algorithm}
+\label{Path_Planning_Algorithm}
 
 This method should allow the robot to navigate the mapped space between any two unoccupied \textit{(Grid) Cells} \textit{\S\ref{Code}} of the planning space (grid). 
 
@@ -175,7 +174,7 @@ Firstly, there are many options for the \textit{Path Planning Algorithm} that se
 
 \end{itemize}
 
-These are some of the most common and robust pathing algorihtms used in pathing. However, even based on the iformation above it can be concluded that Floyd-Warshall algorithm is not waht we were lookign because w have a single strating point - the position of the robot. Moreover, empirical data\cite{path_efficiency} shows that the best-first search algorithm is considerably faster than the Djikstra algorithm and in fact is in general considered the fastest planning algorithm. Moreover, it's varioations as well as its purest form are used industry-wide in robotics. More reasons for choosing A* can be outlined in \textit{\S\ref{Path Planning Algorihtm Alterations}}
+These are some of the most common and robust pathing algorihtms used in pathing. However, even based on the iformation above it can be concluded that Floyd-Warshall algorithm is not waht we were lookign because w have a single strating point - the position of the robot. Moreover, empirical data\cite{path_efficiency} shows that the best-first search algorithm is considerably faster than the Djikstra algorithm and in fact is in general considered the fastest planning algorithm. Moreover, it's varioations as well as its purest form are used industry-wide in robotics. More reasons for choosing A* can be outlined in \textit{\S\ref{Path_Planning_Algorihtm_Alterations}}
 
 \subsubsection{Method Chosen} 
 
@@ -183,31 +182,31 @@ Therefore, A* was chosen to be the algorithm of choice for path calculation to t
 
 \begin{figure}[H]
 	  \caption{The A* algorithm pseudocode\cite{path_astar_pseudocode} adapted to use the \textit{Planning Space} chosen - an occupancy grid }
- 	  %\centering
-	  %\lstinputlisting[language=python]{../../astar_pseudo.py}
+ 	  \centering 
+	  \lstinputlisting[language=python]{../../astar_pseudo.py}
 \end{figure} 
 
 
 \begin{figure}[H]
 	  \caption{The A* algorithm path reconstruction pseudocode\cite{path_astar_grid_no_grid} adapted to use the \textit{Planning Space} chosen - an occupancy grid }
- 	  %\centering
-        %\lstinputlisting[language=python]{../../astar_path_reconstruction.py}
+ 	  \centering
+          \lstinputlisting[language=python]{../../astar_path_reconstruction.py}
 \end{figure} 
 
 \subsubsection{Alterations}
-\label{Path Planning Algorihtm Alterations}
+\label{Path_Planning_Algorihtm_Alterations}
 
-The chosen \textit{Path Planning Algorihtm - A*} (\S\ref{Path Planning Algorithm}) uses the movement and \textit{Heuristic Cost} to estimate the total cost of  including cell into the claculated path. Therefore, as we know the pose of each grid cell, \textit{Euclidian Distances} were chosen to be a measure of (transition) cost between cells making it the cost function betwen any two cells $A$ and $B$. The \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as fast as possible while findign an adequately short path to the desired destination whcih also reduces the amount of server requests for unknown occupancies. On a side note, the movement cost is simply the sum euclidian distances between nodes along the (considered) path involvind said cell.
+The chosen \textit{Path Planning Algorihtm - A*} (\S\ref{Path_Planning_Algorithm}) uses the movement and \textit{Heuristic Cost} to estimate the total cost of  including cell into the claculated path. Therefore, as we know the pose of each grid cell, \textit{Euclidian Distances} were chosen to be a measure of (transition) cost between cells making it the cost function betwen any two cells $A$ and $B$. The \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as fast as possible while findign an adequately short path to the desired destination whcih also reduces the amount of server requests for unknown occupancies. On a side note, the movement cost is simply the sum euclidian distances between nodes along the (considered) path involvind said cell.
 
-Secondly, the A* pseudocode had to be adapted to work on a grid instead of a graph which was solved by a simple function obtaining its neighbours by using the considered cell's pose to get its adjacent ones from the \textit{\S\ref{Path Planning Space} Occupancy Grid}.
+Secondly, the A* pseudocode had to be adapted to work on a grid instead of a graph which was solved by a simple function obtaining its neighbours by using the considered cell's pose to get its adjacent ones from the \textit{\S\ref{Path_Planning_Space} Occupancy Grid}.
 
 Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_astar_grid_no_grid}  or only movements up, down, left or right\cite{path_astar_grid_no_diagonals}. However, it seemed like a wasted opportunity to not allow the robot to move diagonally. Such cells are referred to as  \textit{Diagonal Cells} - cells diagonal to the currently considered cell - whose adjacent cells we wish to consider for furhter pathing for the remainded of this report and in the code comments. Moreover, it had to be also accounter for scenarios where the diagonal cell is blocked by two of its neighbours and the diagonal cell can no longer participate in path calculation as shown in the following figure.
 
 
 \begin{figure}[H]
-	  \caption{The \textbf{top} figure shows the $central$ cell (square) is the so called \textit{Considered Cell} whose neighbours we are trying to obtain to plan a path. The \textbf{top} figure shows that we cannot consider the \textit{Diagonal Cell} $A$ as a valid neighbour because it is blocked by $B$ and $C$ making the movement along the red arrow as seen in the \textbf{bottom} figure impossible}
- 	  %\centering
-    	  %\includegraphics[width=0.5\textwidth]{fig_astar_diagonal}
+	  \caption{The \textbf{left} figure shows the $central$ cell (square) is the so called \textit{Considered Cell} whose neighbours we are trying to obtain to plan a path. The \textbf{left} figure shows that we cannot consider the \textit{Diagonal Cell} $A$ as a valid neighbour because it is blocked by $B$ and $C$ making the movement along the red arrow as seen in the \textbf{right} figure impossible}
+ 	  \centering
+	  \includegraphics[width=30em]{../assets/fig_astar_diagonal.jpg}
 \end{figure} 
 
 
@@ -224,7 +223,7 @@ Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_as
 This section is concerned with the intergation of the algorithm and data structures described above into the main control loop and its interaction with previosuly established subsystems\cite{task2_report}. The algorithm determinign the next action or travel destination and sequencing said action is called the \textit{Planner} and is, therefore, responsible for maximizing the food collection rate by sequencing events governing said rate.
 
 \subsubsection{Method Chosen}
-\label{Planner Principle}
+\label{Planner_Principle}
 
 Now that we are able to localize ourselves, knwo the map and can calculate paths on the grid, we can set priorites for action to maximize food gathering. Firstly, it is important to note that a it is considered that each \textit{Food Source} has only one unit of \textit{Food}. Upon return to the \textit{Nest} and droppign off currently collected food the robot resets the food sources which now have food units again, therefore, starting a new \textit{Food Collection Round (a.k.a. Round)}. Hence, the aciton priorites were set as follows
 
@@ -240,8 +239,8 @@ Thus, we aim to find some food source first to start collecting food as soon as 
 
 \begin{figure}[H]
 	  \caption{The planning algorithm - the \textit{Planner} in state-diagram form, this decision making tree is implored on overy iteration of the control loop and determines the action the system is to follow}
- 	  %\centering
-    	  %\includegraphics[width=0.5\textwidth]{fig_planner}
+ 	  \centering
+	  \includegraphics[width=30em]{../assets/fig_planner.jpg}
 \end{figure} 
 
 The robot aims to collect the closest food first (bases on Euclidian distances). The movement between cells is moevement along the vector between their recorded coordinates by adjusting the angle along the \textit{Vector of Approach}, same as \textit{Return Algorithm}\cite{task2_report}. Moreover, sometimes unxecpected events can happen that coud lead the robot away from said approach vector. Hence, the next destination is decided (as per above priority list) when the following events happen:
@@ -255,40 +254,39 @@ The robot aims to collect the closest food first (bases on Euclidian distances).
 \end{itemize}
 
 \subsubsection{Alterations}
+\label{Planner_Algorithm_Alterations}
 
-After reviewing initial \textit{\S\ref{Experimental Results}Eperimenal Results} it was decided that due to the grid granularity being set (by default) in the same order of magnitude as robot dimensions, it is reasonable to assume that no two food sources can exist in the same grid cell as the cell sizes are assumed to be set by the user / programmer to a granularity not exceeding robot dimensions. Lastly, because the algorithm needs to find new food sources, the boredom mechanism \cite{task1_report} was reinstated into the control loop and is the exploration mechanism and is utilized during the \textit{Find} stages of the algorithm. 
+After reviewing initial \textit{\S\ref{Experimental_Results}Eperimenal Results} it was decided that due to the grid granularity being set (by default) in the same order of magnitude as robot dimensions, it is reasonable to assume that no two food sources can exist in the same grid cell as the cell sizes are assumed to be set by the user / programmer to a granularity not exceeding robot dimensions. Lastly, because the algorithm needs to find new food sources, the boredom mechanism \cite{task1_report} was reinstated into the control loop and is the exploration mechanism and is utilized during the \textit{Find} stages of the algorithm. 
+
+Moreover, it also motivated the introduction of a \textit{Spiral} mechanism which makes the robot spiral away from the expected location of the food source. The is that when the robott first find a food source, there is no odometry\textit{Task 2}\cite{task2_report} or other localization error and therefore know we are physically at the correct location to collect food (at the food source). However, due to error accumulation as noted above, the next time the robot thinks it is at the food source, physically it might not be. That is when it begins spiralling and the operator indicates \textit{\S\ref{Planner_User_Input}}  when the food source is actually reached. This ensures that even in the presence of errors we do not miss food. This, however, should not be an issue unless localization has massive errors and further improvements of the system might eliminate the need for spiralling. 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 \subsection{User Input and Alterations}
+\label{Planner_User_Input}
 
-User input for this task indicates when the robot is on top of a food source. However, this was separated into two key presses because when we first find a food source, there is no odometry or other lozalization error as we know we are physically on top of it. However, when the in the next food collection round we attempts to harvest the same food, errors accumulate, as seen in \textit{Task 2}\cite{task2_report} and therefore need to make sure we reach the food source. Therefore, another key press indicates when the robot is on top of a old food source. Such a distinction is important, because due to aforomentioned accumulation of errors, we are unsure if we are truly on top of the nest, therefore recording it as a new food source would be incorrect and updating the position of the food is not in the scope of the Planning Algorithm. 
+The user input indicates important information related to food collection. In particular pressing keys has the following effect
 
-Moreover, if the robot does not properly localize for one reason or another (such as errors discussed before) and thinks it has raeached the nest but there is no user input suggesting that is true, it beings to spiral outwards from the spot it things the food is in until user input is encountered. Therefore, ensuring that if the fodo is somewhere in the viscinity, it will be found fairly quickly again. 
+\begin{itemize}
 
+	\item \textit{Space} - indicates that the robot has found a new food source
+	\item \textit{Enter} - indicates that have sucessfully revisited a previosly recorded food source (stopping the \textit{Spiral})
 
-TODO insert from dropbox 
+\end{itemize}
 
-\begin{figure}
-	  \caption{The effects of user input on the \textit{Planner}, pressing \textit{Space} results in a new food source being 
-		recorded in the current grid cell (if it was not found there before) whereas pressing \textit{Enter} tells the Plannes
-		 that we are at the location of an already previously visited \textit{Food Source}}
- 	  %\centering
-    	  %\includegraphics[width=0.5\textwidth]{fig_planning_flow}
-\end{figure} 
-
+The reason for havign two separate keys like taht is due to the differentiation between we first visiting a food source and attempting to re-visit the food source. Therefore to allowing distinguishing when to record a new food source and gather food immediately, or start a spiral\textit{\S\ref{Planner_Algorithm_Alterations}}. 
 
 
 \subsection{Subsystem Interaction}
 
-Lastly, the integration of the algorithm into the main system is seamless and practically mimics the integration of the \textit{Return Algorithm}\cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. The difference is now we know where there is a wall and can fully relay the control to the planner, unless we are exploring using "boredom"\cite{task2_report} or are being "unstuck"\cite{task2_report} without fear of the robot crashing into the wall. 
+Lastly, the integration of the algorithm into the main system is seamless and practically mimics the integration of the \textit{Return Algorithm}\cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. The difference is now we know where there are walls or free space. hence, the robot can fully relay the control to the planner, unless we are exploring using "boredom"\cite{task2_report} or are being "unstuck"\cite{task2_report} without fear of the robot crashing into the wall. 
 
-Therefore, ensuring that SLAM and A* are the main control element in the system, unless we need to avoid collision. A further note is that the above distinction is not as clear in the \textit{\S\ref{Code} Code} because of the location of methods, however, the end result (and aim) is best summarize by the related diagram \ref{fig_planning_internal}.
-
-Unfortunately, a picture does not introduce much mroe than saying : unless about to collide with an obstacle, the Planner determines further actions because due to mapping, unlike with the \textit{Return Algorithm}\cite{task2_report} we no longer need to stick to walls as we have mapping and know (or will know) where such are and can plan with them in mind.
+Therefore, ensuring that SLAM and A* are the main control element in the system, unless we need to avoid collision. A further note is that the above distinction is not as clear in the \textit{\S\ref{Code} Code} because of the location of methods, however, the end result (and aim) is as descibed above.
 
 
+\section{Experimental Result}
+\label{Experimental_Results}
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -303,6 +301,10 @@ TODO make sure occupancy grid is already described in a previous section
 TODO reference pictures
 TODO set granularity to robot dimension
 TODO insert stuff from google drive
+TODO: Empirical results
+
+
+TODO rule the world
 
 
 
