@@ -49,7 +49,8 @@
 }{\par\noindent}
 
 
-\usepackage[superscript]{cite}
+%\usepackage[superscript]{cite}
+
 
 % LISTINGS
 \usepackage{listings}
@@ -98,14 +99,15 @@
 
 
 \begin{abstract}
-Given a \textit{Khepera II} robot with no prior knowledge of it's environment, and under the 
-assumption that it's world is deterministic (TODO: There's a better word for that), we are able 
-to develop the agency required by the task of exploring, discovering food and returning it to the 
-robot's nest. This is built atop an \textit{A*} planning system, stochastic \textit{Adaptive Monte Carlo 
-Localisation}\cite{principlesrobot} to correct compound localisation error, and a dyanmical 
-\textit{Occupancy Grid} generation architecture, the combination of which constitute a SLAM system.
+% the agency required by the task of exploring, discovering food and returning it to the robot's nest.
+Given a \textit{Khepera II} robot with no prior knowledge of it's environment, we are able to 
+simultaneously localise and map, under the assumption that the world is static.
+This is built atop stochastic \textit{Adaptive Monte Carlo Localisation} \cite{principlesrobot} 
+to correct compound localisation error, and a dyanmical \textit{Occupancy Grid} generation architecture, 
+the combination of which constitute a SLAM system. The task requirement of food collection
+behaviour is implemented using an \textit{A* search} planner.
 
-Our existing Architecture from IAR Assignments 1\cite{task1_report} \& 2\cite{task2_report} is further
+Our existing Architecture from the previous IAR Assignments \cite{task1_report}\cite{task2_report} is further
 extended, building upon the reactive behaviour, Redis datastore and ROS/Rviz real-time 
 visualisation.
 
@@ -117,18 +119,21 @@ visualisation.
 
 \section{Dynamical Occupancy Grid}
 
-We build up a map (occupancy grid) of the environment as the robot explores. At time 0, the map
+We build up a map (occupancy grid) of the environment as the robot explores, where at time $0$, the map
 is empty. In this implementation, the dimensions of the grid are effectively infinite, as there are
 mechanisms allowing for automatic expansion in the even of the robot leaving the soft boundaries of
 the grid. The grid is stored as a hashmap in Redis, not a 2D array, with missing keys being assumed 
-unoccupied.
+unoccupied. This allows for rapid querying of arbitary cells' occupancy, and expanding the grid
+is trivial given no keys need be updated.
 
-As a grid resize effectively invalidates any 2D cached array version of the map, all clients 
+However, a grid resize effectively invalidates any 2D cached array version of the map, all clients 
 would be required to re-sync with Redis. To mitigate this, the grid's initial soft-dimensions
 are large, as a cache reload is time-expensive.
 
 The Occupancy grid is probabilistic, meaning each cell's occupancy is an integer in the range 
 ${[0..100]}$, with $0$ indicating certainly unoccupied, and $100$ indicating a certain occupation.
+
+In our testing TODO
 
 \subsection{Ray Tracing}
 
@@ -152,12 +157,17 @@ reference frame, using a \textit{Transformation Matrix}:
   \end{pmatrix}
 \end{equation}
 
-Then using \textit{Bresenham's Line Algorithm}\cite{raytracealgo} we can raytrace between the
+Then using \textit{Bresenham's Line Algorithm} \cite{raytracealgo} we can raytrace between the
 robot's position and the cell that we are seeing an object in; All the cells on this ray are 
 updated -- If we've never seen before, they're marked as unoccupied, or if they are already 
-marked in the map, the cell's value is updated to $0.7\times$ its value, given we now believe
-it to be unoccupied. An occupancy grid of the task environment evolved by this process is shown 
+marked in the map, the cell's value is updated to $0.9\times$ its value, given we now believe
+it to be unoccupied. Backing off from a certain occpancy helps remove noise from the grid though
+must be done conservatively to allow the localisation algorithm to make corrections.
+An occupancy grid of the task environment evolved by this process is shown 
 in Figure \ref{fig:occupancygrid}.
+
+Grid population is done asynchronously from the main control loop, on an event-driven basis --
+map updates are made as the control loop \textit{publishes} pose and sensory updtaes to Redis.
 
 \begin{figure}[h]
   \includegraphics[width=\textwidth]{../assets/early-occupancy-grid-rviz.png}
@@ -175,7 +185,7 @@ in Figure \ref{fig:occupancygrid}.
 
 \section{Adaptive Monte-Carlo Localisation}\label{sec:amcl}
 
-\begin{figure}[p]
+\begin{figure}[h]
   \begin{center}
     \includegraphics[width=0.7\textwidth]{../assets/plots/figure_1-3.png}
   \end{center}
@@ -187,19 +197,18 @@ in Figure \ref{fig:occupancygrid}.
   }
 \end{figure}
 
-The existing system carried forward from \textit{Task 2}\cite{task2_report} maintained a pose estimate
+The existing system carried forward from \textit{Task 2} \cite{task2_report} maintained a pose estimate
 that at each control loop epoch was updated by a discrete sensor model for the \textit{Khepera's} 
 odometry. This model has no facility to model the compound error inherent to dead-reckoning with
 odometry and as the robot continues to move in it's environment the belief about where the robot is quicky 
 diverges from reality. As the task requires multiple excursions and returns to within 10cm of the nest,
-this simple method alone is ineffective for localising the robot. THis inherent drift is illustrated by
+this simple method alone is ineffective for localising the robot. This inherent drift is illustrated by
 Figure \ref{fig:odometry_drift}.
 
 The \textit{Adaptive Monte-Carlo Localisation} Algorithm as outlined in 
-\textit{Probabilistic Robotics}\cite{probabilisticrobot} provides a stochastic method of correcting
+\textit{Probabilistic Robotics} \cite{probabilisticrobot} provides a stochastic method of correcting
 for compound error and localising on an Occupancy Grid:
 
-\newpage
 \textbf{\large Algorithm AMCL${(X_{t-1}, u_t, z_t)}$:}
 \algsetup{indent=2em}
 \begin{algorithmic}
@@ -216,21 +225,28 @@ for compound error and localising on an Occupancy Grid:
   \RETURN $X_{t}$
 \end{algorithmic}
 
-Particles are drawn from the prior set ${X_{t-1}}$ of size $M$ using the \textit{Weighted Reservoir 
-Sampling Algorithm}\cite{reservoirsample}, the effect of which is that particles with greater 
+Particles, which are Normally distributed samples of the Probability Density function of the robot's 
+pose space, each representing a hypothesis about the robot's pose are drawn from the prior set 
+of particles ${X_{t-1}}$ of size $M$ using the \textit{Weighted Reservoir 
+Sampling Algorithm} \cite{reservoirsample}, the effect of which is that particles with greater 
 weight ${w_t^{[m]}}$ (i.e. the more probable hypotheses) have a greater chance of persisting once 
 or multiple times in the new set of particles ${X_t}$. Note that the number of particles remains 
 the same at all times.
 
-TODO: How many particles we used
+100 particles are used in this implementation; The compute time for the \textit{AMCL} grows quicky
+as the number of particles increases. Further to this, while Redis affords flexibility, data persistence
+and fanciness such as replaying a robot's trajectory, it presents a much larger overhead per lookup
+or operation than a native datastructure. A naive \textit{sensor\_update} function will query
+around 7500 occupancy grid cells in the vicinity of the robot: For each particle, each sensor is 
+raytraced and then each grid cell on the rasterised ray is queried. Using a rather cool pre-fetching
+and de-duplication algorithm in the sensor update (\texttt{mapping.py, Particles.update()}) the number
+of unique queried cells is reduced to a nominal value of 54. These queries are serialised and
+transacted as a batch job reducing network overhead.
 
-Figure \ref{fig:particle-disperse} illustrates how particles progressively diverge from the initial 
-hypothesis, ${X_0}$. In our case, dynamical mapping affords a completely certain initial hypothesis
-given the co-ordinate system is relative to said starting position; This prevents the need to
-evenly distribute the particles over the environment at startup, so confidence in early localisations
-is high with no multimodal properties.
+These optimisations result in a 3.8 second to 0.08 second speedup (roughly $50\times$) compared to
+the naive implementation, allowing the particle filter to run at every control loop cycle.
 
-\begin{figure}[p]
+\begin{figure}[h]
   \includegraphics[width=\textwidth]{../assets/particle-disperse-random.png}
   \caption{
     \label{fig:particle-disperse}
@@ -239,22 +255,45 @@ is high with no multimodal properties.
   }
 \end{figure}
 
+Figure \ref{fig:particle-disperse} illustrates how particles progressively diverge from the initial 
+hypothesis, ${X_0}$. In our case, dynamical mapping affords a completely certain initial hypothesis
+given the co-ordinate system is relative to said starting position; This prevents the need to
+evenly distribute the particles over the environment at startup, so confidence in early localisations
+is high with no multimodal properties.
+
+\subsection{Limitations}
+
+The environment for the task has many open areas, where the nearest objects are further away
+than the robot can see. As the robot crosses one of these areas, the localisation error (the 
+weighted varience of the particles) increases. If a new obstacle is encountered, by nature of the 
+Occupancy Grid population rules the error at that time in the localisation will be directly transferred 
+into the map as a misplaced set of occupied cells. Later relocalisations will take on part of this error.
+
+Mitigations to this include constraining the robot to maneuvering `in view' of an obstacle at all times;
+the bug behaviours from earlier tasks provide this to an extent but can't protect against error
+when in free space.
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \newpage
 \section{Planning}
 
-Using SLAM, we can now proceed to the primary goal - gathering the maximum amount of food per unit time. For that we need to be able to plan out actions, which involves calculating routes to navigate the world and sequincing them accordingly.
+With SLAM we can assume that our localisation is accurate and proceed to the primary goal -- gathering 
+the maximum amount of food per unit time. For that we need to be able to plan out actions, which involves 
+calculating routes to navigate the world and sequincing them accordingly.
 
 \subsection{Path Planning Space}
 \label{Path_Planning_Space}
 
-\textit{(Path) Planning Space} is a term used  in this document to denote the representation of the physical world in one manner or another that allows the calculation of routes routes from one pose $(X,Y, \Theta)$ to another one. This is the basis on which calculations methods are chosen \textit{\S\ref{Path_Planning_Algorithm}Path Planning Algorithm}. 
+\textit{(Path) Planning Space} is a term used  in this report to denote the representation of the 
+physical world as the planner sees it, in this case $(x, y, \Theta)$. The existing use of this
+pose representation from Task 1 \& 2 informs the choice of \textit{Path Planning Algorithm 
+(\S\ref{Path_Planning_Algorithm})}. 
 
 \subsubsection{Method Chosen}
 
-The main mehtods\cite{path_space} of planning are seen to be used on either of the following:
+The main methods of for planning over this representation are: \cite{path_space}
 
 \begin{itemize}
 	\item \textit{Occupancy Grid}
@@ -262,18 +301,29 @@ The main mehtods\cite{path_space} of planning are seen to be used on either of t
 \end{itemize}
 
 
-The difference between these two from the perspective of planning is the efficiency of algorithm working on the data and the pre-processing of the data going to the algorithm. Because an occupancy grid is stored on a \textit{Redis-Server} and it has very fine definition, the number of grid squares (referred to as \textit{Grid Cerlls}) is immense. Therefore, to obtain a graph representation from that, every time a path replanning would have to take place, the conversion would have to take place on a very significant number of points. Therefore, the occupancy grid was chosen due to no conversion needing to be made on the data during runtime for planning, but rather a small alteration for the \textit{Path Planning Algorithm} which should not affect the alogirithm's performance.
+The difference between these two from the perspective of planning is the efficiency of algorithm working 
+on the data and the pre-processing of the data going to the algorithm. Because an occupancy grid is stored 
+on a \textit{Redis Server} and it has very fine resolution, the number of grid squares (referred to as 
+\textit{Grid Cells}) is immense. Therefore, to obtain a graph representation from that, every time a 
+path replanning would have to take place, the conversion would have to take place on a very significant 
+number of points. Therefore, the occupancy grid was chosen due to no conversion needing to be made on 
+the data during runtime for planning, but rather a small alteration for the \textit{Path Planning 
+Algorithm} which should not affect the alogirithm's performance.
 
 \subsubsection{Alterations}
 
-The granularity of the \textit{Planning Grid (Planning Space)} did not necessarily have to match that of the occupancy grid on Redis for the following reasons:
-
+The granularity of the \textit{Planning Grid (Planning Space)} did not necessarily have to match that 
+of the occupancy grid on Redis for the following reasons:
 
 \begin{itemize}
 
-	\item Robot Dimensions     - the robot's dimensions are larger than the mapping (server-side) granularity
-	\item Odometry Distortion  - extremely finely planned path on an occupancy grid introduces many turns, increasing odometry drift rate considerably \cite{task2_report}
-	\item Runtime Optimization - as long as there is a path to the goal and the robot can follow it, we wish to save as much processing time as we humanely can and plannign with bigger cell dimensions helps us save calculation time
+	\item Robot Dimensions     - the robot's dimensions are larger than the mapping (server-side) 
+granularity
+	\item Odometry Distortion  - extremely finely planned path on an occupancy grid introduces many 
+turns, increasing odometry drift rate considerably \cite{task2_report}
+	\item Runtime Optimization - as long as there is a path to the goal and the robot can follow 
+it, we wish to save as much processing time as we humanely can and plannign with bigger cell dimensions 
+helps us save calculation time
 
 \end{itemize}
 
