@@ -51,7 +51,7 @@ def main():
 	nav = Navigation_Algorithm()
 	pathing_state = Pathing_State()
 
-	#TODO sync with angus' granularity in mm
+	#set granularity to 10 cm
     	pathing = Pathing_Algorithm(100, ds)
 
         # varaibles to not resend speeds during wall following
@@ -116,14 +116,9 @@ def main():
 	    if key_pressed  == ord(' '):
 			# if SPACE is pressed
    			print("Detected food")
-			pathing.drive_over_food(pathing_state, comms)
+			# add grid space to food sources and collect it
+			pathing.add_food_source(pathing_state, comms)
 
-	    #collected food from current food_source
-	    elif key_pressed  == ord('\r'):
-			# if ENTER pressed
-			#collect the food we spiralled around before
-			pathing.collect_food(pathing_state, comms)
- 	   
 		
     except ImportError as e:
         comms.drive(0,0)

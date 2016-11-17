@@ -56,12 +56,6 @@ class Pathing_State:
 	   #indicate have not explored randomly yet this food collecting round
 	   self.explored = False
 
-
-	   #indicate the spirallign around point of interest (food source)
-	   self.spiral = False
-	   self.spiral_counter = 0
-	   self.spiral_source = None
-
 	   
     #return if the exploration was done for this round
     def exploration_not_done(self):
@@ -71,21 +65,6 @@ class Pathing_State:
     def complete_exploration(self):
 	        self.explored = True
 
-    #function indicatign spiralling start around food source until indicated food was collected (indicated by keypress)
-    def start_spiral(self, food_source):
-		#print "BEGINNING SPIRAL"
-		#set variables
-		self.spiral = True
-		self.spiral_counter = 0
-		self.spiral_source = food_source
-
-    #indicate spiral end around uncollected food source
-    def end_spiral(self):
-		#print "END SPIRAL"
-		#reset varaibles
-		self.spiral = False
-		self.spiral_counter = 0
-		self.spiral_source = None
 
     #add a food source on current grid space if such does not exist yet
     def add_food_source(self):

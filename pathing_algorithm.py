@@ -29,8 +29,9 @@ class Pathing_Algorithm:
     def vector_magnitude(self, vector):
 		return math.sqrt( math.pow(vector[0],2) + math.pow(vector[1],2))
 		
-	#normalizes angle in degrees to -180 : 180 degrees
+    #normalizes angle in degrees to -180 : 180 degrees
     def normalize_angle(self, angle):
+		
 		if angle < 0:
 		    angle = angle % -360
 		    if angle < -180:
@@ -57,8 +58,7 @@ class Pathing_Algorithm:
 		direction_angle = math.degrees(direction_angle) - self.normalize_angle(math.degrees(odo_state.theta))
 		return self.normalize_angle(direction_angle)
 	
-  
-    #TODO check
+    #determines if have left the path
     def is_away_from_path(self, direction):
 		#if we are too far away by several cells from the cell it should be heading to
 		return self.vector_magnitude(direction) > self.granularity*2
@@ -98,17 +98,9 @@ class Pathing_Algorithm:
     #method to record a new food source and collect it, or just collect current one
     def drive_over_food(self, pathing_state, comms):
 
-	#stop first
-	comms.drive(0,0)
-	#now the pathing is definitely active
-	pathing_state.algorithm_activated = True
-	#add current cell as a food source
-	pathing_state.add_food_source()
-	#replan the route
-
 	if pathing_state.are_on_food() != None:
-		#indicate picking up food
-		comms.blinkyblink()
+		#stop first
+		comms.drive(0,0)
 		#wait to simulate picking up food
 		time.sleep(constants.WAIT_PERIOD_S)
 		comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
@@ -118,38 +110,14 @@ class Pathing_Algorithm:
 		self.replan_sequence(pathing_state)
 
 
-		#print "DISCOVERY COLLECT REPLAN"
+    def add_food_source(self, pathing_state, comms):
 
-    #method as above, but used for food source we spiralled around before
-    def collect_food(self, pathing_state, comms):
-		#if spiralling around an existing food source
-		if pathing_state.spiral and pathing_state.spiral_source != None:
-			#stop first
-			comms.drive(0,0)
-			#indicate picking up food
-			comms.blinkyblink()
-			#wait to simulate picking up food
-			time.sleep(constants.WAIT_PERIOD_S)
-			comms.drive(constants.CONST_SPEED,constants.CONST_SPEED)
-
-			#pick the food up
-			pathing_state.pick_spiral_food_up()
-			#indicate no longer spiralling around it
-			pathing_state.end_spiral()
-
-			#replan, maybe a more efficient route now available
-			self.replan_sequence(pathing_state)
-
-
-
-			#print "SPIRAL COLLECT REPLAN"
-
-    #method to record the grid location of a new food_source
-    def drive_around_food(self, pathing_state, comms):
-	#only drive around food if we have said food and are not already spiralling around some food
-	if pathing_state.are_on_food() != None and not pathing_state.spiral:
-		#record currently considered food source and begin spiralling around it, waiting for E being pressed
-		pathing_state.start_spiral(pathing_state.are_on_food())
+	#now the pathing is definitely active
+	pathing_state.algorithm_activated = True
+	#add current cell as a food source
+	pathing_state.add_food_source()
+	#now collect it
+	self.drive_over_food(self, pathing_state, comms)
 
 		
     #planning after a piece of food is collected    
@@ -202,7 +170,7 @@ class Pathing_Algorithm:
 
 
 		#try to begin collecting food
-		self.drive_around_food(pathing_state, comms)
+		self.drive_over_food(pathing_state, comms)
 
 		# do not interrupt the spiral around found food source
 		if pathing_state.spiral:	

@@ -13,13 +13,26 @@ import constants
 
 
 import math
-
 import sys
 import time
 
 class Odometry_Algorithm:
         def __init__(self):
                 pass
+
+
+
+        #normalizes angle in degrees to -180 : 180 degrees
+    	def normalize_angle(self, angle):
+		if angle < 0:
+		    angle = angle % -360
+		    if angle < -180:
+				angle = 360 + angle
+		else:
+		    angle = angle % 360
+		    if angle > 180:
+				angle = -(360 - angle)
+		return angle
 
 	#calculate differences in distance driven by different wheels
 	def delta_s(self, delta_odo):
@@ -87,7 +100,8 @@ class Odometry_Algorithm:
                 result.x     = x_n
 		result.y     = y_n
 		result.odo   = new_odo
-		result.theta = theta_n
+		result.theta = self.radians(self.normalize_angle(math.degrees(theta_n)))
+		
 
 		return result
 

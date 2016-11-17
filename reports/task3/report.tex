@@ -386,24 +386,13 @@ The robot aims to collect the closest food first (bases on Euclidian distances).
 
 After reviewing initial \textit{\S\ref{Experimental_Results}Eperimenal Results} it was decided that due to the grid granularity being set (by default) in the same order of magnitude as robot dimensions, it is reasonable to assume that no two food sources can exist in the same grid cell as the cell sizes are assumed to be set by the user / programmer to a granularity not exceeding robot dimensions. Lastly, because the algorithm needs to find new food sources, the boredom mechanism \cite{task1_report} was reinstated into the control loop and is the exploration mechanism and is utilized during the \textit{Find} stages of the algorithm. 
 
-Moreover, it also motivated the introduction of a \textit{Spiral} mechanism which makes the robot spiral away from the expected location of the food source. The is that when the robott first find a food source, there is no odometry\textit{Task 2}\cite{task2_report} or other localization error and therefore know we are physically at the correct location to collect food (at the food source). However, due to error accumulation as noted above, the next time the robot thinks it is at the food source, physically it might not be. That is when it begins spiralling and the operator indicates \textit{\S\ref{Planner_User_Input}}  when the food source is actually reached. This ensures that even in the presence of errors we do not miss food. This, however, should not be an issue unless localization has massive errors and further improvements of the system might eliminate the need for spiralling. 
-
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 \subsection{User Input and Alterations}
 \label{Planner_User_Input}
 
-The user input indicates important information related to food collection. In particular pressing keys has the following effect
-
-\begin{itemize}
-	\item \textit{Space} - indicates that the robot has found a new food source
-	\item \textit{Enter} - indicates that have sucessfully revisited a previosly recorded food source (stopping the \textit{Spiral})
-
-\end{itemize}
-
-The reason for havign two separate keys like taht is due to the differentiation between we first visiting a food source and attempting to re-visit the food source. Therefore to allowing distinguishing when to record a new food source and gather food immediately, or start a spiral\textit{\S\ref{Planner_Algorithm_Alterations}}. 
-
+The user input of \textit{Space} being pressed is used to indicate the presence of a new food source being found. 
 
 \subsection{Subsystem Interaction}
 
