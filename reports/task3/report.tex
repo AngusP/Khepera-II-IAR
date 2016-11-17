@@ -302,13 +302,14 @@ The main methods of for planning over this representation are: \cite{path_space}
 
 
 The difference between these two from the perspective of planning is the efficiency of algorithm working 
-on the data and the pre-processing of the data going to the algorithm. Because an occupancy grid is stored 
-on a \textit{Redis Server} and it has very fine resolution, the number of grid squares (referred to as 
-\textit{Grid Cells}) is immense. Therefore, to obtain a graph representation from that, every time a 
-path replanning would have to take place, the conversion would have to take place on a very significant 
-number of points. Therefore, the occupancy grid was chosen due to no conversion needing to be made on 
-the data during runtime for planning, but rather a small alteration for the \textit{Path Planning 
-Algorithm} which should not affect the alogirithm's performance.
+on the data and the pre-processing as it goes into the algorithm. Because out Occupancy Grid is stored 
+on a \textit{Redis Server} and it has very fine resolution (aka granularity), the number of grid 
+squares (referred to as \textit{Grid Cells}) is immense. To obtain a graph representation of the
+planning space at each epoch for the map at the resolution of the grid as implemented is
+intractable from a compute time perspective.
+
+Therefore planning over the Occupancy Grid is selected in preference to an abstracted representation
+such as a topological map.
 
 \subsubsection{Alterations}
 
@@ -321,17 +322,22 @@ of the occupancy grid on Redis for the following reasons:
 granularity
 	\item Odometry Distortion  - extremely finely planned path on an occupancy grid introduces many 
 turns, increasing odometry drift rate considerably \cite{task2_report}
-	\item Runtime Optimization - as long as there is a path to the goal and the robot can follow 
-it, we wish to save as much processing time as we humanely can and plannign with bigger cell dimensions 
-helps us save calculation time
+	\item Runtime Optimization - a coarser grid reduces the depth of a given plan over the same route,
+whilst sacrificing physical parity of said plan
 
 \end{itemize}
 
-Hence, it as decided that the rganularity would be available for configuring as a parameter before runtime without really limiting any way because that would diminish the further possible modifications to the aglorithm. However, by defaul it is set to be equal to the granularity of the occupancy grid.
+The planning granularity is configurable though by default takes the same resolution as the Occupancy Grid.
 
-Moreover, the \textit{(Grid) Cells} store their actual $(X ,Y)$ coordinates as well as occupancy - are they free space or not. Grid cells are stored in a two dimensional array which is indexed by using actual $(X ,Y)$ coordinates. Furthermore, said array is also dynamycally expanding in both dimensions so as to accomodate any number of cells (limited only by memory capacity) in order to not miss a valid optimal path due to any array bounds which also makes this solution more extensible and easily modifiable.
+Moreover, the \textit{(Grid) Cells} store their actual $(x ,y)$ coordinates as well as occupancy - whether 
+they are free space or not. Grid cells are stored in a two dimensional array which is indexed into using 
+actual $(x ,y)$ coordinates. Furthermore, said array is also dynamycally expandable in both dimensions so
+as to accomodate any number of cells (limited only by memory capacity) in order to not miss a valid 
+optimal path due to any array bounds which also makes this solution more extensible and easily modifiable.
 
-Therefore, formign a local cache of the Redis server data suitable for path search computations of virtually any kind. Lastly, because the occupancy data is stored on Redis, the implementation obtains unknown occupancies from the server and caches them locally in said two-dimensional array. 
+A local cache of the Occupancy Grid to make planning more performant. As already noted calling out to 
+the Redis server at a high rate incurrs a large overhead - a cached version can be used to plan
+without convern for access frequency.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -340,7 +346,7 @@ Therefore, formign a local cache of the Redis server data suitable for path sear
 \subsection{Path Planning Algorithm}
 \label{Path_Planning_Algorithm}
 
-This method should allow the robot to navigate the mapped space between any two unoccupied \textit{(Grid) Cells} \textit{\S\ref{Code}} of the planning space (grid). 
+This method should allow the robot to navigate the mapped space between any two unoccupied \textit{Cells} \textit{\S\ref{Code}} of the planning space.
 
 \subsubsection{Research}
 
@@ -348,17 +354,23 @@ Firstly, there are many options for the \textit{Path Planning Algorithm} that se
 
 \begin{itemize}
 
-	\item \textit{Floyd-Warshall Algorithm}\cite{path_warshall} - a many-to-many algorithm for planning routes
-	\item \textit{Djikstra Algorithm}\cite{path_warshall} - a one-to-many algorithm
-	\item \textit{A* Algorithm}\cite{path_astar}	- a one-to-one algorithm
+	\item \textit{Floyd-Warshall Algorithm} \cite{path_warshall} - a many-to-many algorithm for planning routes
+	\item \textit{Djikstra Graph Search Algorithm} \cite{path_djikstra} - a one-to-many algorithm
+	\item \textit{A* Search Algorithm} \cite{path_astar}	- a one-to-one algorithm
 
 \end{itemize}
 
-These are some of the most common and robust pathing algorihtms used in pathing. However, even based on the iformation above it can be concluded that Floyd-Warshall algorithm is not waht we were lookign because w have a single strating point - the position of the robot. Moreover, empirical data\cite{path_efficiency} shows that the best-first search algorithm is considerably faster than the Djikstra algorithm and in fact is in general considered the fastest planning algorithm. Moreover, it's varioations as well as its purest form are used industry-wide in robotics. More reasons for choosing A* can be outlined in \textit{\S\ref{Path_Planning_Algorihtm_Alterations}}
+These are some of the most common and robust algorihtms used in path planning. However, even based on 
+the information above it can be concluded that Floyd-Warshall algorithm is not what we were looking 
+because we have a single starting point - the position of the robot. Moreover, empirical data 
+\cite{path_efficiency} shows that the best-first search algorithm is considerably faster than 
+the Djikstra algorithm and in fact is in general considered one of the fastest planning algorithms -- 
+it's variations as well as it's purest form are used industry-wide in robotics. 
+More reasons for choosing A* are outlined in \textit{\S\ref{Path_Planning_Algorihtm_Alterations}}
 
 \subsubsection{Method Chosen} 
 
-Therefore, A* was chosen to be the algorithm of choice for path calculation to the target grid cell. The pseudocode explaining its basic operation is as follows:
+A* was chosen for path calculation to the target grid cell. The pseudocode explaining its basic operation is as follows:
 
 \begin{figure}[H]
 	  \centering 
@@ -371,20 +383,40 @@ Therefore, A* was chosen to be the algorithm of choice for path calculation to t
           \lstinputlisting[language=python]{../../astar_path_reconstruction.py}\caption{The A* algorithm path reconstruction pseudocode\cite{path_astar_grid_no_grid} adapted to use the \textit{Planning Space} chosen - an occupancy grid }
 \end{figure} 
 
+
+
 \subsubsection{Alterations}
 \label{Path_Planning_Algorihtm_Alterations}
 
-The chosen \textit{Path Planning Algorihtm - A*} (\S\ref{Path_Planning_Algorithm}) uses the movement and \textit{Heuristic Cost} to estimate the total cost of  including cell into the claculated path. Therefore, as we know the pose of each grid cell, \textit{Euclidian Distances} were chosen to be a measure of (transition) cost between cells making it the cost function betwen any two cells $A$ and $B$. The \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as fast as possible while findign an adequately short path to the desired destination whcih also reduces the amount of server requests for unknown occupancies. On a side note, the movement cost is simply the sum euclidian distances between nodes along the (considered) path involvind said cell.
+The chosen \textit{Path Planning Algorihtm - A*} (\S\ref{Path_Planning_Algorithm}) uses the movement 
+and \textit{Heuristic Cost} to estimate the total cost of  including cell into the claculated path. 
+As we know the pose of each grid cell, \textit{Euclidian Distances} were chosen to be a 
+measure of transition cost between cells making it the cost function betwen any two cells $A$ and $B$. 
+The \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered 
+cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as 
+fast as possible while finding an adequately short path to the desired destination which also reduces 
+the amount of Redis Server requests for unknown occupancies. As a side note, the movement cost is 
+simply the sum euclidian distances between nodes along the (considered) path involving said cell.
 
-Secondly, the A* pseudocode had to be adapted to work on a grid instead of a graph which was solved by a simple function obtaining its neighbours by using the considered cell's pose to get its adjacent ones from the \textit{\S\ref{Path_Planning_Space} Occupancy Grid}.
+Secondly, the A* pseudocode had to be adapted to work on a grid instead of a graph which was solved 
+by a simple function obtaining its neighbours by using the considered cell's pose to get its adjacent 
+ones from the \textit{\S\ref{Path_Planning_Space} Occupancy Grid}.
 
-Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_astar_grid_no_grid}  or only movements up, down, left or right\cite{path_astar_grid_no_diagonals}. However, it seemed like a wasted opportunity to not allow the robot to move diagonally. Such cells are referred to as  \textit{Diagonal Cells} - cells diagonal to the currently considered cell - whose adjacent cells we wish to consider for furhter pathing for the remainded of this report and in the code comments. Moreover, it had to be also accounter for scenarios where the diagonal cell is blocked by two of its neighbours and the diagonal cell can no longer participate in path calculation as shown in the following figure.
+Most iterations of the A* algorithm rely on either graphs \cite{path_astar_grid_no_grid}  or 
+only movements up, down, left or right \cite{path_astar_grid_no_diagonals}. However, it seemed like a 
+wasted opportunity to not allow the robot to move diagonally. Such cells are referred to as  
+\textit{Diagonal Cells} - cells diagonal to the currently considered cell - whose adjacent cells 
+we wish to consider for furhter pathing. The scenario where the diagonal cell is blocked by two of 
+its neighbours must be accounted for. In this case the diagonal cell can no longer participate in 
+path calculation as shown in the Figure \ref{fig:diagonalcell}
 
 
 \begin{figure}[H]
 	  \centering
 	  \includegraphics[width=30em]{../assets/fig_astar_diagonal.jpg}
-          \caption{The \textbf{left} figure shows the $central$ cell (square) is the so called \textit{Considered Cell} whose neighbours we are trying to obtain to plan a path. The \textbf{left} figure shows that we cannot consider the \textit{Diagonal Cell} $A$ as a valid neighbour because it is blocked by $B$ and $C$ making the movement along the red arrow as seen in the \textbf{right} figure impossible}
+          \caption{
+            \label{fig:diagonalcell}
+            The \textbf{left} figure shows the $central$ cell (square) is the so called \textit{Considered Cell} whose neighbours we are trying to obtain to plan a path. The \textbf{left} figure shows that we cannot consider the \textit{Diagonal Cell} $A$ as a valid neighbour because it is blocked by $B$ and $C$ making the movement along the red arrow as seen in the \textbf{right} figure impossible}
 \end{figure} 
 
 
@@ -398,7 +430,7 @@ Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_as
 
 \subsection{The Planner}
 
-This section is concerned with the intergation of the algorithm and data structures described above into the main control loop and its interaction with previosuly established subsystems\cite{task2_report}. The algorithm determinign the next action or travel destination and sequencing said action is called the \textit{Planner} and is, therefore, responsible for maximizing the food collection rate by sequencing events governing said rate.
+This section is concerned with the intergation of the algorithm and data structures described above into the main control loop and its interaction with previosuly established subsystems \cite{task2_report}. The algorithm determining the next action or travel destination and sequencing said action is called the \textit{Planner} and is, therefore, responsible for maximizing the food collection rate by sequencing events governing said rate.
 
 \subsubsection{Method Chosen}
 \label{Planner_Principle}
