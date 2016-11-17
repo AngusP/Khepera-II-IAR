@@ -343,12 +343,24 @@ class Mapping(object):
         '''
         Same as singular predict_sensor(pose) but takes a list of
         poses. Executes as a single Redis transction for maximum 
-        network speedz
+        network speedz.
+
+        Does some serious caching magic, and will look up the minimum
+        set of keys required to make predictions
 
         Arguments:
         poses  --  [(x1,y1,theta1), ...]
         '''
+
         pipe = self.ds.r.pipeline()
+        keys = []
+
+        def cache_query(key):
+            if key in keys:
+                pass
+            else:
+                pipe.hget(key, 'occ')
+                keys.append(key)
 
         for pose in poses:
             x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
@@ -366,10 +378,15 @@ class Mapping(object):
                 pixels = self.angle_raytrace(p, t, 6)
                 
                 for pixel in pixels:
-                    pipe.hget(self.ds.og._genkey(pixel[0], pixel[1]), 'occ')
+                    cache_query(self.ds.og._genkey(pixel[0], pixel[1]))
 
-        cachemap = pipe.execute() # Get it...?
-        # Except it's actually a list...
+        # Pull from Redis
+        cache = pipe.execute()
+
+        assert len(cache) == len(keys), "Transaticon key and returned value lists "\
+            "are different lengths! {} != {}".format(len(cache), len(keys))
+
+        # print("cachemap transaction looked up {} keys".format(len(cache)))
 
         def safe_int_cast(val):
             try:
@@ -377,10 +394,16 @@ class Mapping(object):
             except (ValueError, TypeError, AttributeError):
                 return None
 
-        cachemap = map(safe_int_cast, cachemap)
+        # Get it...?
+        cachemap = dict()
 
+        def into_hmap(cachepair):
+            k, v = cachepair
+            cachemap[k] = safe_int_cast(v)
+        
+        map(into_hmap, zip(keys, cache))
+        
         mret = []
-        cursor = 0
 
         for pose in poses:
             x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
@@ -398,9 +421,8 @@ class Mapping(object):
                 pixels = self.angle_raytrace(p, t, 6)
                 occs = []
                 for pixel in pixels:
-                    # EWWWW
-                    occs.append(cachemap[cursor])
-                    cursor += 1
+                    pixelkey = self.ds.og._genkey(pixel[0], pixel[1])
+                    occs.append(cachemap[pixelkey])
                 min_dist = None
                 this_occ = None
                 for pixel, occ in zip(pixels, occs):
@@ -631,7 +653,7 @@ class Particles(object):
         avg_x = 0
         avg_y = 0
         avg_theta = 0
-        sum_wgts = 0
+        sum_wgts = 1e-10
 
         for p in self:
             avg_x += p.x * p.weight
@@ -763,7 +785,7 @@ class Particles(object):
         keepth = 0
         
         for i, particle in enumerate(self):
-            weight = abs(i + 2 + 1.0/particle.weight)
+            weight = abs(i + 2 + 1.0/(particle.weight + 1e-8))
             
             if random.randint(0, int(weight)) == 0:
                 keep = particle

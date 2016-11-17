@@ -118,7 +118,7 @@ class Navigation_Algorithm:
 	    #return result that if we are wall following and if we would benefit from exploration and are already not doing so
 	    return wall_following and exploration_beneficial and not result.boredom
 
-        def new_state(self, nav_state, pathing_state, comms,ds):
+        def new_state(self, nav_state, pathing_state, comms,ds, odo):
 	                
 	    result = Navigation_State()
 	    result = nav_state 
@@ -142,7 +142,7 @@ class Navigation_Algorithm:
 					comms.drive(-constants.CONST_SPEED, constants.CONST_SPEED)
 
 				# do for number of rounds that fit in 1 second
-				for x in xrange(1.0 / constants.MEASUREMENT_PERIOD_MS):
+				for x in xrange(int(1000 / constants.MEASUREMENT_PERIOD_MS)):
 					odo_state = odo.new_state(odo_state, comms.get_odo())
   	    				nav_state.dist = comms.get_ir()
          				ds.push(odo_state, nav_state.dist)

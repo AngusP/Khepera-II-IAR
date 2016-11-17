@@ -90,7 +90,7 @@ def main():
 
 
 	    #check reactive controls first
-	    nav_state = nav.new_state(nav_state ,pathing_state, comms, ds)
+	    nav_state = nav.new_state(nav_state ,pathing_state, comms, ds, odo)
 	    #then check if pathing algorithm applies        
 	    nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
 
@@ -128,7 +128,7 @@ def main():
 			pathing.collect_food(pathing_state, comms)
  	   
 		
-    except TypeError as e:
+    except ImportError as e:
         comms.drive(0,0)
         raise(e)
 
