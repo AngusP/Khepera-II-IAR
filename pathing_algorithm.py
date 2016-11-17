@@ -61,7 +61,7 @@ class Pathing_Algorithm:
     #determines if have left the path
     def is_away_from_path(self, direction):
 		#if we are too far away by several cells from the cell it should be heading to
-		return self.vector_magnitude(direction) > self.granularity*2
+		return self.vector_magnitude(direction) > self.granularity*1.5
    
     #snap passed actual X or Y value to a math planning grid granularity
     def snap(self, value):
@@ -72,6 +72,9 @@ class Pathing_Algorithm:
 			
 		#next_cell_pose = pathing_state.active_path[1].get_pose()
 		current_coordinates = (self.snap(odo_state.x), self.snap(odo_state.y))
+
+
+		#print current_coordinates
 
 		#we know the cell is unboccupied as we are on it
 		pathing_state.current_cell = Cell(current_coordinates[0], current_coordinates[1] , True)	
@@ -117,7 +120,7 @@ class Pathing_Algorithm:
 	#add current cell as a food source
 	pathing_state.add_food_source()
 	#now collect it
-	self.drive_over_food(self, pathing_state, comms)
+	self.drive_over_food(pathing_state, comms)
 
 		
     #planning after a piece of food is collected    
@@ -171,15 +174,6 @@ class Pathing_Algorithm:
 
 		#try to begin collecting food
 		self.drive_over_food(pathing_state, comms)
-
-		# do not interrupt the spiral around found food source
-		if pathing_state.spiral:	
-			pathing_state.spiral_counter += 1
-			#make it got in a spiral
-			nav_state.speed_l = pathing_state.spiral_counter / constants.SPIRAL_SPEED_COEFFICIENT
-			nav_state.speed_r = constants.CONST_SPEED 
-			return nav_state
-	
 		
 		#get current direction vector to heading grid cell	
 		direction = self.get_direction(odo_state, pathing_state)

@@ -193,8 +193,6 @@ class Navigation_Algorithm:
 		 result.boredom = False
 		 #make sure to denote exploration end on this round
 		 pathing_state.complete_exploration()
-		 #make sure do not continue spiralling into the wall
-		 pathing_state.end_spiral()
 
                  # do not interrupt if already handle
                  if self.is_being_unstuck(result.system_state):

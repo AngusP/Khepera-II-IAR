@@ -100,7 +100,7 @@ class Odometry_Algorithm:
                 result.x     = x_n
 		result.y     = y_n
 		result.odo   = new_odo
-		result.theta = self.radians(self.normalize_angle(math.degrees(theta_n)))
+		result.theta = math.radians(self.normalize_angle(math.degrees(theta_n)))
 		
 
 		return result
