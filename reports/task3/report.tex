@@ -430,12 +430,21 @@ path calculation as shown in the Figure \ref{fig:diagonalcell}
 
 \subsection{The Planner}
 
-This section is concerned with the intergation of the algorithm and data structures described above into the main control loop and its interaction with previosuly established subsystems \cite{task2_report}. The algorithm determining the next action or travel destination and sequencing said action is called the \textit{Planner} and is, therefore, responsible for maximizing the food collection rate by sequencing events governing said rate.
+This section is concerned with the intergation of the algorithm and data structures described above 
+into the main control loop and its interaction with previosuly established subsystems 
+\cite{task2_report}. The algorithm determining the next action or travel destination and sequencing 
+the execution of said action is called the \textit{Planner} and is, therefore, responsible for 
+maximizing the food collection rate by sequencing events governing said rate.
 
 \subsubsection{Method Chosen}
 \label{Planner_Principle}
 
-Now that we are able to localize ourselves, knwo the map and can calculate paths on the grid, we can set priorites for action to maximize food gathering. Firstly, it is important to note that a it is considered that each \textit{Food Source} has only one unit of \textit{Food}. Upon return to the \textit{Nest} and droppign off currently collected food the robot resets the food sources which now have food units again, therefore, starting a new \textit{Food Collection Round (a.k.a. Round)}. Hence, the aciton priorites were set as follows
+Now that we are able to localize ourselves, know the map and can calculate paths on the planning 
+grid, we can set priorites for action to maximize food gathering. Firstly, it is important to 
+note that each \textit{Food Source} has only one unit of \textit{Food}. 
+Upon return to the \textit{Nest} and dropping off currently collected food the planner resets the 
+food sources which now have food units again, starting a new \textit{Food Collection 
+Round (a.k.a. Round)}. Action priorites were set as follows:
 
 \begin{enumerate}
 	\item \textit{Find} the first food source to begin periodic behavior in the following points
@@ -444,16 +453,24 @@ Now that we are able to localize ourselves, knwo the map and can calculate paths
 	\item \textit{Return} to the nest and drop off collected food
 \end{enumerate}
 
-Thus, we aim to find some food source first to start collecting food as soon as possible. After which exploration for new food sources becomes less of a priority and is only invoked once per round as we do not wish to waste too much time on exploration when we already have food to collect. Therefore, next on the list of priorities is collecting all the food before returning to the nest to drop it off because if we do not collect all the food before a new round start, it is reset - lost. After that is done, the robot returns to the nest and drops off collected food.
-
+We aim to find some food source early to be able start collecting food as soon as possible. 
+Once this is done, exploration for new food sources becomes less of a priority and is only invoked 
+once per round as we do not wish to waste too much time on exploration when we already have
+a known location to collect from. Next on the list of priorities is collecting all the food before 
+returning to the nest to drop it off.
 
 \begin{figure}[H]
 	  \centering
-	  \includegraphics[width=30em]{../assets/fig_planner.jpg}
-          \caption{The planning algorithm - the \textit{Planner} in state-diagram form, this decision making tree is implored on overy iteration of the control loop and determines the action the system is to follow}
+	  \includegraphics[width=0.9\textwidth]{../assets/fig_planner.jpg}
+          \caption{The planning algorithm - the \textit{Planner} in control-flow form, this decision making tree is implored on every iteration of the control loop and determines the action the system is to follow.}
 \end{figure} 
 
-The robot aims to collect the closest food first (bases on Euclidian distances). The movement between cells is moevement along the vector between their recorded coordinates by adjusting the angle along the \textit{Vector of Approach}, same as \textit{Return Algorithm}\cite{task2_report}. Moreover, sometimes unxecpected events can happen that coud lead the robot away from said approach vector. Hence, the next destination is decided (as per above priority list) when the following events happen:
+The robot aims to collect the closest food first (based on Euclidian distances). The movement 
+between cells is moevement along the vector between their recorded coordinates by adjusting the 
+angle along the \textit{Vector of Approach}, same as \textit{Return Algorithm}\cite{task2_report}. 
+Moreover, sometimes unxecpected events can happen that coud lead the robot away from said approach 
+vector. Hence, the next destination is decided (as per above priority list) when the following 
+events happen:
 
 \begin{itemize}
 
@@ -466,7 +483,14 @@ The robot aims to collect the closest food first (bases on Euclidian distances).
 \subsubsection{Alterations}
 \label{Planner_Algorithm_Alterations}
 
-After reviewing initial \textit{\S\ref{Experimental_Results}Eperimenal Results} it was decided that due to the grid granularity being set (by default) in the same order of magnitude as robot dimensions, it is reasonable to assume that no two food sources can exist in the same grid cell as the cell sizes are assumed to be set by the user / programmer to a granularity not exceeding robot dimensions. Lastly, because the algorithm needs to find new food sources, the boredom mechanism \cite{task1_report} was reinstated into the control loop and is the exploration mechanism and is utilized during the \textit{Find} stages of the algorithm. 
+After reviewing initial \textit{\S\ref{Experimental_Results} Experimental Results} it was decided 
+that due to the grid granularity being set (by default) in the same order of magnitude as robot 
+dimensions, it is reasonable to assume that no two food sources can exist in the same grid cell 
+as the cell sizes are assumed to be set by the user / programmer to a granularity not exceeding 
+robot dimensions. Lastly, because the algorithm needs to find new food sources, the boredom 
+mechanism \cite{task1_report} was reinstated into the control loop and is the exploration 
+mechanism and is utilized during the \textit{Find} stages of the algorithm.
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -474,20 +498,29 @@ After reviewing initial \textit{\S\ref{Experimental_Results}Eperimenal Results} 
 \subsection{User Input and Alterations}
 \label{Planner_User_Input}
 
-The user input of \textit{Space} being pressed is used to indicate the presence of a new food source being found. 
+The user input of \textit{Space} being pressed is used to indicate the presence of a new food 
+source being found. 
 
 \subsection{Subsystem Interaction}
 
-Lastly, the integration of the algorithm into the main system is seamless and practically mimics the integration of the \textit{Return Algorithm}\cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. The difference is now we know where there are walls or free space. hence, the robot can fully relay the control to the planner, unless we are exploring using "boredom"\cite{task2_report} or are being "unstuck"\cite{task2_report} without fear of the robot crashing into the wall. 
+Lastly, the integration of the algorithm into the main system is seamless and practically mimics 
+the integration of the \textit{Return Algorithm} \cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. 
+The difference is now we know where there are walls or free space. Hence, the robot can fully 
+devolve control to the planner, unless we are exploring using "boredom" \cite{task2_report} or 
+are being "unstuck" \cite{task2_report} without fear of the robot crashing into the wall. 
 
-Therefore, ensuring that SLAM and A* are the main control element in the system, unless we need to avoid collision. A further note is that the above distinction is not as clear in the \textit{\S\ref{Code} Code} because of the location of methods, however, the end result (and aim) is as descibed above.
-
-
-\section{Experimental Result}
-\label{Experimental_Results}
+This amounts to SLAM and A* are the main control authority in the system, unless we need 
+to avoid collision. A further note is that the above distinction is not as clear in the 
+\textit{\S\ref{Code} Code} because of the location of methods, however, the end result 
+(and aim) is as descibed above.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+\section{Experimental Results}
+\label{Experimental_Results}
+
 
 
 
@@ -504,6 +537,9 @@ TODO: Empirical results
 
 TODO Rule the world
 
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 \begin{thebibliography}{}
