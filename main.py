@@ -18,6 +18,8 @@ from navigation_algorithm 	import Navigation_Algorithm
 from pathing_algorithm    	import Pathing_Algorithm
 from pathing_state 	  	import Pathing_State
 
+from mapping import Particles, Mapping
+
 import constants
 import sys
 import cv2
@@ -59,11 +61,14 @@ def main():
         # reset odometry for this robot run 
         comms.reset_odo()
 	 
+        t0 = time.time()
+        prior_odo = None
 
 	#begin control loop
         while True:
 
-	    #get new sensor readings          		
+	    #get new sensor readings
+            prior_odo = odo_state
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 
@@ -71,6 +76,18 @@ def main():
 	    nav_state = nav.new_state(nav_state ,pathing_state, comms, ds)
 	    #then check if pathing algorithm applies        
 	    nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
+
+            # Push deltas to particle filter
+            t1 = time.time()
+            dt = t1 - t0
+            t0 = t1
+            
+            delta_s = m._euclidean((prior_odo.x, prior_odo.y), (odo_state.x, odo_state.y))
+            dtheta = prior_odo.theta - odo_state.theta
+            #              dt, ds,      dtheta, sensor readings
+            pf.push_params(dt, delta_s, dtheta, nav_state.dist)
+            predict_state = pf()
+            print(predict_state)
 
 	    #if we are done break the control loop, stop the robot and exit
 	    if pathing_state.done:
@@ -169,6 +186,8 @@ if __name__ == "__main__":
     print(namebadge)
         
     ds = DataStore(host=server)
+    m = Mapping(ds=ds)
+    pf = Particles(mapper=m)
     
     try:
         main()

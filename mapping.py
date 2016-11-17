@@ -123,8 +123,6 @@ class Mapping(object):
         '''
         Subscribe (so run async in a different process) to state updates published
         to Redis and affect the map
-
-        TODO: FIX to match new message serialised format
         '''
         sub = self.ds.r.pubsub()
         sub.subscribe([self.ds.listname])
@@ -328,6 +326,17 @@ class Mapping(object):
 
         return ret
 
+
+    def predict_msensors(self, poses):
+        '''
+        Same as singular predict_sensor(pose) but takes a list of poses
+        and transacts with Redis for maximim speeds
+
+        Arguments:
+        poses  --  [(x,y,theta), ...]
+        '''
+        raise NotImplementedError()
+        
 
 
     def transact_predict_sensors(self, poses):
@@ -543,8 +552,8 @@ class Particles(object):
         self.partchan = "particlestream"
 
         # Hyperparameter (aka magic number)
-        self.DRIFT_SMOOTHING = 100.0
-        self.DRIFT_ROTATIONAL_SMOOTHING = 1.0
+        self.DRIFT_SMOOTHING = 300.0
+        self.DRIFT_ROTATIONAL_SMOOTHING = 2.0
         '''
         DRIFT_SMOOTHING is the reciportical multiplier;
         higher numbers reduce the magnitude of the change.
@@ -651,7 +660,7 @@ class Particles(object):
 
             new_pose = (x + np.random.normal(v_dt * math.cos(theta), scale=sigma),
                         y + np.random.normal(v_dt * math.sin(theta), scale=sigma),
-                        theta + np.random.normal(w_dt, scale=sigma/(2.0*self.DRIFT_ROTATIONAL_SMOOTHING)))
+                        theta - np.random.normal(w_dt, scale=sigma/self.DRIFT_ROTATIONAL_SMOOTHING))
             return new_pose
 
 
@@ -699,6 +708,8 @@ class Particles(object):
         # Announce new particles are available
         pipe.publish(self.partchan, "{} {}".format(self.partchan, len(self.particles)))
         pipe.execute()
+
+        return self.whereami()
 
 
 
