@@ -84,13 +84,10 @@ def main():
             predict_state, varience = pf()
             # print(predict_state)
 
-            odo_state.x = predict_state[0]
-            odo_state.y = predict_state[1]
-            odo_state.theta = predict_state[2]
-
+            odo_state.x, odo_state.y, odo_state.theta = predict_state
 
 	    #check reactive controls first
-	    nav_state = nav.new_state(nav_state ,pathing_state, comms, ds, odo)
+	    nav_state = nav.new_state(nav_state ,pathing_state, comms, ds, odo, odo_state, pf)
 	    #then check if pathing algorithm applies        
 	    nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
 
@@ -114,7 +111,7 @@ def main():
 
 	    
 	    # wait for new sensor round 
-	    key_pressed = cv2.waitKey(constants.MEASUREMENT_PERIOD_MS) & 0xFF
+	    key_pressed = cv2.waitKey(1) & 0xFF
 	    #found a new food source 
 	    if key_pressed  == ord(' '):
 			# if SPACE is pressed

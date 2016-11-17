@@ -55,7 +55,7 @@ DIST_CUTOFF = 0.0
 M_N_ANGLE  = 10 # degrees
 
 #maximum boredom rounds the robot can do
-MAX_BOREDOM = 10
+MAX_BOREDOM = 1000000
 
 #coeffiecient as to how many round it takes to form a spiral inceremnt speed
 SPIRAL_SPEED_COEFFICIENT = 10

@@ -7,6 +7,7 @@
 
 import heapq
 import numpy
+import math
 
 class Cell(object):
     #make a new cell
@@ -57,7 +58,7 @@ class AStar(object):
 	#initialize al lvariables
         self.reset()
         
-        #CONVENTION IN THIS GRID
+        # CONVENTION IN THIS GRID
         # -----------------------------------> Y
         # |
         # |
@@ -103,10 +104,9 @@ class AStar(object):
 
 
 
-    #return if the value indicates a threshold where we consider the cell occupid
-    def is_occupid(self, value):
-	#TODO check
-	if value >= 50:
+    #return if the value indicates a threshold where we consider the cell occupied
+    def is_occupied(self, value):
+	if value < 50 or value is None:
 		return True
 	return False 
 
@@ -134,27 +134,26 @@ class AStar(object):
         if x_index >= self.max_x or x_index < 0 or y_index >= self.max_y or y_index < 0:
       
 	    #get cell and add to local gache
-	    #occupancy = self.getter.get(x,y)
-	    occupancy = True
+	    occupancy = self.getter.og.get(x,y)
+	    #occupancy = True
 
-
-	    
-	    #TODO uncomment and use
-	    #occupied = self.is_occupid(occupancy)
-	    self.set_cell(x, y, occupancy)
+            occupied = self.is_occupied(occupancy)
+	    self.set_cell(x, y, occupied)
             return self.get_cell(x,y)
         else:
 	    cell = self.grid[x_index][y_index]
 	    if cell is None:
 		#get cell and add to local gache
-	    	#occupancy = self.getter.get(x,y)
-		occupancy = True
+	    	occupancy = self.getter.og.get(x,y)
+		#occupancy = True
 
 		#TODO uncomment and use
-		#occupied = self.is_occupid(occupancy)
-		self.set_cell(x, y, occupancy)
+		occupied = self.is_occupied(occupancy)
+		self.set_cell(x, y, occupied)
 
 	    return self.grid[x_index][y_index]
+
+        
     #set the occupancy of the cell for indicated X,Y pose
     def set_cell(self,x,y, reachable):
 
@@ -294,7 +293,7 @@ class AStar(object):
         #print cell
         while cell.parent is not self.start:
             cell = cell.parent
-            #print cell
+            print cell
             path.append(Cell(cell.x, cell.y, True))   
 
         cell = self.start
@@ -341,7 +340,7 @@ class AStar(object):
                     if (adj_cell.f, adj_cell) in self.opened:
                         # if adj cell in open list, check if current path better 
 			# than the previosu one for this adjacent cell.
-                        if adj_cell.g > cell.g + self.cell_distance(adj, cell):
+                        if adj_cell.g > cell.g + self.cell_distance(adj_cell, cell):
                             self.update_cell(adj_cell, cell)
                     else:
                         self.update_cell(adj_cell, cell)

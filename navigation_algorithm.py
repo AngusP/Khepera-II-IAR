@@ -118,7 +118,7 @@ class Navigation_Algorithm:
 	    #return result that if we are wall following and if we would benefit from exploration and are already not doing so
 	    return wall_following and exploration_beneficial and not result.boredom
 
-        def new_state(self, nav_state, pathing_state, comms,ds, odo):
+        def new_state(self, nav_state, pathing_state, comms, ds, odo, odo_state, pf):
 	                
 	    result = Navigation_State()
 	    result = nav_state 
@@ -135,23 +135,40 @@ class Navigation_Algorithm:
 			result.boredom_counter += 1
 			if result.boredom_counter > constants.MAX_BOREDOM:
 
+				print "BORED"
+                                
 				#drive away from the wall we were hugging
 				if result.system_state == constants.STATE_LEFT_FOLLOW:
 					comms.drive(constants.CONST_SPEED, -constants.CONST_SPEED)
 				else:
 					comms.drive(-constants.CONST_SPEED, constants.CONST_SPEED)
 
+                                t0 = time.time()
+                                prior_odo = None
+                                        
 				# do for number of rounds that fit in 1 second
-				for x in xrange(int(1000 / constants.MEASUREMENT_PERIOD_MS)):
-					odo_state = odo.new_state(odo_state, comms.get_odo())
-  	    				nav_state.dist = comms.get_ir()
+                                for x in xrange(int(500 / constants.MEASUREMENT_PERIOD_MS)):
+
+                                        prior_odo = odo_state
+                                        odo_state = odo.new_state(odo_state, comms.get_odo())
+                                        nav_state.dist = comms.get_ir()
+                                        
+                                        t1 = time.time()
+                                        dt = t1 - t0
+                                        t0 = t1
+                                        
+                                        delta_s = pf.m._euclidean((prior_odo.x, prior_odo.y), (odo_state.x, odo_state.y))
+                                        dtheta = prior_odo.theta - odo_state.theta
+                                        pf.push_params(dt, delta_s, dtheta, nav_state.dist)
+                                        predict_state, varience = pf()
+                                        odo_state.x, odo_state.y, odo_state.theta = predict_state
+                                        
+                                        
          				ds.push(odo_state, nav_state.dist)
 					#sleep to let sensors detect stuff
-					time.sleep(constants.MEASUREMENT_PERIOD_MS)
 
 				#drive forwards until stuck
 				comms.drive(constants.CONST_SPEED, constants.CONST_SPEED)
-				print "BORED"
 				#make the boredom driving forward happen, reset boredom counter
 				result.boredom = True
 				result.boredom_counter = 0
