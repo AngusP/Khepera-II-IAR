@@ -127,7 +127,12 @@ class DataStore(object):
 
         Instantiates it's own StrictRedis, PrettyPrint and Whiptail classes
         '''
-        self.r = redis.StrictRedis(host=host, port=port, db=db)
+        if host.endswith(".sock"):
+            print("Using UNIX Socket for Redis")
+            self.r = redis.StrictRedis(unix_socket_path=host)
+        else:
+            self.r = redis.StrictRedis(host=host, port=port, db=db)
+
         self.wt = whiptail.Whiptail()
         self.pp = pprint.PrettyPrinter(indent=1)
 
@@ -1644,7 +1649,7 @@ if __name__ == "__main__":
         print("-t or --test     : Run DocTests over DataStore and GridManager")
         sys.exit(2)
 
-    server = "localhost"
+    server = "/tmp/redis.sock"
 
     # Pre-instantiation options
     for opt, arg in optlist:

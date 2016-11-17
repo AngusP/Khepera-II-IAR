@@ -135,7 +135,7 @@ if __name__ == "__main__":
     timeout = 1
     baud = 9600
 
-    server = "localhost"
+    server = "/tmp/redis.sock"
         
     for opt, arg in optlist:
         if opt in ('-h', '--help'):

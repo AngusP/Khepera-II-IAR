@@ -86,7 +86,7 @@ class Point(object):
 
 class Mapping(object):
 
-    def __init__(self, host='localhost', ds=None):
+    def __init__(self, host='/tmp/redis.sock', ds=None):
         
         if ds is None:
             self.ds = DataStore(host=server)
@@ -309,7 +309,6 @@ class Mapping(object):
                       self.sensor_offsets)
 
         pre_points = zip(sensors, angles)
-        points = set()
         ret = []
 
         for point in pre_points:
@@ -328,6 +327,77 @@ class Mapping(object):
             ret.append((min_dist, this_occ))
 
         return ret
+
+
+
+    def transact_predict_sensors(self, poses):
+        '''
+        Same as singular predict_sensor(pose) but takes a list of
+        poses. Executes as a single Redis transction for maximum 
+        network speedz
+
+        Arguments:
+        poses  --  [(x1,y1,theta1), ...]
+        '''
+        pipe = self.ds.r.pipeline()
+
+        for pose in poses:
+            x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
+            theta = pose[2]
+            
+            angles = map(lambda t: t + theta, self.sensor_angles)
+            sensors = map(lambda pt: utils.relative_to_fixed_frame_tf(x, y, theta, pt[0], pt[1]), 
+                          self.sensor_offsets)
+            
+            pre_points = zip(sensors, angles)
+            ret = []
+
+            for point in pre_points:
+                p, t = point
+                pixels = self.angle_raytrace(p, t, 6)
+                
+                for pixel in pixels:
+                    pipe.hget(self.ds.og._genkey(pixel[0], pixel[1]), 'occ')
+
+        cachemap = pipe.execute() # Get it...?
+        # Except it's actually a list...
+
+        mret = []
+        cursor = 0
+
+        for pose in poses:
+            x, y = self.ds.og._snap(pose[0]), self.ds.og._snap(pose[1])
+            theta = pose[2]
+            
+            angles = map(lambda t: t + theta, self.sensor_angles)
+            sensors = map(lambda pt: utils.relative_to_fixed_frame_tf(x, y, theta, pt[0], pt[1]), 
+                          self.sensor_offsets)
+            
+            pre_points = zip(sensors, angles)
+            ret = []
+            
+            for point in pre_points:
+                p, t = point
+                pixels = self.angle_raytrace(p, t, 6)
+                occs = []
+                for pixel in pixels:
+                    # EWWWW
+                    occs.append(cachemap[cursor])
+                    cursor += 1
+                min_dist = None
+                this_occ = None
+                for pixel, occ in zip(pixels, occs):
+                    if occ > 0:
+                        d = self._euclidean((x,y), (pixel[0],pixel[1]))
+                        if d < min_dist or min_dist is None:
+                            min_dist = d
+                            this_occ = occ
+                            
+                ret.append((min_dist, this_occ))
+            mret.append(ret)
+
+        return mret
+        
 
 
 
@@ -585,21 +655,31 @@ class Particles(object):
             return new_pose
 
 
-        def sensor_update(pose):
+        def sensor_update(particles):
             '''
-            For a pose return expected sensor detections
+            For all particles, in-place updates weight
+            '''
+            predictions = self.m.transact_predict_sensors(map(tuple, particles))
+            for particle, predicted in zip(particles, predictions):
+                particle.weight = self.sensor_likelihood(self.sensor_readings, 
+                                                         predicted)
             
-            Calls Mapper.predict_sensor(pose) and calculates a weight
-            given the actial readings
-            '''
-            # TODO: Validate predict_sensor
-            predicted = self.m.predict_sensor(pose)
-            return self.sensor_likelihood(self.sensor_readings, predicted)
+        # def sensor_update(pose):
+        #     '''
+        #     For a pose return expected sensor detections
+            
+        #     Calls Mapper.predict_sensor(pose) and calculates a weight
+        #     given the actial readings
+        #     '''
+        #     # TODO: Validate predict_sensor
+        #     predicted = self.m.predict_sensor(pose)
+        #     return self.sensor_likelihood(self.sensor_readings, predicted)
         
         
         for p in self.particles:
             p.x, p.y, p.theta = motion_update(p)
-            p.weight = sensor_update(tuple(p))
+    
+        sensor_update(self.particles)
 
         newparticles = []
 
@@ -717,7 +797,7 @@ if __name__ == "__main__":
         print("-d or --destroy  : Destroy the map (not whole DB). Interactive.")
         sys.exit(2)
 
-    server = "localhost"
+    server = "/tmp/redis.sock"
 
     # Pre-instantiation options
     for opt, arg in optlist:
