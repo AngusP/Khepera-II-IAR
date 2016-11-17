@@ -371,6 +371,14 @@ class Mapping(object):
         cachemap = pipe.execute() # Get it...?
         # Except it's actually a list...
 
+        def safe_int_cast(val):
+            try:
+                return int(val)
+            except (ValueError, TypeError, AttributeError):
+                return None
+
+        cachemap = map(safe_int_cast, cachemap)
+
         mret = []
         cursor = 0
 
@@ -672,18 +680,6 @@ class Particles(object):
             for particle, predicted in zip(particles, predictions):
                 particle.weight = self.sensor_likelihood(self.sensor_readings, 
                                                          predicted)
-            
-        # def sensor_update(pose):
-        #     '''
-        #     For a pose return expected sensor detections
-            
-        #     Calls Mapper.predict_sensor(pose) and calculates a weight
-        #     given the actial readings
-        #     '''
-        #     # TODO: Validate predict_sensor
-        #     predicted = self.m.predict_sensor(pose)
-        #     return self.sensor_likelihood(self.sensor_readings, predicted)
-        
         
         for p in self.particles:
             p.x, p.y, p.theta = motion_update(p)

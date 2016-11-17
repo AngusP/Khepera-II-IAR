@@ -72,11 +72,6 @@ def main():
 	    odo_state = odo.new_state(odo_state, comms.get_odo())
   	    nav_state.dist = comms.get_ir()
 
-	    #check reactive controls first
-	    nav_state = nav.new_state(nav_state ,pathing_state, comms, ds)
-	    #then check if pathing algorithm applies        
-	    nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
-
             # Push deltas to particle filter
             t1 = time.time()
             dt = t1 - t0
@@ -86,8 +81,18 @@ def main():
             dtheta = prior_odo.theta - odo_state.theta
             #              dt, ds,      dtheta, sensor readings
             pf.push_params(dt, delta_s, dtheta, nav_state.dist)
-            predict_state = pf()
-            print(predict_state)
+            predict_state, varience = pf()
+            # print(predict_state)
+
+            odo_state.x = predict_state[0]
+            odo_state.y = predict_state[1]
+            odo_state.theta = predict_state[2]
+
+
+	    #check reactive controls first
+	    nav_state = nav.new_state(nav_state ,pathing_state, comms, ds)
+	    #then check if pathing algorithm applies        
+	    nav_state = pathing.new_state(nav_state, odo_state, pathing_state, comms)
 
 	    #if we are done break the control loop, stop the robot and exit
 	    if pathing_state.done:
