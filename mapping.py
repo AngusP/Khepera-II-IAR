@@ -196,7 +196,11 @@ class Mapping(object):
                     pointsl.add((sx, sy, 0))
                 else:
                     # Reduce the prior as we now think it's unoccupied
-                    pointsl.add((sx, sy, prior * 0.9))
+                    if prior >= 90:
+                        mul = 1.0
+                    else:
+                        mule = 0.9
+                    pointsl.add((sx, sy, prior * mul))
 
             if point.val > 70.0:
                 occ = 0
@@ -581,8 +585,8 @@ class Particles(object):
         self.partchan = "particlestream"
 
         # Hyperparameter (aka magic number)
-        self.DRIFT_SMOOTHING = 300.0
-        self.DRIFT_ROTATIONAL_SMOOTHING = 2.0
+        self.DRIFT_SMOOTHING = 200.0
+        self.DRIFT_ROTATIONAL_SMOOTHING = 1.0
         '''
         DRIFT_SMOOTHING is the reciportical multiplier;
         higher numbers reduce the magnitude of the change.
