@@ -49,7 +49,8 @@
 }{\par\noindent}
 
 
-\usepackage[superscript]{cite}
+%\usepackage[superscript]{cite}
+
 
 % LISTINGS
 \usepackage{listings}
@@ -98,14 +99,15 @@
 
 
 \begin{abstract}
-Given a \textit{Khepera II} robot with no prior knowledge of it's environment, and under the 
-assumption that it's world is deterministic (TODO: There's a better word for that), we are able 
-to develop the agency required by the task of exploring, discovering food and returning it to the 
-robot's nest. This is built atop an \textit{A*} planning system, stochastic \textit{Adaptive Monte Carlo 
-Localisation}\cite{principlesrobot} to correct compound localisation error, and a dyanmical 
-\textit{Occupancy Grid} generation architecture, the combination of which constitute a SLAM system.
+% the agency required by the task of exploring, discovering food and returning it to the robot's nest.
+Given a \textit{Khepera II} robot with no prior knowledge of it's environment, we are able to 
+simultaneously localise and map, under the assumption that the world is static.
+This is built atop stochastic \textit{Adaptive Monte Carlo Localisation} \cite{principlesrobot} 
+to correct compound localisation error, and a dyanmical \textit{Occupancy Grid} generation architecture, 
+the combination of which constitute a SLAM system. The task requirement of food collection
+behaviour is implemented using an \textit{A* search} planner.
 
-Our existing Architecture from IAR Assignments 1\cite{task1_report} \& 2\cite{task2_report} is further
+Our existing Architecture from the previous IAR Assignments \cite{task1_report}\cite{task2_report} is further
 extended, building upon the reactive behaviour, Redis datastore and ROS/Rviz real-time 
 visualisation.
 
@@ -117,18 +119,21 @@ visualisation.
 
 \section{Dynamical Occupancy Grid}
 
-We build up a map (occupancy grid) of the environment as the robot explores. At time 0, the map
+We build up a map (occupancy grid) of the environment as the robot explores, where at time $0$, the map
 is empty. In this implementation, the dimensions of the grid are effectively infinite, as there are
 mechanisms allowing for automatic expansion in the even of the robot leaving the soft boundaries of
 the grid. The grid is stored as a hashmap in Redis, not a 2D array, with missing keys being assumed 
-unoccupied.
+unoccupied. This allows for rapid querying of arbitary cells' occupancy, and expanding the grid
+is trivial given no keys need be updated.
 
-As a grid resize effectively invalidates any 2D cached array version of the map, all clients 
+However, a grid resize effectively invalidates any 2D cached array version of the map, all clients 
 would be required to re-sync with Redis. To mitigate this, the grid's initial soft-dimensions
 are large, as a cache reload is time-expensive.
 
 The Occupancy grid is probabilistic, meaning each cell's occupancy is an integer in the range 
 ${[0..100]}$, with $0$ indicating certainly unoccupied, and $100$ indicating a certain occupation.
+
+In our testing TODO
 
 \subsection{Ray Tracing}
 
@@ -152,12 +157,17 @@ reference frame, using a \textit{Transformation Matrix}:
   \end{pmatrix}
 \end{equation}
 
-Then using \textit{Bresenham's Line Algorithm}\cite{raytracealgo} we can raytrace between the
+Then using \textit{Bresenham's Line Algorithm} \cite{raytracealgo} we can raytrace between the
 robot's position and the cell that we are seeing an object in; All the cells on this ray are 
 updated -- If we've never seen before, they're marked as unoccupied, or if they are already 
-marked in the map, the cell's value is updated to $0.7\times$ its value, given we now believe
-it to be unoccupied. An occupancy grid of the task environment evolved by this process is shown 
+marked in the map, the cell's value is updated to $0.9\times$ its value, given we now believe
+it to be unoccupied. Backing off from a certain occpancy helps remove noise from the grid though
+must be done conservatively to allow the localisation algorithm to make corrections.
+An occupancy grid of the task environment evolved by this process is shown 
 in Figure \ref{fig:occupancygrid}.
+
+Grid population is done asynchronously from the main control loop, on an event-driven basis --
+map updates are made as the control loop \textit{publishes} pose and sensory updtaes to Redis.
 
 \begin{figure}[h]
   \includegraphics[width=\textwidth]{../assets/early-occupancy-grid-rviz.png}
@@ -175,7 +185,7 @@ in Figure \ref{fig:occupancygrid}.
 
 \section{Adaptive Monte-Carlo Localisation}\label{sec:amcl}
 
-\begin{figure}[p]
+\begin{figure}[h]
   \begin{center}
     \includegraphics[width=0.7\textwidth]{../assets/plots/figure_1-3.png}
   \end{center}
@@ -187,19 +197,18 @@ in Figure \ref{fig:occupancygrid}.
   }
 \end{figure}
 
-The existing system carried forward from \textit{Task 2}\cite{task2_report} maintained a pose estimate
+The existing system carried forward from \textit{Task 2} \cite{task2_report} maintained a pose estimate
 that at each control loop epoch was updated by a discrete sensor model for the \textit{Khepera's} 
 odometry. This model has no facility to model the compound error inherent to dead-reckoning with
 odometry and as the robot continues to move in it's environment the belief about where the robot is quicky 
 diverges from reality. As the task requires multiple excursions and returns to within 10cm of the nest,
-this simple method alone is ineffective for localising the robot. THis inherent drift is illustrated by
+this simple method alone is ineffective for localising the robot. This inherent drift is illustrated by
 Figure \ref{fig:odometry_drift}.
 
 The \textit{Adaptive Monte-Carlo Localisation} Algorithm as outlined in 
-\textit{Probabilistic Robotics}\cite{probabilisticrobot} provides a stochastic method of correcting
+\textit{Probabilistic Robotics} \cite{probabilisticrobot} provides a stochastic method of correcting
 for compound error and localising on an Occupancy Grid:
 
-\newpage
 \textbf{\large Algorithm AMCL${(X_{t-1}, u_t, z_t)}$:}
 \algsetup{indent=2em}
 \begin{algorithmic}
@@ -216,21 +225,28 @@ for compound error and localising on an Occupancy Grid:
   \RETURN $X_{t}$
 \end{algorithmic}
 
-Particles are drawn from the prior set ${X_{t-1}}$ of size $M$ using the \textit{Weighted Reservoir 
-Sampling Algorithm}\cite{reservoirsample}, the effect of which is that particles with greater 
+Particles, which are Normally distributed samples of the Probability Density function of the robot's 
+pose space, each representing a hypothesis about the robot's pose are drawn from the prior set 
+of particles ${X_{t-1}}$ of size $M$ using the \textit{Weighted Reservoir 
+Sampling Algorithm} \cite{reservoirsample}, the effect of which is that particles with greater 
 weight ${w_t^{[m]}}$ (i.e. the more probable hypotheses) have a greater chance of persisting once 
 or multiple times in the new set of particles ${X_t}$. Note that the number of particles remains 
 the same at all times.
 
-TODO: How many particles we used
+100 particles are used in this implementation; The compute time for the \textit{AMCL} grows quicky
+as the number of particles increases. Further to this, while Redis affords flexibility, data persistence
+and fanciness such as replaying a robot's trajectory, it presents a much larger overhead per lookup
+or operation than a native datastructure. A naive \textit{sensor\_update} function will query
+around 7500 occupancy grid cells in the vicinity of the robot: For each particle, each sensor is 
+raytraced and then each grid cell on the rasterised ray is queried. Using a rather cool pre-fetching
+and de-duplication algorithm in the sensor update (\texttt{mapping.py, Particles.update()}) the number
+of unique queried cells is reduced to a nominal value of 54. These queries are serialised and
+transacted as a batch job reducing network overhead.
 
-Figure \ref{fig:particle-disperse} illustrates how particles progressively diverge from the initial 
-hypothesis, ${X_0}$. In our case, dynamical mapping affords a completely certain initial hypothesis
-given the co-ordinate system is relative to said starting position; This prevents the need to
-evenly distribute the particles over the environment at startup, so confidence in early localisations
-is high with no multimodal properties.
+These optimisations result in a 3.8 second to 0.08 second speedup (roughly $50\times$) compared to
+the naive implementation, allowing the particle filter to run at every control loop cycle.
 
-\begin{figure}[p]
+\begin{figure}[h]
   \includegraphics[width=\textwidth]{../assets/particle-disperse-random.png}
   \caption{
     \label{fig:particle-disperse}
@@ -239,22 +255,45 @@ is high with no multimodal properties.
   }
 \end{figure}
 
+Figure \ref{fig:particle-disperse} illustrates how particles progressively diverge from the initial 
+hypothesis, ${X_0}$. In our case, dynamical mapping affords a completely certain initial hypothesis
+given the co-ordinate system is relative to said starting position; This prevents the need to
+evenly distribute the particles over the environment at startup, so confidence in early localisations
+is high with no multimodal properties.
+
+\subsection{Limitations}
+
+The environment for the task has many open areas, where the nearest objects are further away
+than the robot can see. As the robot crosses one of these areas, the localisation error (the 
+weighted varience of the particles) increases. If a new obstacle is encountered, by nature of the 
+Occupancy Grid population rules the error at that time in the localisation will be directly transferred 
+into the map as a misplaced set of occupied cells. Later relocalisations will take on part of this error.
+
+Mitigations to this include constraining the robot to maneuvering `in view' of an obstacle at all times;
+the bug behaviours from earlier tasks provide this to an extent but can't protect against error
+when in free space.
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 \newpage
 \section{Planning}
 
-Using SLAM, we can now proceed to the primary goal - gathering the maximum amount of food per unit time. For that we need to be able to plan out actions, which involves calculating routes to navigate the world and sequincing them accordingly.
+With SLAM we can assume that our localisation is accurate and proceed to the primary goal -- gathering 
+the maximum amount of food per unit time. For that we need to be able to plan out actions, which involves 
+calculating routes to navigate the world and sequincing them accordingly.
 
 \subsection{Path Planning Space}
 \label{Path_Planning_Space}
 
-\textit{(Path) Planning Space} is a term used  in this document to denote the representation of the physical world in one manner or another that allows the calculation of routes routes from one pose $(X,Y, \Theta)$ to another one. This is the basis on which calculations methods are chosen \textit{\S\ref{Path_Planning_Algorithm}Path Planning Algorithm}. 
+\textit{(Path) Planning Space} is a term used  in this report to denote the representation of the 
+physical world as the planner sees it, in this case $(x, y, \Theta)$. The existing use of this
+pose representation from Task 1 \& 2 informs the choice of \textit{Path Planning Algorithm 
+(\S\ref{Path_Planning_Algorithm})}. 
 
 \subsubsection{Method Chosen}
 
-The main mehtods\cite{path_space} of planning are seen to be used on either of the following:
+The main methods of for planning over this representation are: \cite{path_space}
 
 \begin{itemize}
 	\item \textit{Occupancy Grid}
@@ -262,26 +301,43 @@ The main mehtods\cite{path_space} of planning are seen to be used on either of t
 \end{itemize}
 
 
-The difference between these two from the perspective of planning is the efficiency of algorithm working on the data and the pre-processing of the data going to the algorithm. Because an occupancy grid is stored on a \textit{Redis-Server} and it has very fine definition, the number of grid squares (referred to as \textit{Grid Cerlls}) is immense. Therefore, to obtain a graph representation from that, every time a path replanning would have to take place, the conversion would have to take place on a very significant number of points. Therefore, the occupancy grid was chosen due to no conversion needing to be made on the data during runtime for planning, but rather a small alteration for the \textit{Path Planning Algorithm} which should not affect the alogirithm's performance.
+The difference between these two from the perspective of planning is the efficiency of algorithm working 
+on the data and the pre-processing as it goes into the algorithm. Because out Occupancy Grid is stored 
+on a \textit{Redis Server} and it has very fine resolution (aka granularity), the number of grid 
+squares (referred to as \textit{Grid Cells}) is immense. To obtain a graph representation of the
+planning space at each epoch for the map at the resolution of the grid as implemented is
+intractable from a compute time perspective.
+
+Therefore planning over the Occupancy Grid is selected in preference to an abstracted representation
+such as a topological map.
 
 \subsubsection{Alterations}
 
-The granularity of the \textit{Planning Grid (Planning Space)} did not necessarily have to match that of the occupancy grid on Redis for the following reasons:
-
+The granularity of the \textit{Planning Grid (Planning Space)} did not necessarily have to match that 
+of the occupancy grid on Redis for the following reasons:
 
 \begin{itemize}
 
-	\item Robot Dimensions     - the robot's dimensions are larger than the mapping (server-side) granularity
-	\item Odometry Distortion  - extremely finely planned path on an occupancy grid introduces many turns, increasing odometry drift rate considerably \cite{task2_report}
-	\item Runtime Optimization - as long as there is a path to the goal and the robot can follow it, we wish to save as much processing time as we humanely can and plannign with bigger cell dimensions helps us save calculation time
+	\item Robot Dimensions     - the robot's dimensions are larger than the mapping (server-side) 
+granularity
+	\item Odometry Distortion  - extremely finely planned path on an occupancy grid introduces many 
+turns, increasing odometry drift rate considerably \cite{task2_report}
+	\item Runtime Optimization - a coarser grid reduces the depth of a given plan over the same route,
+whilst sacrificing physical parity of said plan
 
 \end{itemize}
 
-Hence, it as decided that the rganularity would be available for configuring as a parameter before runtime without really limiting any way because that would diminish the further possible modifications to the aglorithm. However, by defaul it is set to be equal to the granularity of the occupancy grid.
+The planning granularity is configurable though by default takes the same resolution as the Occupancy Grid.
 
-Moreover, the \textit{(Grid) Cells} store their actual $(X ,Y)$ coordinates as well as occupancy - are they free space or not. Grid cells are stored in a two dimensional array which is indexed by using actual $(X ,Y)$ coordinates. Furthermore, said array is also dynamycally expanding in both dimensions so as to accomodate any number of cells (limited only by memory capacity) in order to not miss a valid optimal path due to any array bounds which also makes this solution more extensible and easily modifiable.
+Moreover, the \textit{(Grid) Cells} store their actual $(x ,y)$ coordinates as well as occupancy - whether 
+they are free space or not. Grid cells are stored in a two dimensional array which is indexed into using 
+actual $(x ,y)$ coordinates. Furthermore, said array is also dynamycally expandable in both dimensions so
+as to accomodate any number of cells (limited only by memory capacity) in order to not miss a valid 
+optimal path due to any array bounds which also makes this solution more extensible and easily modifiable.
 
-Therefore, formign a local cache of the Redis server data suitable for path search computations of virtually any kind. Lastly, because the occupancy data is stored on Redis, the implementation obtains unknown occupancies from the server and caches them locally in said two-dimensional array. 
+A local cache of the Occupancy Grid to make planning more performant. As already noted calling out to 
+the Redis server at a high rate incurrs a large overhead - a cached version can be used to plan
+without convern for access frequency.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
@@ -290,7 +346,7 @@ Therefore, formign a local cache of the Redis server data suitable for path sear
 \subsection{Path Planning Algorithm}
 \label{Path_Planning_Algorithm}
 
-This method should allow the robot to navigate the mapped space between any two unoccupied \textit{(Grid) Cells} \textit{\S\ref{Code}} of the planning space (grid). 
+This method should allow the robot to navigate the mapped space between any two unoccupied \textit{Cells} \textit{\S\ref{Code}} of the planning space.
 
 \subsubsection{Research}
 
@@ -298,17 +354,23 @@ Firstly, there are many options for the \textit{Path Planning Algorithm} that se
 
 \begin{itemize}
 
-	\item \textit{Floyd-Warshall Algorithm}\cite{path_warshall} - a many-to-many algorithm for planning routes
-	\item \textit{Djikstra Algorithm}\cite{path_warshall} - a one-to-many algorithm
-	\item \textit{A* Algorithm}\cite{path_astar}	- a one-to-one algorithm
+	\item \textit{Floyd-Warshall Algorithm} \cite{path_warshall} - a many-to-many algorithm for planning routes
+	\item \textit{Djikstra Graph Search Algorithm} \cite{path_djikstra} - a one-to-many algorithm
+	\item \textit{A* Search Algorithm} \cite{path_astar}	- a one-to-one algorithm
 
 \end{itemize}
 
-These are some of the most common and robust pathing algorihtms used in pathing. However, even based on the iformation above it can be concluded that Floyd-Warshall algorithm is not waht we were lookign because w have a single strating point - the position of the robot. Moreover, empirical data\cite{path_efficiency} shows that the best-first search algorithm is considerably faster than the Djikstra algorithm and in fact is in general considered the fastest planning algorithm. Moreover, it's varioations as well as its purest form are used industry-wide in robotics. More reasons for choosing A* can be outlined in \textit{\S\ref{Path_Planning_Algorihtm_Alterations}}
+These are some of the most common and robust algorihtms used in path planning. However, even based on 
+the information above it can be concluded that Floyd-Warshall algorithm is not what we were looking 
+because we have a single starting point - the position of the robot. Moreover, empirical data 
+\cite{path_efficiency} shows that the best-first search algorithm is considerably faster than 
+the Djikstra algorithm and in fact is in general considered one of the fastest planning algorithms -- 
+it's variations as well as it's purest form are used industry-wide in robotics. 
+More reasons for choosing A* are outlined in \textit{\S\ref{Path_Planning_Algorihtm_Alterations}}
 
 \subsubsection{Method Chosen} 
 
-Therefore, A* was chosen to be the algorithm of choice for path calculation to the target grid cell. The pseudocode explaining its basic operation is as follows:
+A* was chosen for path calculation to the target grid cell. The pseudocode explaining its basic operation is as follows:
 
 \begin{figure}[H]
 	  \centering 
@@ -321,20 +383,40 @@ Therefore, A* was chosen to be the algorithm of choice for path calculation to t
           \lstinputlisting[language=python]{../../astar_path_reconstruction.py}\caption{The A* algorithm path reconstruction pseudocode\cite{path_astar_grid_no_grid} adapted to use the \textit{Planning Space} chosen - an occupancy grid }
 \end{figure} 
 
+
+
 \subsubsection{Alterations}
 \label{Path_Planning_Algorihtm_Alterations}
 
-The chosen \textit{Path Planning Algorihtm - A*} (\S\ref{Path_Planning_Algorithm}) uses the movement and \textit{Heuristic Cost} to estimate the total cost of  including cell into the claculated path. Therefore, as we know the pose of each grid cell, \textit{Euclidian Distances} were chosen to be a measure of (transition) cost between cells making it the cost function betwen any two cells $A$ and $B$. The \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as fast as possible while findign an adequately short path to the desired destination whcih also reduces the amount of server requests for unknown occupancies. On a side note, the movement cost is simply the sum euclidian distances between nodes along the (considered) path involvind said cell.
+The chosen \textit{Path Planning Algorihtm - A*} (\S\ref{Path_Planning_Algorithm}) uses the movement 
+and \textit{Heuristic Cost} to estimate the total cost of  including cell into the claculated path. 
+As we know the pose of each grid cell, \textit{Euclidian Distances} were chosen to be a 
+measure of transition cost between cells making it the cost function betwen any two cells $A$ and $B$. 
+The \textit{Heuristic Function (Cost)} is $10$ times the Euclidian distance from currently considered 
+cell to the goal. The reason for such a high number is that we wish to see the algorithm converge as 
+fast as possible while finding an adequately short path to the desired destination which also reduces 
+the amount of Redis Server requests for unknown occupancies. As a side note, the movement cost is 
+simply the sum euclidian distances between nodes along the (considered) path involving said cell.
 
-Secondly, the A* pseudocode had to be adapted to work on a grid instead of a graph which was solved by a simple function obtaining its neighbours by using the considered cell's pose to get its adjacent ones from the \textit{\S\ref{Path_Planning_Space} Occupancy Grid}.
+Secondly, the A* pseudocode had to be adapted to work on a grid instead of a graph which was solved 
+by a simple function obtaining its neighbours by using the considered cell's pose to get its adjacent 
+ones from the \textit{\S\ref{Path_Planning_Space} Occupancy Grid}.
 
-Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_astar_grid_no_grid}  or only movements up, down, left or right\cite{path_astar_grid_no_diagonals}. However, it seemed like a wasted opportunity to not allow the robot to move diagonally. Such cells are referred to as  \textit{Diagonal Cells} - cells diagonal to the currently considered cell - whose adjacent cells we wish to consider for furhter pathing for the remainded of this report and in the code comments. Moreover, it had to be also accounter for scenarios where the diagonal cell is blocked by two of its neighbours and the diagonal cell can no longer participate in path calculation as shown in the following figure.
+Most iterations of the A* algorithm rely on either graphs \cite{path_astar_grid_no_grid}  or 
+only movements up, down, left or right \cite{path_astar_grid_no_diagonals}. However, it seemed like a 
+wasted opportunity to not allow the robot to move diagonally. Such cells are referred to as  
+\textit{Diagonal Cells} - cells diagonal to the currently considered cell - whose adjacent cells 
+we wish to consider for furhter pathing. The scenario where the diagonal cell is blocked by two of 
+its neighbours must be accounted for. In this case the diagonal cell can no longer participate in 
+path calculation as shown in the Figure \ref{fig:diagonalcell}
 
 
 \begin{figure}[H]
 	  \centering
 	  \includegraphics[width=30em]{../assets/fig_astar_diagonal.jpg}
-          \caption{The \textbf{left} figure shows the $central$ cell (square) is the so called \textit{Considered Cell} whose neighbours we are trying to obtain to plan a path. The \textbf{left} figure shows that we cannot consider the \textit{Diagonal Cell} $A$ as a valid neighbour because it is blocked by $B$ and $C$ making the movement along the red arrow as seen in the \textbf{right} figure impossible}
+          \caption{
+            \label{fig:diagonalcell}
+            The \textbf{left} figure shows the $central$ cell (square) is the so called \textit{Considered Cell} whose neighbours we are trying to obtain to plan a path. The \textbf{left} figure shows that we cannot consider the \textit{Diagonal Cell} $A$ as a valid neighbour because it is blocked by $B$ and $C$ making the movement along the red arrow as seen in the \textbf{right} figure impossible}
 \end{figure} 
 
 
@@ -348,12 +430,21 @@ Secondly, most iterations of the A* algorithm rely on either graphs\cite{path_as
 
 \subsection{The Planner}
 
-This section is concerned with the intergation of the algorithm and data structures described above into the main control loop and its interaction with previosuly established subsystems\cite{task2_report}. The algorithm determinign the next action or travel destination and sequencing said action is called the \textit{Planner} and is, therefore, responsible for maximizing the food collection rate by sequencing events governing said rate.
+This section is concerned with the intergation of the algorithm and data structures described above 
+into the main control loop and its interaction with previosuly established subsystems 
+\cite{task2_report}. The algorithm determining the next action or travel destination and sequencing 
+the execution of said action is called the \textit{Planner} and is, therefore, responsible for 
+maximizing the food collection rate by sequencing events governing said rate.
 
 \subsubsection{Method Chosen}
 \label{Planner_Principle}
 
-Now that we are able to localize ourselves, knwo the map and can calculate paths on the grid, we can set priorites for action to maximize food gathering. Firstly, it is important to note that a it is considered that each \textit{Food Source} has only one unit of \textit{Food}. Upon return to the \textit{Nest} and droppign off currently collected food the robot resets the food sources which now have food units again, therefore, starting a new \textit{Food Collection Round (a.k.a. Round)}. Hence, the aciton priorites were set as follows
+Now that we are able to localize ourselves, know the map and can calculate paths on the planning 
+grid, we can set priorites for action to maximize food gathering. Firstly, it is important to 
+note that each \textit{Food Source} has only one unit of \textit{Food}. 
+Upon return to the \textit{Nest} and dropping off currently collected food the planner resets the 
+food sources which now have food units again, starting a new \textit{Food Collection 
+Round (a.k.a. Round)}. Action priorites were set as follows:
 
 \begin{enumerate}
 	\item \textit{Find} the first food source to begin periodic behavior in the following points
@@ -362,16 +453,24 @@ Now that we are able to localize ourselves, knwo the map and can calculate paths
 	\item \textit{Return} to the nest and drop off collected food
 \end{enumerate}
 
-Thus, we aim to find some food source first to start collecting food as soon as possible. After which exploration for new food sources becomes less of a priority and is only invoked once per round as we do not wish to waste too much time on exploration when we already have food to collect. Therefore, next on the list of priorities is collecting all the food before returning to the nest to drop it off because if we do not collect all the food before a new round start, it is reset - lost. After that is done, the robot returns to the nest and drops off collected food.
-
+We aim to find some food source early to be able start collecting food as soon as possible. 
+Once this is done, exploration for new food sources becomes less of a priority and is only invoked 
+once per round as we do not wish to waste too much time on exploration when we already have
+a known location to collect from. Next on the list of priorities is collecting all the food before 
+returning to the nest to drop it off.
 
 \begin{figure}[H]
 	  \centering
-	  \includegraphics[width=30em]{../assets/fig_planner.jpg}
-          \caption{The planning algorithm - the \textit{Planner} in state-diagram form, this decision making tree is implored on overy iteration of the control loop and determines the action the system is to follow}
+	  \includegraphics[width=0.9\textwidth]{../assets/fig_planner.jpg}
+          \caption{The planning algorithm - the \textit{Planner} in control-flow form, this decision making tree is implored on every iteration of the control loop and determines the action the system is to follow.}
 \end{figure} 
 
-The robot aims to collect the closest food first (bases on Euclidian distances). The movement between cells is moevement along the vector between their recorded coordinates by adjusting the angle along the \textit{Vector of Approach}, same as \textit{Return Algorithm}\cite{task2_report}. Moreover, sometimes unxecpected events can happen that coud lead the robot away from said approach vector. Hence, the next destination is decided (as per above priority list) when the following events happen:
+The robot aims to collect the closest food first (based on Euclidian distances). The movement 
+between cells is moevement along the vector between their recorded coordinates by adjusting the 
+angle along the \textit{Vector of Approach}, same as \textit{Return Algorithm}\cite{task2_report}. 
+Moreover, sometimes unxecpected events can happen that coud lead the robot away from said approach 
+vector. Hence, the next destination is decided (as per above priority list) when the following 
+events happen:
 
 \begin{itemize}
 
@@ -384,7 +483,14 @@ The robot aims to collect the closest food first (bases on Euclidian distances).
 \subsubsection{Alterations}
 \label{Planner_Algorithm_Alterations}
 
-After reviewing initial \textit{\S\ref{Experimental_Results}Eperimenal Results} it was decided that due to the grid granularity being set (by default) in the same order of magnitude as robot dimensions, it is reasonable to assume that no two food sources can exist in the same grid cell as the cell sizes are assumed to be set by the user / programmer to a granularity not exceeding robot dimensions. Lastly, because the algorithm needs to find new food sources, the boredom mechanism \cite{task1_report} was reinstated into the control loop and is the exploration mechanism and is utilized during the \textit{Find} stages of the algorithm. 
+After reviewing initial \textit{\S\ref{Experimental_Results} Experimental Results} it was decided 
+that due to the grid granularity being set (by default) in the same order of magnitude as robot 
+dimensions, it is reasonable to assume that no two food sources can exist in the same grid cell 
+as the cell sizes are assumed to be set by the user / programmer to a granularity not exceeding 
+robot dimensions. Lastly, because the algorithm needs to find new food sources, the boredom 
+mechanism \cite{task1_report} was reinstated into the control loop and is the exploration 
+mechanism and is utilized during the \textit{Find} stages of the algorithm.
+
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
@@ -392,20 +498,29 @@ After reviewing initial \textit{\S\ref{Experimental_Results}Eperimenal Results} 
 \subsection{User Input and Alterations}
 \label{Planner_User_Input}
 
-The user input of \textit{Space} being pressed is used to indicate the presence of a new food source being found. 
+The user input of \textit{Space} being pressed is used to indicate the presence of a new food 
+source being found. 
 
 \subsection{Subsystem Interaction}
 
-Lastly, the integration of the algorithm into the main system is seamless and practically mimics the integration of the \textit{Return Algorithm}\cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. The difference is now we know where there are walls or free space. hence, the robot can fully relay the control to the planner, unless we are exploring using "boredom"\cite{task2_report} or are being "unstuck"\cite{task2_report} without fear of the robot crashing into the wall. 
+Lastly, the integration of the algorithm into the main system is seamless and practically mimics 
+the integration of the \textit{Return Algorithm} \cite{task2_report} a.k.a. the \textit{Bug 2.4.1.1.2}. 
+The difference is now we know where there are walls or free space. Hence, the robot can fully 
+devolve control to the planner, unless we are exploring using "boredom" \cite{task2_report} or 
+are being "unstuck" \cite{task2_report} without fear of the robot crashing into the wall. 
 
-Therefore, ensuring that SLAM and A* are the main control element in the system, unless we need to avoid collision. A further note is that the above distinction is not as clear in the \textit{\S\ref{Code} Code} because of the location of methods, however, the end result (and aim) is as descibed above.
-
-
-\section{Experimental Result}
-\label{Experimental_Results}
+This amounts to SLAM and A* are the main control authority in the system, unless we need 
+to avoid collision. A further note is that the above distinction is not as clear in the 
+\textit{\S\ref{Code} Code} because of the location of methods, however, the end result 
+(and aim) is as descibed above.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
+
+\section{Experimental Results}
+\label{Experimental_Results}
+
 
 
 
@@ -422,6 +537,9 @@ TODO: Empirical results
 
 TODO Rule the world
 
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 \begin{thebibliography}{}
