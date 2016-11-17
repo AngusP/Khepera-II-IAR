@@ -196,10 +196,10 @@ class Mapping(object):
                     pointsl.add((sx, sy, 0))
                 else:
                     # Reduce the prior as we now think it's unoccupied
-                    if prior >= 90:
+                    if prior >= 50:
                         mul = 1.0
                     else:
-                        mule = 0.9
+                        mul = 0.9
                     pointsl.add((sx, sy, prior * mul))
 
             if point.val > 70.0:
@@ -585,8 +585,8 @@ class Particles(object):
         self.partchan = "particlestream"
 
         # Hyperparameter (aka magic number)
-        self.DRIFT_SMOOTHING = 200.0
-        self.DRIFT_ROTATIONAL_SMOOTHING = 1.0
+        self.DRIFT_SMOOTHING = 500.0
+        self.DRIFT_ROTATIONAL_SMOOTHING = 2.0
         '''
         DRIFT_SMOOTHING is the reciportical multiplier;
         higher numbers reduce the magnitude of the change.
@@ -653,6 +653,7 @@ class Particles(object):
         Returns the pose of the robot derived from
         the particles
         '''
+        
         avg_x = 0
         avg_y = 0
         avg_theta = 0
