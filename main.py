@@ -52,7 +52,7 @@ def main():
 	pathing_state = Pathing_State()
 
 	#TODO sync with angus' granularity in mm
-    	pathing = Pathing_Algorithm(20, ds)
+    	pathing = Pathing_Algorithm(100, ds)
 
         # varaibles to not resend speeds during wall following
         speed_l = 0

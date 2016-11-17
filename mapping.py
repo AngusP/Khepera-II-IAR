@@ -195,9 +195,8 @@ class Mapping(object):
                     # Never seen before then assert it's unoccupied
                     pointsl.add((sx, sy, 0))
                 else:
-                    # TODO: More sensible update
                     # Reduce the prior as we now think it's unoccupied
-                    pointsl.add((sx, sy, prior * 0.7))
+                    pointsl.add((sx, sy, prior * 0.9))
 
             if point.val > 70.0:
                 occ = 0
