@@ -100,15 +100,17 @@
 
 \begin{abstract}
 % the agency required by the task of exploring, discovering food and returning it to the robot's nest.
-Given a \textit{Khepera II} robot with no prior knowledge of it's environment, we are able to 
-simultaneously localise and map, under the assumption that the world is static.
-This is built atop stochastic \textit{Adaptive Monte Carlo Localisation} \cite{principlesrobot} 
-to correct compound localisation error, and a dyanmical \textit{Occupancy Grid} generation architecture, 
+Given a \textit{Khepera II} robot with no prior knowledge of it's environment, we attempt to 
+simultaneously localise and map, under the assumption that the world is static. We find the chosen
+methods incapable of reliably completing the task due to environmental and algorithmic factors 
+(\S\ref{sec:conclusion}).
+This system is built atop stochastic \textit{Adaptive Monte Carlo Localisation} \cite{principlesrobot} 
+to correct compound localisation error, and a dynamical \textit{Occupancy Grid} generation architecture, 
 the combination of which constitute a SLAM system. The task requirement of food collection
-behaviour is implemented using an \textit{A* search} planner.
+behaviour is implemented using an \textit{A* Search} planner.
 
-Our existing Architecture from the previous IAR Assignments \cite{task1_report}\cite{task2_report} is further
-extended, building upon the reactive behaviour, Redis datastore and ROS/Rviz real-time 
+Our existing Architecture from the previous IAR Assignments \cite{task1_report}\cite{task2_report} 
+is further extended, building upon the reactive behaviour, Redis datastore and ROS/Rviz real-time 
 visualisation.
 
 \end{abstract}
@@ -123,7 +125,7 @@ We build up a map (occupancy grid) of the environment as the robot explores, whe
 is empty. In this implementation, the dimensions of the grid are effectively infinite, as there are
 mechanisms allowing for automatic expansion in the even of the robot leaving the soft boundaries of
 the grid. The grid is stored as a hashmap in Redis, not a 2D array, with missing keys being assumed 
-unoccupied. This allows for rapid querying of arbitary cells' occupancy, and expanding the grid
+unoccupied. This allows for rapid querying of arbitrary cells' occupancy, and expanding the grid
 is trivial given no keys need be updated.
 
 However, a grid resize effectively invalidates any 2D cached array version of the map, all clients 
@@ -132,8 +134,6 @@ are large, as a cache reload is time-expensive.
 
 The Occupancy grid is probabilistic, meaning each cell's occupancy is an integer in the range 
 ${[0..100]}$, with $0$ indicating certainly unoccupied, and $100$ indicating a certain occupation.
-
-In our testing TODO
 
 \subsection{Ray Tracing}
 
@@ -160,14 +160,14 @@ reference frame, using a \textit{Transformation Matrix}:
 Then using \textit{Bresenham's Line Algorithm} \cite{raytracealgo} we can raytrace between the
 robot's position and the cell that we are seeing an object in; All the cells on this ray are 
 updated -- If we've never seen before, they're marked as unoccupied, or if they are already 
-marked in the map, the cell's value is updated to $0.9\times$ its value, given we now believe
-it to be unoccupied. Backing off from a certain occpancy helps remove noise from the grid though
+marked in the map, the cell's value is kept unless the new value is more strongly occupied.
+Backing off from a certain occupancy helps remove noise from the grid though
 must be done conservatively to allow the localisation algorithm to make corrections.
 An occupancy grid of the task environment evolved by this process is shown 
 in Figure \ref{fig:occupancygrid}.
 
 Grid population is done asynchronously from the main control loop, on an event-driven basis --
-map updates are made as the control loop \textit{publishes} pose and sensory updtaes to Redis.
+map updates are made as the control loop \textit{publishes} pose and sensory updates to Redis.
 
 \begin{figure}[h]
   \includegraphics[width=\textwidth]{../assets/early-occupancy-grid-rviz.png}
@@ -181,6 +181,7 @@ map updates are made as the control loop \textit{publishes} pose and sensory upd
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
+
 
 
 \section{Adaptive Monte-Carlo Localisation}\label{sec:amcl}
@@ -200,7 +201,7 @@ map updates are made as the control loop \textit{publishes} pose and sensory upd
 The existing system carried forward from \textit{Task 2} \cite{task2_report} maintained a pose estimate
 that at each control loop epoch was updated by a discrete sensor model for the \textit{Khepera's} 
 odometry. This model has no facility to model the compound error inherent to dead-reckoning with
-odometry and as the robot continues to move in it's environment the belief about where the robot is quicky 
+odometry and as the robot continues to move in it's environment the belief about where the robot is quickly 
 diverges from reality. As the task requires multiple excursions and returns to within 10cm of the nest,
 this simple method alone is ineffective for localising the robot. This inherent drift is illustrated by
 Figure \ref{fig:odometry_drift}.
@@ -261,22 +262,10 @@ given the co-ordinate system is relative to said starting position; This prevent
 evenly distribute the particles over the environment at startup, so confidence in early localisations
 is high with no multimodal properties.
 
-\subsection{Limitations}
-
-The environment for the task has many open areas, where the nearest objects are further away
-than the robot can see. As the robot crosses one of these areas, the localisation error (the 
-weighted varience of the particles) increases. If a new obstacle is encountered, by nature of the 
-Occupancy Grid population rules the error at that time in the localisation will be directly transferred 
-into the map as a misplaced set of occupied cells. Later relocalisations will take on part of this error.
-
-Mitigations to this include constraining the robot to maneuvering `in view' of an obstacle at all times;
-the bug behaviours from earlier tasks provide this to an extent but can't protect against error
-when in free space.
-
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
-\newpage
+
 \section{Planning}
 
 With SLAM we can assume that our localisation is accurate and proceed to the primary goal -- gathering 
@@ -483,7 +472,7 @@ events happen:
 \subsubsection{Alterations}
 \label{Planner_Algorithm_Alterations}
 
-After reviewing initial \textit{\S\ref{Experimental_Results} Experimental Results} it was decided 
+After reviewing initial \textit{Experimental Results} it was decided 
 that due to the grid granularity being set (by default) in the same order of magnitude as robot 
 dimensions, it is reasonable to assume that no two food sources can exist in the same grid cell 
 as the cell sizes are assumed to be set by the user / programmer to a granularity not exceeding 
@@ -495,7 +484,7 @@ mechanism and is utilized during the \textit{Find} stages of the algorithm.
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
-\subsection{User Input and Alterations}
+\subsubsection{User Input}
 \label{Planner_User_Input}
 
 The user input of \textit{Space} being pressed is used to indicate the presence of a new food 
@@ -521,22 +510,89 @@ to avoid collision. A further note is that the above distinction is not as clear
 \section{Experimental Results}
 \label{Experimental_Results}
 
+Each subsystem component was tested independently from the rest of the stack. Due to
+localisation failing to correct for compund error in odometry, the robot is unable
+to reliably complete the task in the environment.
+
+\subsection{Planning}
+
+The motion planner was tested with hardware in the loop, planning around virtual obstacles
+to navigate to a desired location, identify new food sources and take the shortest route between 
+multiple food sources and the nest. The success rate for this was 9/10 trials, where
+the failure was due to compound odometry error.
+
+\subsection{Mapping \& Localisation}
+
+The actual mapping of occupancies according to localisation is correct, with sensed obstacles
+in the task environment being added to the grid in the correct position relative to the robot.
+
+\begin{figure}[H]
+	  \centering
+	  \includegraphics[width=0.8\textwidth]{../assets/SLAM/failtrial1.png}
+          \caption{
+            \label{fig:ogrotate}
+            Invalid Occupancy Grid, showing a clear localisation error's resulting
+            in translated and rotated shapes. The shapes are in the correct proportions.
+          }
+\end{figure}
+
+\begin{figure}[H]
+	  \centering
+	  \includegraphics[width=0.8\textwidth]{../assets/arena.jpg}
+          \caption{
+            Top-down image of the arena as a comparison.
+          }
+\end{figure}
+
+
+In a minimal environment, a compound error in localisationstill appears, mainly comprised of
+a rotational error resulting in a corresponding rotation of the map as time progresses 
+(Fig. \ref{fig:ogrotate}). This test's
+resulting occupancy grid and odometry trace is shown in Figure \ref{fig:simplefail}
+ 
+\begin{figure}[H]
+	  \centering
+	  \includegraphics[width=0.7\textwidth]{../assets/SLAM/failtrial3.png}
+          \caption{
+            \label{fig:simplefail}
+            Map after following the inside of a simple rectangular environment, showing
+            the slow rotational error in the grid. The environments actual boundaries are shown 
+            by the green rectangle, dimensions $20cm \times 30cm$. The Robot started at the 
+            origin (centre).
+          }
+\end{figure}
+
+
+%       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
 
 
 
+\section{Conclusions}
+\label{sec:conclusion}
 
+The Grid occupancy retention policy has a large effect on the rest of the SLAM stack.
+As the sensors do not always report the same distances as one-another, and that we snap
+to a discrete granular grid it is not uncommon for a cell previously marked occupied to either 
+be overwritten completely or have it's occupancy certainty degraded.
 
-TODO make sure angus has a pic of waht an occupancy grid is
-TODO comment somehow on the ganularity effect on performance (and do tests)
-TODO make sure occupancy grid is already described in a previous section
-TODO reference pictures
-TODO set granularity to robot dimension
-TODO insert stuff from google drive
-TODO: Empirical results
+In addition to this, if we first encounter a new obstacle after traversing a large open
+space of which there are many in the task environment, affording no prior features to 
+relocalise on, theis new feature will enter the 
+map in an erroneous position. This error will then carry through to the robot's 
+position estimate whenever it believes it can see this feature.
 
+Further to this, the `rough edged' Occupancy Grid map gives an already noisy feature for
+\textit{AMCL} to attempt to localise on -- meaning none of the hypotheses (particles)
+hold a high probability of being true to the real world, and many that should quicky be 
+defeased remain in the state estimate. Adding more Gaussian noise to
+the \textit{AMCL} resampling function in an attempt to alleviate these localisation errors 
+results in teleportation, oscillation or positional drift induced by the filter
+itself. The whole system quicky deteriorates into an invalid state once this begins 
+happening.
 
-TODO Rule the world
-
+Planning verifiably worked atop correct localisation, devising and executing optimal plans.
+However, failure to localise renders it's attempts at completing the task moot, as the
+believed home location falls outside the 10cm maximum radius.
 
 
 %       ^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^v^
